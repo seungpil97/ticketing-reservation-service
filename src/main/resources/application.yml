@@ -1,0 +1,5 @@
+spring:
+  application:
+    name: ticketing-reservation-service
+  profiles:
+    active: dev
