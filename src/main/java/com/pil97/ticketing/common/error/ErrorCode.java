@@ -1,5 +1,6 @@
 package com.pil97.ticketing.common.error;
 
+import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
 /**
@@ -13,6 +14,7 @@ import org.springframework.http.HttpStatus;
  * 2) 일관성: status/code/message를 한 군데에서 관리해서 응답 포맷이 통일됨
  * 3) 변경 용이: 메시지/코드 규칙이 바뀌면 enum만 바꾸면 전체가 같이 바뀜
  */
+@Getter
 public enum ErrorCode {
 
   /**
@@ -63,6 +65,9 @@ public enum ErrorCode {
    * ✅ 이 에러가 반환되어야 하는 HTTP 상태 코드
    * - 예: 400, 404, 500 등
    * - GlobalExceptionHandler에서 이 status를 꺼내 ResponseEntity 상태코드로 사용
+   * -- GETTER --
+   *  ✅ getter: GlobalExceptionHandler(또는 서비스)에서 상태코드가 필요할 때 사용
+
    */
   private final HttpStatus status;
 
@@ -70,6 +75,9 @@ public enum ErrorCode {
    * ✅ 내부 에러 코드(문자열)
    * - 프론트/클라이언트가 이 값을 보고 분기 처리할 수 있음
    * - 예: "COMMON-001"이면 validation 화면 처리
+   * -- GETTER --
+   *  ✅ getter: 표준 에러 코드가 필요할 때 사용
+
    */
   private final String code;
 
@@ -77,6 +85,9 @@ public enum ErrorCode {
    * ✅ 기본 메시지
    * - 사람이 읽기 좋은 메시지
    * - 필요하면 나중에 다국어/상세 메시지로 확장 가능
+   * -- GETTER --
+   *  ✅ getter: 기본 메시지가 필요할 때 사용
+
    */
   private final String message;
 
@@ -90,24 +101,4 @@ public enum ErrorCode {
     this.message = message;
   }
 
-  /**
-   * ✅ getter: GlobalExceptionHandler(또는 서비스)에서 상태코드가 필요할 때 사용
-   */
-  public HttpStatus getStatus() {
-    return status;
-  }
-
-  /**
-   * ✅ getter: 표준 에러 코드가 필요할 때 사용
-   */
-  public String getCode() {
-    return code;
-  }
-
-  /**
-   * ✅ getter: 기본 메시지가 필요할 때 사용
-   */
-  public String getMessage() {
-    return message;
-  }
 }

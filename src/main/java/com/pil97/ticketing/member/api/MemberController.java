@@ -7,13 +7,11 @@ import com.pil97.ticketing.member.application.MemberService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
+import java.util.List;
 
 /**
  * ✅ API 컨트롤러
@@ -28,6 +26,57 @@ import java.net.URI;
 public class MemberController {
 
   private final MemberService memberService;
+
+  /**
+   * ✅ GET /members/{id}
+   * <p>
+   * 이 API의 목적:
+   * - 특정 id의 회원을 "단건 조회"한다.
+   * <p>
+   * 상태코드 정책:
+   * - 조회 성공 시 200 OK
+   * - 없는 회원이면 404 NOT_FOUND (MEMBER_NOT_FOUND)
+   * <p>
+   * 에러 흐름:
+   * - 서비스에서 memberRepository.findById(id)를 호출
+   * - 없으면 BusinessException(ErrorCode.MEMBER_NOT_FOUND) 발생
+   * - GlobalExceptionHandler가 잡아서 표준 에러 응답(ApiResponse.error)으로 내려준다
+   */
+  @GetMapping("/{id}")
+  public ResponseEntity<ApiResponse<MemberResponse>> getById(
+    // ✅ @PathVariable: URL 경로의 {id} 값을 메서드 파라미터로 바인딩
+    // 예) GET /members/10  -> id = 10
+    @PathVariable Long id
+  ) {
+    // ✅ 서비스 호출: 조회 로직/예외 처리는 서비스가 담당 (컨트롤러는 얇게 유지)
+    MemberResponse response = memberService.getById(id);
+
+    // ✅ 200 OK + 표준 응답 포맷(ApiResponse)
+    return ResponseEntity.ok(ApiResponse.success(response));
+  }
+
+  /**
+   * ✅ GET /members
+   * <p>
+   * 이 API의 목적:
+   * - 회원 목록을 "간단 조회"한다.
+   * - 현재는 최신 20개(id desc)만 내려준다. (정책은 Service/Repository에서 제한)
+   * <p>
+   * 상태코드 정책:
+   * - 조회 성공 시 200 OK
+   * <p>
+   * 응답 정책:
+   * - 표준 응답 포맷(ApiResponse)로 감싸서 반환
+   */
+  @GetMapping
+  public ResponseEntity<ApiResponse<List<MemberResponse>>> list() {
+
+    // ✅ 서비스 호출: 목록 조회 로직은 서비스가 담당
+    List<MemberResponse> responses = memberService.list();
+
+    // ✅ 200 OK + 표준 응답
+    return ResponseEntity.ok(ApiResponse.success(responses));
+  }
 
   /**
    * ✅ POST /members
