@@ -1,8 +1,6 @@
 package com.pil97.ticketing.common.response;
 
 
-import org.springframework.web.ErrorResponse;
-
 import java.time.LocalDateTime;
 
 /**
