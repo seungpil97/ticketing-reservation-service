@@ -1,5 +1,7 @@
 package com.pil97.ticketing.member.api.dto.response;
 
+import com.pil97.ticketing.member.domain.Member;
+
 /**
  * ✅ 회원 생성/조회 성공 시 클라이언트에게 내려줄 "응답 DTO"
  * <p>
@@ -24,4 +26,8 @@ public record MemberResponse(
   String email, // ✅ 회원 이메일
   String name   // ✅ 회원 이름
 ) {
+  public static MemberResponse from(Member saved) {
+
+    return new MemberResponse(saved.getId(), saved.getEmail(), saved.getName());
+  }
 }
