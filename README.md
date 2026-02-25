@@ -102,6 +102,14 @@ Request Body:
 }
 ```
 
+### Get Member
+
+* `GET /members/{id}`
+
+### List Members
+
+* `GET /members`
+
 ### Test (curl)
 
 ```bash
@@ -114,6 +122,12 @@ curl -X POST http://localhost:8080/members \
 curl -X POST http://localhost:8080/members \
  -H "Content-Type: application/json" \
  -d '{"email":"a@test.com","name":""}'
+
+# get by id
+curl http://localhost:8080/members/1
+
+# list
+curl http://localhost:8080/members
 ```
 
 ---
@@ -123,4 +137,3 @@ curl -X POST http://localhost:8080/members \
 * Spring Boot
 * Spring Data JPA
 * MariaDB
-
