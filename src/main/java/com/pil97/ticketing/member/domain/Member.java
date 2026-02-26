@@ -37,6 +37,10 @@ public class Member {
   }
 
   // 변경이 필요하면 setter 대신 “의미 있는 메서드”로
+  public void changeEmail(String email) {
+    this.email = email;
+  }
+
   public void changeName(String name) {
     this.name = name;
   }

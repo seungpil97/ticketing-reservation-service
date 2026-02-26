@@ -5,6 +5,7 @@ import com.pil97.ticketing.common.response.ApiResponse;
 import com.pil97.ticketing.common.response.ErrorResponse;
 import com.pil97.ticketing.common.response.FieldErrorDetail;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -61,8 +62,10 @@ public class GlobalExceptionHandler {
    * - errorCode 기준으로 상태/코드/메시지를 표준 응답으로 내려줌
    */
   @ExceptionHandler(BusinessException.class)
-  public ResponseEntity<ApiResponse<Void>> handleBusiness(BusinessException e,
-                                                          HttpServletRequest request) {
+  public ResponseEntity<ApiResponse<Void>> handleBusiness(
+    BusinessException e,
+    HttpServletRequest request
+  ) {
 
     ErrorCode errorCode = e.getErrorCode();
 
@@ -82,10 +85,41 @@ public class GlobalExceptionHandler {
    * - 예: POST만 가능한데 GET으로 호출
    */
   @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
-  public ResponseEntity<ApiResponse<Void>> handleMethodNotAllowed(HttpRequestMethodNotSupportedException e,
-                                                                  HttpServletRequest request) {
+  public ResponseEntity<ApiResponse<Void>> handleMethodNotAllowed(
+    HttpRequestMethodNotSupportedException e,
+    HttpServletRequest request
+  ) {
 
     ErrorCode errorCode = ErrorCode.COMMON_METHOD_NOT_ALLOWED;
+
+    ErrorResponse errorResponse = ErrorResponse.of(
+      errorCode.getCode(),
+      errorCode.getMessage(),
+      request.getRequestURI()
+    );
+
+    return ResponseEntity
+      .status(errorCode.getStatus())
+      .body(ApiResponse.error(errorResponse));
+  }
+
+  /**
+   * ✅ 3-1) DB 제약조건 위반 처리 (409)
+   * - 대표 케이스: email unique 제약 위반(중복 이메일)
+   * - DB에서 터진 예외(DataIntegrityViolationException)를
+   * 표준 에러코드(MEMBER_DUPLICATE_EMAIL)로 매핑해서 내려준다.
+   * <p>
+   * 참고:
+   * - 이 예외는 다른 제약조건(다른 unique, fk 등)에도 사용될 수 있으니
+   * 프로젝트가 커지면 원인별로 세분화(메시지/코드 분리)하는 방식으로 확장 가능
+   */
+  @ExceptionHandler(DataIntegrityViolationException.class)
+  public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolation(
+    DataIntegrityViolationException e,
+    HttpServletRequest request
+  ) {
+
+    ErrorCode errorCode = ErrorCode.MEMBER_DUPLICATE_EMAIL;
 
     ErrorResponse errorResponse = ErrorResponse.of(
       errorCode.getCode(),
@@ -104,8 +138,10 @@ public class GlobalExceptionHandler {
    * - 실제 운영에서는 여기서 로그를 꼭 남김
    */
   @ExceptionHandler(Exception.class)
-  public ResponseEntity<ApiResponse<Void>> handleException(Exception e,
-                                                           HttpServletRequest request) {
+  public ResponseEntity<ApiResponse<Void>> handleException(
+    Exception e,
+    HttpServletRequest request
+  ) {
 
     ErrorCode errorCode = ErrorCode.COMMON_INTERNAL_ERROR;
 
