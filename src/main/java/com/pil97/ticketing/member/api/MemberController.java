@@ -2,6 +2,7 @@ package com.pil97.ticketing.member.api;
 
 import com.pil97.ticketing.common.response.ApiResponse;
 import com.pil97.ticketing.member.api.dto.request.MemberCreateRequest;
+import com.pil97.ticketing.member.api.dto.request.MemberUpdateRequest;
 import com.pil97.ticketing.member.api.dto.response.MemberResponse;
 import com.pil97.ticketing.member.application.MemberService;
 import jakarta.validation.Valid;
@@ -140,5 +141,53 @@ public class MemberController {
      */
     return ResponseEntity.created(location)
       .body(ApiResponse.success(response));
+  }
+
+
+  /**
+   * ✅ DELETE /members/{id}
+   * <p>
+   * 목적:
+   * - 특정 회원(id)을 삭제한다.
+   * <p>
+   * 상태코드 정책:
+   * - 삭제 성공: 204 No Content (응답 바디 없음)
+   * - 없는 회원: 404 Not Found (MEMBER_NOT_FOUND)
+   * <p>
+   * 처리 흐름:
+   * - 컨트롤러는 서비스 호출만 담당(얇게 유지)
+   * - 존재 여부 판단 및 예외(404)는 서비스에서 처리 후 전역 예외 처리기로 표준화
+   */
+  @PatchMapping("/{id}")
+  public ResponseEntity<ApiResponse<MemberResponse>> update(
+    @PathVariable Long id,
+    @Valid @RequestBody MemberUpdateRequest request
+  ) {
+    MemberResponse response = memberService.update(id, request);
+    return ResponseEntity.ok(ApiResponse.success(response));
+  }
+
+
+  /**
+   * ✅ DELETE /members/{id}
+   * <p>
+   * 목적:
+   * - 특정 회원(id)의 정보를 삭제한다. (DELETE)
+   * <p>
+   * 상태코드 정책:
+   * - 삭제 성공: 204 OK
+   * - 없는 회원: 404 NOT_FOUND (MEMBER_NOT_FOUND)
+   * - 요청 바디 검증 실패(형식/길이): 400 BAD_REQUEST (VALIDATION_FAILED)
+   * <p>
+   * 처리 흐름:
+   * - 컨트롤러는 요청 검증(@Valid) + 서비스 호출만 담당(얇게 유지)
+   * - 도메인 규칙(없음/변경값 없음/중복)은 서비스+전역 예외 처리에서 표준화
+   */
+  @DeleteMapping("/{id}")
+  public ResponseEntity<Void> delete(
+    @PathVariable Long id
+  ) {
+    memberService.delete(id);
+    return ResponseEntity.noContent().build();
   }
 }

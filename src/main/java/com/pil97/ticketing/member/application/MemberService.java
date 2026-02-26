@@ -3,6 +3,7 @@ package com.pil97.ticketing.member.application;
 import com.pil97.ticketing.common.error.ErrorCode;
 import com.pil97.ticketing.common.exception.BusinessException;
 import com.pil97.ticketing.member.api.dto.request.MemberCreateRequest;
+import com.pil97.ticketing.member.api.dto.request.MemberUpdateRequest;
 import com.pil97.ticketing.member.api.dto.response.MemberResponse;
 import com.pil97.ticketing.member.domain.Member;
 import com.pil97.ticketing.member.domain.repository.MemberRepository;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * ✅ Member 유스케이스(서비스)
@@ -57,5 +59,42 @@ public class MemberService {
       .stream()
       .map(MemberResponse::from)
       .toList();
+  }
+
+  /**
+   * ✅ 회원 수정
+   */
+  @Transactional
+  public MemberResponse update(
+    Long id,
+    MemberUpdateRequest request
+  ) {
+
+    Member member = memberRepository.findById(id)
+      .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+
+    if (request.getEmail() == null && request.getName() == null) {
+
+      throw new BusinessException(ErrorCode.COMMON_INVALID_REQUEST);
+    }
+
+    if (request.getEmail() != null) member.changeEmail(request.getEmail());
+    if (request.getName() != null) member.changeName(request.getName());
+
+    return MemberResponse.from(member);
+  }
+
+  /**
+   * ✅ 회원 삭제
+   */
+  @Transactional
+  public void delete(
+    Long id
+  ) {
+
+    Member member = memberRepository.findById(id)
+      .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+
+    memberRepository.delete(member);
   }
 }
