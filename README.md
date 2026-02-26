@@ -1,7 +1,7 @@
 # Ticketing Reservation Service
 
 티켓 예매 서비스를 위한 백엔드 API 프로젝트입니다.  
-(현재는 공통 응답 포맷/전역 예외 처리/샘플 Member API까지 구현)
+(현재는 공통 응답 포맷/전역 예외 처리/Member CRUD API까지 구현)
 
 ---
 
@@ -81,9 +81,18 @@ Validation 실패 시 `COMMON-001`과 함께 필드 에러가 `details`로 내�
 ### Examples
 
 * `COMMON-001`: Validation failed (400)
+
+* `COMMON-002`: Invalid request body (400)
+
+* `COMMON-003`: Invalid request (400)  // PATCH 변경값 없음 등
+
 * `COMMON-405`: Method not allowed (405)
+
 * `COMMON-500`: Internal server error (500)
+
 * `MEMBER-404`: Member not found (404)
+
+* `MEMBER-409`: Duplicate email (409)
 
 ---
 
@@ -110,24 +119,81 @@ Request Body:
 
 * `GET /members`
 
-### Test (curl)
+### Update Member (PATCH)
+
+* `PATCH /members/{id}` (부분 수정)
+
+Request Body examples:
+
+```json
+{ "name": "newName" }
+```
+
+```json
+{ "email": "new@test.com" }
+```
+
+### Delete Member
+
+* `DELETE /members/{id}`
+* 성공 시 `204 No Content`
+
+---
+
+## Test (curl)
 
 ```bash
-# success
+# -------------------------
+# Create / Read
+# -------------------------
+
+# create success
 curl -X POST http://localhost:8080/members \
- -H "Content-Type: application/json" \
- -d '{"email":"a@test.com","name":"sp"}'
+  -H "Content-Type: application/json" \
+  -d '{"email":"a@test.com","name":"sp"}'
 
 # validation error
 curl -X POST http://localhost:8080/members \
- -H "Content-Type: application/json" \
- -d '{"email":"a@test.com","name":""}'
+  -H "Content-Type: application/json" \
+  -d '{"email":"a@test.com","name":""}'
 
 # get by id
 curl http://localhost:8080/members/1
 
 # list
 curl http://localhost:8080/members
+
+
+# -------------------------
+# Update / Delete
+# -------------------------
+
+# update success (200)
+curl -X PATCH http://localhost:8080/members/1 \
+  -H "Content-Type: application/json" \
+  -d '{"name":"newName"}'
+
+# update not found (404)
+curl -X PATCH http://localhost:8080/members/999999 \
+  -H "Content-Type: application/json" \
+  -d '{"name":"newName"}'
+
+# update invalid (no changes) (400)
+curl -X PATCH http://localhost:8080/members/1 \
+  -H "Content-Type: application/json" \
+  -d '{}'
+
+# update duplicate email (409)
+# ※ existing@test.com 자리에 "이미 존재하는 다른 회원의 이메일"을 넣어서 테스트
+curl -X PATCH http://localhost:8080/members/1 \
+  -H "Content-Type: application/json" \
+  -d '{"email":"existing@test.com"}'
+
+# delete success (204) - 헤더/상태코드 확인용으로 -i 옵션 사용
+curl -i -X DELETE http://localhost:8080/members/1
+
+# delete not found (404)
+curl -i -X DELETE http://localhost:8080/members/999999
 ```
 
 ---
