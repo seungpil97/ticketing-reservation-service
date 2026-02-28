@@ -38,6 +38,7 @@ dependencies {
   testImplementation 'org.springframework.boot:spring-boot-starter-test'
 }
 
-tasks.named('test') {
-  useJUnitPlatform()
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+    jvmArgs "-Xshare:off"
 }
