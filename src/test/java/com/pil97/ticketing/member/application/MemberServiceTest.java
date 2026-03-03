@@ -13,7 +13,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.*;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
@@ -71,6 +73,35 @@ class MemberServiceTest {
       });
 
     verify(memberRepository).findById(missingId);
+    verifyNoMoreInteractions(memberRepository);
+  }
+
+  @Test
+  @DisplayName("list: Pageable(page/size/sort)을 repository.findAll에 그대로 전달한다")
+  void list_passesPageableToRepository() {
+    // given
+    Pageable pageable =
+      PageRequest.of(0, 2, Sort.by(Sort.Direction.DESC, "id"));
+
+    // repository가 돌려줄 Page<Member> 준비
+    List<Member> content = List.of(new Member("a@test.com", "A"), new Member("b@test.com", "B"));
+    Page<Member> pageResult = new PageImpl<>(content, pageable, 2);
+
+    when(memberRepository.findAll(any(Pageable.class))).thenReturn(pageResult);
+
+    // when
+    memberService.list(pageable);
+
+    // then (repository에 전달된 pageable 캡처)
+    ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+    verify(memberRepository).findAll(captor.capture());
+
+    Pageable passed = captor.getValue();
+    assertThat(passed.getPageNumber()).isEqualTo(0);
+    assertThat(passed.getPageSize()).isEqualTo(2);
+    assertThat(passed.getSort().getOrderFor("id")).isNotNull();
+    assertThat(passed.getSort().getOrderFor("id").getDirection()).isEqualTo(Sort.Direction.DESC);
+
     verifyNoMoreInteractions(memberRepository);
   }
 }
