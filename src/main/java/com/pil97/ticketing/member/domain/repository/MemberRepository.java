@@ -8,6 +8,4 @@ import java.util.List;
 
 public interface MemberRepository extends JpaRepository<Member, Long> {
 
-  // 목록 조회는 최신 20건(id desc)만 노출한다.
-  List<Member> findTop20ByOrderByIdDesc();
 }

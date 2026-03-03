@@ -4,10 +4,13 @@ import com.pil97.ticketing.common.error.ErrorCode;
 import com.pil97.ticketing.common.exception.BusinessException;
 import com.pil97.ticketing.member.api.dto.request.MemberCreateRequest;
 import com.pil97.ticketing.member.api.dto.request.MemberUpdateRequest;
+import com.pil97.ticketing.member.api.dto.response.MemberPageResponse;
 import com.pil97.ticketing.member.api.dto.response.MemberResponse;
 import com.pil97.ticketing.member.domain.Member;
 import com.pil97.ticketing.member.domain.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,14 +54,14 @@ public class MemberService {
     return MemberResponse.from(member);
   }
 
+
   /**
-   * ✅ 회원 목록 조회 최신 20건
+   * ✅ 회원 목록 조회 (페이징/정렬)
    */
-  public List<MemberResponse> list() {
-    return memberRepository.findTop20ByOrderByIdDesc()
-      .stream()
-      .map(MemberResponse::from)
-      .toList();
+  public MemberPageResponse list(Pageable pageable) {
+
+    Page<Member> pageResult = memberRepository.findAll(pageable);
+    return MemberPageResponse.from(pageResult);
   }
 
   /**
