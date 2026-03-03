@@ -3,10 +3,14 @@ package com.pil97.ticketing.member.api;
 import com.pil97.ticketing.common.response.ApiResponse;
 import com.pil97.ticketing.member.api.dto.request.MemberCreateRequest;
 import com.pil97.ticketing.member.api.dto.request.MemberUpdateRequest;
+import com.pil97.ticketing.member.api.dto.response.MemberPageResponse;
 import com.pil97.ticketing.member.api.dto.response.MemberResponse;
 import com.pil97.ticketing.member.application.MemberService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -60,20 +64,27 @@ public class MemberController {
    * ✅ GET /members
    * <p>
    * 이 API의 목적:
-   * - 회원 목록을 "간단 조회"한다.
-   * - 현재는 최신 20개(id desc)만 내려준다. (정책은 Service/Repository에서 제한)
+   * - 회원 목록을 페이징으로 조회한다.
+   * <p>
+   * 요청 파라미터:
+   * - page: 0부터 시작 (default: 0)
+   * - size: 페이지 크기 (default: 20)
+   * - sort: 정렬 (default: id,desc)
    * <p>
    * 상태코드 정책:
    * - 조회 성공 시 200 OK
    * <p>
    * 응답 정책:
    * - 표준 응답 포맷(ApiResponse)로 감싸서 반환
+   * - data: { items: [...], page: { page, size, totalElements, totalPages } }
    */
   @GetMapping
-  public ResponseEntity<ApiResponse<List<MemberResponse>>> list() {
+  public ResponseEntity<ApiResponse<MemberPageResponse>> list(
+    @PageableDefault(size = 20, sort = "id", direction = Sort.Direction.DESC) Pageable pageable
+  ) {
 
-    // ✅ 서비스 호출: 목록 조회 로직은 서비스가 담당
-    List<MemberResponse> responses = memberService.list();
+    // ✅ 서비스 호출: 페이징/정렬 입력(Pageable)을 서비스로 전달
+    MemberPageResponse responses = memberService.list(pageable);
 
     // ✅ 200 OK + 표준 응답
     return ResponseEntity.ok(ApiResponse.success(responses));

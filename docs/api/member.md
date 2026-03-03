@@ -20,7 +20,7 @@
   "success": true,
   "timestamp": "..."
 }
-````
+```
 
 ### Error - Validation (example)
 
@@ -165,11 +165,41 @@ curl http://localhost:8080/members/999999
 
 * **GET** `/members`
 * **200 OK**
+* Paging/Sorting 지원 (default: page=0, size=20, sort=id,desc)
+
+Query Params
+- `page` (default: `0`) - 0-based
+- `size` (default: `20`)
+- `sort` (default: `id,desc`)
 
 curl
 
 ```bash
-curl http://localhost:8080/members
+# default (page=0,size=20,sort=id,desc)
+curl "http://localhost:8080/members"
+
+# paging
+curl "http://localhost:8080/members?page=0&size=2"
+```
+Response (200)
+```json
+{
+  "data": {
+    "items": [
+      { "id": 6, "email": "b@test.com", "name": "B" },
+      { "id": 4, "email": "a@test.com", "name": "A" }
+    ],
+    "page": {
+      "page": 0,
+      "size": 2,
+      "totalElements": 10,
+      "totalPages": 5
+    }
+  },
+  "error": null,
+  "success": true,
+  "timestamp": "..."
+}
 ```
 
 ---
