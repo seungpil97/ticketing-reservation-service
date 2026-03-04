@@ -6,9 +6,8 @@ spring:
       - classpath:application-common.yml
 
   datasource:
-    driver-class-name: org.mariadb.jdbc.Driver
-    url: ${TEST_DB_URL}
-    username: ${TEST_DB_USERNAME}
+    url: ${TEST_DB_URL:jdbc:mariadb://127.0.0.1:3306/ticketing_test?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Seoul}
+    username: ${TEST_DB_USERNAME:ticketing_user}
     password: ${TEST_DB_PASSWORD}
 
   flyway:

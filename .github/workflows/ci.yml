@@ -9,6 +9,12 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    env:
+      TEST_DB_URL: jdbc:mariadb://127.0.0.1:3306/ticketing_test?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Seoul
+      TEST_DB_USERNAME: ${{ secrets.TEST_DB_USERNAME }}
+      TEST_DB_PASSWORD: ${{ secrets.TEST_DB_PASSWORD }}
+      MARIADB_ROOT_PASSWORD: ${{ secrets.MARIADB_ROOT_PASSWORD }}
+
     services:
       mariadb:
         image: mariadb:11.6
@@ -27,22 +33,25 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: "17"
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      # ✅ DB 뜰 때까지 대기 (healthcheck 대신)
       - name: Wait for MariaDB
         run: |
           for i in {1..30}; do
-            mysqladmin ping -h 127.0.0.1 -uroot -p"${{ secrets.MARIADB_ROOT_PASSWORD }}" --silent && break
+            mysqladmin ping -h 127.0.0.1 -uroot -p"${MARIADB_ROOT_PASSWORD}" --silent && exit 0
             sleep 2
           done
+          echo "MariaDB did not become ready in time" && exit 1
 
       - name: Run tests (test profile)
-        env:
-          TEST_DB_URL: jdbc:mariadb://127.0.0.1:3306/ticketing_test?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Seoul
-          TEST_DB_USERNAME: ${{ secrets.TEST_DB_USERNAME }}
-          TEST_DB_PASSWORD: ${{ secrets.TEST_DB_PASSWORD }}
-        run: ./gradlew clean test -Dspring.profiles.active=test
+        run: ./gradlew clean test --no-daemon --stacktrace -Dspring.profiles.active=test
+
+      - name: Upload test report (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report
+          path: build/reports/tests/test
