@@ -25,11 +25,6 @@ jobs:
           MARIADB_USER: ${{ secrets.TEST_DB_USERNAME }}
           MARIADB_PASSWORD: ${{ secrets.TEST_DB_PASSWORD }}
           MARIADB_ROOT_PASSWORD: ${{ secrets.MARIADB_ROOT_PASSWORD }}
-        options: >-
-          --health-cmd="mariadb-admin ping -h 127.0.0.1 -u root -p${{ secrets.MARIADB_ROOT_PASSWORD }}"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=10
 
     steps:
       - uses: actions/checkout@v4
@@ -43,12 +38,6 @@ jobs:
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
-
-      - name: Check required secrets are present
-        run: |
-          test -n "${{ secrets.TEST_DB_USERNAME }}" || (echo "Missing TEST_DB_USERNAME" && exit 1)
-          test -n "${{ secrets.TEST_DB_PASSWORD }}" || (echo "Missing TEST_DB_PASSWORD" && exit 1)
-          test -n "${{ secrets.MARIADB_ROOT_PASSWORD }}" || (echo "Missing MARIADB_ROOT_PASSWORD" && exit 1)
 
       - name: Wait for MariaDB
         run: |
@@ -66,7 +55,6 @@ jobs:
       - name: Run tests (test profile)
         run: ./gradlew clean test --no-daemon --stacktrace -Dspring.profiles.active=test
         env:
-          # Spring Boot가 확실히 인식하는 표준 키로 강제 주입
           SPRING_DATASOURCE_URL: ${{ env.TEST_DB_URL }}
           SPRING_DATASOURCE_USERNAME: ${{ secrets.TEST_DB_USERNAME }}
           SPRING_DATASOURCE_PASSWORD: ${{ secrets.TEST_DB_PASSWORD }}
