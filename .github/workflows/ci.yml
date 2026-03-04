@@ -19,11 +19,6 @@ jobs:
           MARIADB_ROOT_PASSWORD: ${{ secrets.MARIADB_ROOT_PASSWORD }}
         ports:
           - 3306:3306
-        options: >-
-          --health-cmd="mariadb-admin ping -h 127.0.0.1 -uroot -p${{ secrets.MARIADB_ROOT_PASSWORD }}"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=10
 
     steps:
       - uses: actions/checkout@v4
@@ -32,15 +27,22 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
-          cache: gradle
+          java-version: '17'
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      # ✅ DB 뜰 때까지 대기 (healthcheck 대신)
+      - name: Wait for MariaDB
+        run: |
+          for i in {1..30}; do
+            mysqladmin ping -h 127.0.0.1 -uroot -p"${{ secrets.MARIADB_ROOT_PASSWORD }}" --silent && break
+            sleep 2
+          done
+
       - name: Run tests (test profile)
         env:
-          TEST_DB_URL: ${{ secrets.TEST_DB_URL }}
+          TEST_DB_URL: jdbc:mariadb://127.0.0.1:3306/ticketing_test?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Seoul
           TEST_DB_USERNAME: ${{ secrets.TEST_DB_USERNAME }}
           TEST_DB_PASSWORD: ${{ secrets.TEST_DB_PASSWORD }}
-        run: ./gradlew test -Dspring.profiles.active=test
+        run: ./gradlew clean test -Dspring.profiles.active=test
