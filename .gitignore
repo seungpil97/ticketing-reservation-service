@@ -40,8 +40,9 @@ out/
 src/main/resources/application-dev.yml
 
 # local env files
-*.env
 .env
+.env.*
+!.env.example
 
 *.log
 logs/
