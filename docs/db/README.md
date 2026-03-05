@@ -23,6 +23,41 @@
 * User: `ticketing_user`
 * 권한: 해당 DB에 대한 DDL/DML 권한
 
+### A) docker-compose (추천)
+
+프로젝트 루트의 `docker-compose.yml` + `.env`로 로컬 DB를 재현합니다.
+
+#### 1) `.env` 준비
+
+```bash
+cp .env.example .env
+````
+
+> 주의: `.env`는 로컬 전용이며 git에 커밋하지 않습니다.
+
+#### 2) DB 실행
+
+```bash
+docker compose up -d
+docker compose ps
+```
+
+#### 3) 애플리케이션 실행(dev)
+
+```bash
+./gradlew bootRun --args='--spring.profiles.active=dev'
+```
+
+#### 4) 검증
+
+```bash
+curl -i http://localhost:8080/health/db
+```
+
+---
+
+### B) 수동으로 DB/User 생성 (옵션)
+
 예시 SQL:
 
 ```sql
@@ -105,7 +140,7 @@ logging:
 
 ```bash
 ./gradlew clean test
-./gradlew bootRun -Dspring.profiles.active=dev
+./gradlew bootRun --args='--spring.profiles.active=dev'
 ```
 
 ### 정상 적용 확인
