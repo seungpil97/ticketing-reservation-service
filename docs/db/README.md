@@ -208,3 +208,72 @@ public String healthDb() {
 
 * `spring-boot-starter-flyway`: 애플리케이션 시작 시 Flyway 자동 실행
 * `flyway-mysql`: MariaDB/MySQL 호환 지원
+
+---
+
+## 7) Ticketing Schema (V3 / V4)
+
+티켓팅 도메인 기초 스키마는 `V3__ticketing_schema.sql`, seed 데이터는 `V4__seed_ticketing.sql`로 관리합니다.
+
+### 추가된 테이블
+
+* `event`
+  * 공연 기본 정보
+* `showtime`
+  * 공연 회차 정보
+* `seat`
+  * 좌석 마스터 정보
+  * 좌석 번호(`A1~A20`)와 좌석 등급(`VIP / R / S`) 관리
+* `seat_grade_price`
+  * 공연별 좌석 등급 가격 정보
+* `showtime_seat`
+  * 회차별 좌석 상태 정보
+
+### 설계 의도
+
+티켓팅 도메인에서는 같은 좌석이라도 회차마다 예약 상태가 달라질 수 있으므로, 좌석 마스터와 회차별 좌석 상태를 분리했습니다.
+
+* `seat`
+  * 좌석 자체의 고정 정보(좌석 번호, 등급)
+* `seat_grade_price`
+  * 공연별 좌석 등급 가격 정책
+* `showtime_seat`
+  * 회차별 좌석 상태(`AVAILABLE`, `HELD`, `RESERVED`)
+
+예를 들어 같은 `A1` 좌석이라도:
+
+* 3/10 19:00 회차에서는 `RESERVED`
+* 3/11 19:00 회차에서는 `AVAILABLE`
+
+상태가 다를 수 있으므로 `showtime_seat`에서 별도로 관리합니다.
+
+### Seed 데이터
+
+`V4__seed_ticketing.sql` 기준으로 아래 데이터가 입력됩니다.
+
+* `event` : 1건
+* `showtime` : 2건
+* `seat` : 20건 (`A1 ~ A20`)
+* `seat_grade_price` : 3건 (`VIP / R / S`)
+* `showtime_seat` : 40건 (`2회차 × 20좌석`, 초기값 `AVAILABLE`)
+
+### 확인 포인트
+
+애플리케이션을 dev 프로필로 실행한 뒤 DBeaver에서 아래를 확인합니다.
+
+* `event` 1건
+* `showtime` 2건
+* `seat` 20건
+* `seat_grade_price` 3건
+* `showtime_seat` 40건
+
+추가로 아래 값도 확인합니다.
+
+* `seat.grade` → `VIP / R / S`
+* `showtime_seat.status` → 초기값 `AVAILABLE`
+
+### 주의사항
+
+* 기존 migration(`V1`, `V2`)은 수정하지 않고, 변경 사항은 새 버전(`V3`, `V4`)으로 추가합니다.
+* Flyway가 이미 적용한 migration 파일을 수정하면 checksum mismatch가 발생할 수 있습니다.
+* 로컬 개발 중 migration 수정이 필요할 경우, DB를 초기화한 뒤 다시 실행해 검증합니다.
