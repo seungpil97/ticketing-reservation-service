@@ -42,13 +42,44 @@ docker compose up -d
 docker compose ps
 ```
 
+`mariadb` 컨테이너가 `healthy` 상태인지 확인합니다.
+
 #### 3) 애플리케이션 실행(dev)
 
+기본적으로 dev 프로필은 아래 환경변수를 사용해 DB 접속 정보를 읽습니다.
+
+* `DEV_DB_HOST` (기본값: `localhost`)
+* `DEV_DB_USERNAME` (기본값: `ticketing_user`)
+* `DEV_DB_PASSWORD` (필수)
+
+일반적인 경우(localhost 포워딩 정상):
+
 ```bash
+export DEV_DB_PASSWORD='your_password'
 ./gradlew bootRun --args='--spring.profiles.active=dev'
 ```
 
-#### 4) 검증
+`DEV_DB_HOST`, `DEV_DB_USERNAME`를 지정하지 않으면 기본값(`localhost`, `ticketing_user`)을 사용합니다.
+
+#### 4) Colima 환경에서 localhost 포워딩이 안 되는 경우
+
+일부 Colima 환경에서는 `localhost:3306` 포워딩이 동작하지 않을 수 있습니다.
+이 경우 `colima status`로 VM IP를 확인한 뒤, 해당 IP를 `DEV_DB_HOST`로 사용합니다.
+
+```bash
+colima status
+```
+
+예시:
+
+```bash
+export DEV_DB_HOST=192.168.106.2
+export DEV_DB_USERNAME=ticketing_user
+export DEV_DB_PASSWORD='your_password'
+./gradlew bootRun --args='--spring.profiles.active=dev'
+```
+
+#### 5) 검증
 
 ```bash
 curl -i http://localhost:8080/health/db
@@ -76,8 +107,7 @@ FLUSH PRIVILEGES;
 
 ### `application-dev.yml`
 
-> 현재는 로컬 편의를 위해 `password`를 직접 입력해도 됩니다.
-> (추후 환경변수로 전환 가능)
+dev 환경에서는 DB host/user/password를 환경변수로 주입받고, host/user는 기본값을 사용합니다.
 
 ```yml
 server:
@@ -92,13 +122,15 @@ spring:
 
   datasource:
     driver-class-name: org.mariadb.jdbc.Driver
-    url: jdbc:mariadb://localhost:3306/ticketing_flyway?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Seoul
-    username: ticketing_user
-    password: your_password
+    url: jdbc:mariadb://${DEV_DB_HOST:localhost}:3306/ticketing_flyway?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Seoul
+    username: ${DEV_DB_USERNAME:ticketing_user}
+    password: ${DEV_DB_PASSWORD}
 
   flyway:
     enabled: true
     locations: classpath:db/migration
+    encoding: UTF-8
+    validate-on-migrate: true
 ```
 
 ### `application-test.yml` (CI용)
@@ -204,6 +236,45 @@ public String healthDb() {
 
 ---
 
+### C) `Connection refused`
+
+다음을 순서대로 확인합니다.
+
+* `brew services stop mariadb`
+
+  * 로컬 MariaDB가 `3306` 포트를 점유 중인지 확인
+* `lsof -i :3306`
+
+  * 어떤 프로세스가 `3306`을 사용 중인지 확인
+* `docker compose up -d`
+* `docker compose ps`
+
+  * `mariadb` 컨테이너가 `healthy` 상태인지 확인
+* `colima status`
+
+  * Colima 사용 시 VM IP 확인
+* `nc -vz localhost 3306`
+
+  * localhost 포워딩 확인
+* localhost 접속이 실패하면 Colima IP로 직접 접속 시도
+
+예시:
+
+```bash
+nc -vz 192.168.106.2 3306
+```
+
+Colima VM IP로는 접속되지만 `localhost:3306`은 실패하는 경우, dev 실행 시 `DEV_DB_HOST`에 Colima IP를 지정합니다.
+
+```bash
+export DEV_DB_HOST=192.168.106.2
+export DEV_DB_USERNAME=ticketing_user
+export DEV_DB_PASSWORD='your_password'
+./gradlew bootRun --args='--spring.profiles.active=dev'
+```
+
+---
+
 ## 6) Dependencies (Flyway)
 
 * `spring-boot-starter-flyway`: 애플리케이션 시작 시 Flyway 자동 실행
@@ -218,15 +289,20 @@ public String healthDb() {
 ### 추가된 테이블
 
 * `event`
+
   * 공연 기본 정보
 * `showtime`
+
   * 공연 회차 정보
 * `seat`
+
   * 좌석 마스터 정보
   * 좌석 번호(`A1~A20`)와 좌석 등급(`VIP / R / S`) 관리
 * `seat_grade_price`
+
   * 공연별 좌석 등급 가격 정보
 * `showtime_seat`
+
   * 회차별 좌석 상태 정보
 
 ### 설계 의도
@@ -234,10 +310,13 @@ public String healthDb() {
 티켓팅 도메인에서는 같은 좌석이라도 회차마다 예약 상태가 달라질 수 있으므로, 좌석 마스터와 회차별 좌석 상태를 분리했습니다.
 
 * `seat`
+
   * 좌석 자체의 고정 정보(좌석 번호, 등급)
 * `seat_grade_price`
+
   * 공연별 좌석 등급 가격 정책
 * `showtime_seat`
+
   * 회차별 좌석 상태(`AVAILABLE`, `HELD`, `RESERVED`)
 
 예를 들어 같은 `A1` 좌석이라도:
