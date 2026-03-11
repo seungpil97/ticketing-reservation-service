@@ -69,6 +69,20 @@ public enum ErrorCode {
   MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "MEMBER-404", "Member not found"),
 
   /**
+   * ✅ 공연을 찾을 수 없음(도메인 전용 404)
+   * - 공통 404와 다르게 "공연 도메인에서 없음"이라는 의미가 분명해짐
+   * - 예: GET /events/{eventId}/showtimes 에서 없는 eventId 접근
+   */
+  EVENT_NOT_FOUND(HttpStatus.NOT_FOUND, "EVENT-404", "Event not found"),
+
+  /**
+   * ✅ 회차를 찾을 수 없음(도메인 전용 404)
+   * - 공통 404와 다르게 "회차 도메인에서 없음"이라는 의미가 분명해짐
+   * - 예: GET /showtimes/{showtimeId}/seats 에서 없는 showtimeId 접근
+   */
+  SHOWTIME_NOT_FOUND(HttpStatus.NOT_FOUND, "SHOWTIME-404", "Showtime not found"),
+
+  /**
    * ✅ 이메일 중복(도메인 전용 409)
    * - email에 unique 제약이 걸린 상태에서 중복 email로 생성/수정 시 발생
    * - 보통 DataIntegrityViolationException(또는 유사 DB 예외)을 전역 예외에서 캐치해 이 코드로 매핑
