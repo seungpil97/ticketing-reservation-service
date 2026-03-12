@@ -105,13 +105,9 @@ public class GlobalExceptionHandler {
 
   /**
    * ✅ 3-1) DB 제약조건 위반 처리 (409)
-   * - 대표 케이스: email unique 제약 위반(중복 이메일)
-   * - DB에서 터진 예외(DataIntegrityViolationException)를
-   * 표준 에러코드(MEMBER_DUPLICATE_EMAIL)로 매핑해서 내려준다.
-   * <p>
-   * 참고:
-   * - 이 예외는 다른 제약조건(다른 unique, fk 등)에도 사용될 수 있으니
-   * 프로젝트가 커지면 원인별로 세분화(메시지/코드 분리)하는 방식으로 확장 가능
+   * - unique, fk, not null 등 DB 무결성 제약조건 위반 시 발생
+   * - 현재는 특정 도메인으로 단정하지 않고 공통 409로 처리
+   * - 프로젝트가 커지면 예외 원인을 분석해 도메인별 코드로 세분화 가능
    */
   @ExceptionHandler(DataIntegrityViolationException.class)
   public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolation(
@@ -119,7 +115,7 @@ public class GlobalExceptionHandler {
     HttpServletRequest request
   ) {
 
-    ErrorCode errorCode = ErrorCode.MEMBER_DUPLICATE_EMAIL;
+    ErrorCode errorCode = ErrorCode.COMMON_CONFLICT;
 
     ErrorResponse errorResponse = ErrorResponse.of(
       errorCode.getCode(),

@@ -35,4 +35,8 @@ public class ShowtimeSeat {
 
   @Column(name = "updated_at", nullable = false)
   private LocalDateTime updatedAt;
+
+  public void markHeld() {
+    this.status = ShowtimeSeatStatus.HELD;
+  }
 }

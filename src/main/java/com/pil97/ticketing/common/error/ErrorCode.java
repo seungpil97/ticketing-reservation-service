@@ -83,11 +83,39 @@ public enum ErrorCode {
   SHOWTIME_NOT_FOUND(HttpStatus.NOT_FOUND, "SHOWTIME-404", "Showtime not found"),
 
   /**
+   * ✅ 회차별 좌석을 찾을 수 없음(도메인 전용 404)
+   * - 공통 404와 다르게 "회차-좌석 연결 정보가 없음"이라는 의미가 분명해짐
+   * - 예: POST /showtimes/{showtimeId}/hold 에서 존재하는 seatId지만 해당 회차에 속하지 않는 좌석 요청
+   */
+  SHOWTIME_SEAT_NOT_FOUND(HttpStatus.NOT_FOUND, "SHOWTIME-SEAT-404", "Showtime seat not found"),
+
+  /**
+   * ✅ 좌석을 찾을 수 없음(도메인 전용 404)
+   * - 공통 404와 다르게 "좌석 도메인에서 없음"이라는 의미가 분명해짐
+   * - 예: POST /showtimes/{showtimeId}/hold 에서 없는 seatId 접근
+   */
+  SEAT_NOT_FOUND(HttpStatus.NOT_FOUND, "SEAT-404", "Seat not found"),
+
+  /**
+   * ✅ DB 제약조건 위반(공통 409)
+   * - unique, fk, not null 등 DB 무결성 제약조건을 위반했을 때 사용
+   * - 특정 도메인으로 단정하기 어려운 경우 공통 409로 처리
+   */
+  COMMON_CONFLICT(HttpStatus.CONFLICT, "COMMON-409", "Data integrity violation"),
+
+  /**
    * ✅ 이메일 중복(도메인 전용 409)
    * - email에 unique 제약이 걸린 상태에서 중복 email로 생성/수정 시 발생
    * - 보통 DataIntegrityViolationException(또는 유사 DB 예외)을 전역 예외에서 캐치해 이 코드로 매핑
    */
-  MEMBER_DUPLICATE_EMAIL(HttpStatus.CONFLICT, "MEMBER-409", "Duplicate email");
+  MEMBER_DUPLICATE_EMAIL(HttpStatus.CONFLICT, "MEMBER-409", "Duplicate email"),
+
+  /**
+   * ✅ 선점할 수 없는 좌석 상태일 때 발생(도메인 전용 409)
+   * - 공통 409와 다르게 "좌석 상태 충돌로 HOLD 불가"라는 의미가 분명해짐
+   * - 예: POST /showtimes/{showtimeId}/hold 에서 이미 HELD 또는 RESERVED 상태인 좌석 요청
+   */
+  SEAT_NOT_AVAILABLE_FOR_HOLD(HttpStatus.CONFLICT, "SEAT-409", "Seat is not available for hold");
 
   /**
    * ✅ 이 에러가 반환되어야 하는 HTTP 상태 코드 (ResponseEntity 상태코드로 사용)
