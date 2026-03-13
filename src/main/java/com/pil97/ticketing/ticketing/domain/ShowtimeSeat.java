@@ -39,4 +39,10 @@ public class ShowtimeSeat {
   public void markHeld() {
     this.status = ShowtimeSeatStatus.HELD;
   }
+
+  public void markAvailable() {
+    if (this.status == ShowtimeSeatStatus.HELD) {
+      this.status = ShowtimeSeatStatus.AVAILABLE;
+    }
+  }
 }

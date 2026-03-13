@@ -65,7 +65,8 @@ public class HoldService {
     validateAvailable(showtimeSeat);
 
     // 5) HOLD 만료 시간 계산
-    LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(HOLD_MINUTES);
+    LocalDateTime now = LocalDateTime.now();
+    LocalDateTime expiresAt = now.plusMinutes(HOLD_MINUTES);
 
     // 6) HOLD 저장
     Hold hold = Hold.create(showtimeSeat, expiresAt);
