@@ -45,4 +45,8 @@ public class ShowtimeSeat {
       this.status = ShowtimeSeatStatus.AVAILABLE;
     }
   }
+
+  public void markReserved() {
+    this.status = ShowtimeSeatStatus.RESERVED;
+  }
 }

@@ -1,6 +1,8 @@
 package com.pil97.ticketing.ticketing.application;
 
 import com.pil97.ticketing.common.exception.BusinessException;
+import com.pil97.ticketing.member.domain.Member;
+import com.pil97.ticketing.member.domain.repository.MemberRepository;
 import com.pil97.ticketing.ticketing.api.dto.request.HoldCreateRequest;
 import com.pil97.ticketing.ticketing.api.dto.response.HoldResponse;
 import com.pil97.ticketing.ticketing.domain.*;
@@ -32,17 +34,18 @@ public class HoldService {
   private final ShowtimeRepository showtimeRepository;
   private final SeatRepository seatRepository;
   private final ShowtimeSeatRepository showtimeSeatRepository;
+  private final MemberRepository memberRepository;
 
 
   /**
    * ✅ 좌석 선점(HOLD) 처리
-   * - showtime, seat, showtimeSeat 존재 여부를 검증
+   * - showtime, seat, showtimeSeat, member 존재 여부를 검증
    * - AVAILABLE 상태의 좌석만 HOLD 가능
    * - 성공 시 HOLD를 생성하고 좌석 상태를 HELD로 변경
    * - HOLD 만료 시간은 현재 시각 기준 5분 뒤로 저장
    *
    * @param showtimeId 공연 회차 ID
-   * @param request    선점 요청 정보(seatId)
+   * @param request    선점 요청 정보(seatId, memberId)
    * @return HOLD 생성 결과 응답
    */
   @Transactional
@@ -61,21 +64,25 @@ public class HoldService {
       .findByShowtimeIdAndSeatId(showtime.getId(), seat.getId())
       .orElseThrow(() -> new BusinessException(SHOWTIME_SEAT_NOT_FOUND));
 
-    // 4) AVAILABLE 상태인지 검증
+    // 4) 회원 존재 여부 확인
+    Member member = memberRepository.findById(request.getMemberId())
+      .orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
+
+    // 5) AVAILABLE 상태인지 검증
     validateAvailable(showtimeSeat);
 
-    // 5) HOLD 만료 시간 계산
+    // 6) HOLD 만료 시간 계산
     LocalDateTime now = LocalDateTime.now();
     LocalDateTime expiresAt = now.plusMinutes(HOLD_MINUTES);
 
-    // 6) HOLD 저장
-    Hold hold = Hold.create(showtimeSeat, expiresAt);
+    // 7) HOLD 저장
+    Hold hold = Hold.create(showtimeSeat, member, expiresAt);
     Hold savedHold = holdRepository.save(hold);
 
-    // 7) 좌석 상태를 HELD로 변경
+    // 8) 좌석 상태를 HELD로 변경
     showtimeSeat.markHeld();
 
-    // 8) 응답 반환
+    // 9) 응답 반환
     return new HoldResponse(
       savedHold.getId(),
       showtime.getId(),
