@@ -18,10 +18,16 @@ import org.springframework.http.HttpStatus;
 public enum ErrorCode {
 
   /**
+   * ================================
+   * Common
+   * ================================
+   */
+
+  /**
    * ✅ 입력값 검증(Validation) 실패
    * - @NotBlank, @Size 같은 Bean Validation에 걸렸을 때 내려줄 대표 에러
    * - HttpStatus.BAD_REQUEST(400): 클라이언트가 잘못 보낸 요청이라는 의미
-   * - code: COMMON-001 -> 내부 규칙으로 분기 처리(프론트가 이 코드로 화면 처리하기 쉬움)
+   * - code: COMMON-001 -> 내부 규칙으로 분기 처리 가능
    * - message: 사람이 읽을 수 있는 기본 메시지
    */
   VALIDATION_FAILED(HttpStatus.BAD_REQUEST, "COMMON-001", "Validation failed"),
@@ -35,106 +41,145 @@ public enum ErrorCode {
 
   /**
    * ✅ 유효하지 않은 요청(공통 400)
-   * - 요청은 들어왔지만 "비즈니스적으로 의미 없는/유효하지 않은" 요청을 표현할 때 사용
-   * - 예: PATCH 요청에서 변경할 값(name/email)이 하나도 없는 경우
+   * - 요청은 들어왔지만 비즈니스적으로 의미 없는/유효하지 않은 요청을 표현할 때 사용
    */
   COMMON_INVALID_REQUEST(HttpStatus.BAD_REQUEST, "COMMON-003", "Invalid request"),
 
   /**
    * ✅ 공통 404
-   * - 특정 도메인과 상관 없이 "리소스를 찾을 수 없음"을 표현할 때
-   * - 예: 없는 엔드포인트, 없는 리소스 접근 등
+   * - 특정 도메인과 상관 없이 "리소스를 찾을 수 없음"을 표현할 때 사용
    */
   COMMON_NOT_FOUND(HttpStatus.NOT_FOUND, "COMMON-404", "Resource not found"),
 
   /**
    * ✅ 405 Method Not Allowed
    * - 예: POST만 열려있는데 GET으로 호출한 경우
-   * - 스프링에서 HttpRequestMethodNotSupportedException으로 잡히는 대표 케이스
    */
   COMMON_METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "COMMON-405", "Method not allowed"),
 
   /**
+   * ✅ DB 제약조건 위반(공통 409)
+   * - unique, fk, not null 등 DB 무결성 제약조건을 위반했을 때 사용
+   */
+  COMMON_CONFLICT(HttpStatus.CONFLICT, "COMMON-409", "Data integrity violation"),
+
+  /**
    * ✅ 500 Internal Server Error
-   * - 예상하지 못한 모든 예외(NullPointerException 등)
-   * - 보통 자세한 내부 내용은 숨기고 이 코드로 통일
+   * - 예상하지 못한 모든 예외를 처리할 때 사용
    */
   COMMON_INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "COMMON-500", "Internal server error"),
 
   /**
+   * ================================
+   * Member
+   * ================================
+   */
+
+  /**
    * ✅ 회원을 찾을 수 없음(도메인 전용 404)
-   * - 공통 404와 다르게 "회원 도메인에서 없음"이라는 의미가 분명해짐
-   * - 예: PATCH/DELETE/GET /members/{id} 에서 없는 id 접근
+   * - 예: GET /members/{id}, PATCH /members/{id}, DELETE /members/{id}
    */
   MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "MEMBER-404", "Member not found"),
 
   /**
+   * ✅ 이메일 중복(도메인 전용 409)
+   * - 예: 회원 생성/수정 시 중복 email 사용
+   */
+  MEMBER_DUPLICATE_EMAIL(HttpStatus.CONFLICT, "MEMBER-409", "Duplicate email"),
+
+  /**
+   * ================================
+   * Event
+   * ================================
+   */
+
+  /**
    * ✅ 공연을 찾을 수 없음(도메인 전용 404)
-   * - 공통 404와 다르게 "공연 도메인에서 없음"이라는 의미가 분명해짐
    * - 예: GET /events/{eventId}/showtimes 에서 없는 eventId 접근
    */
   EVENT_NOT_FOUND(HttpStatus.NOT_FOUND, "EVENT-404", "Event not found"),
 
   /**
+   * ================================
+   * Showtime
+   * ================================
+   */
+
+  /**
    * ✅ 회차를 찾을 수 없음(도메인 전용 404)
-   * - 공통 404와 다르게 "회차 도메인에서 없음"이라는 의미가 분명해짐
    * - 예: GET /showtimes/{showtimeId}/seats 에서 없는 showtimeId 접근
    */
   SHOWTIME_NOT_FOUND(HttpStatus.NOT_FOUND, "SHOWTIME-404", "Showtime not found"),
 
   /**
+   * ================================
+   * ShowtimeSeat
+   * ================================
+   */
+
+  /**
    * ✅ 회차별 좌석을 찾을 수 없음(도메인 전용 404)
-   * - 공통 404와 다르게 "회차-좌석 연결 정보가 없음"이라는 의미가 분명해짐
-   * - 예: POST /showtimes/{showtimeId}/hold 에서 존재하는 seatId지만 해당 회차에 속하지 않는 좌석 요청
+   * - 회차-좌석 연결 정보가 없는 경우
+   * - 예: POST /showtimes/{showtimeId}/hold 에서 해당 회차에 속하지 않는 seatId 요청
    */
   SHOWTIME_SEAT_NOT_FOUND(HttpStatus.NOT_FOUND, "SHOWTIME-SEAT-404", "Showtime seat not found"),
 
   /**
+   * ✅ 예약 가능한 좌석 상태가 아님(도메인 전용 409)
+   * - 예약 확정은 HELD 상태의 회차별 좌석에 대해서만 가능함
+   * - 예: POST /holds/{holdId}/reserve 에서 연결된 showtimeSeat 상태가 HELD가 아닌 경우
+   */
+  SHOWTIME_SEAT_NOT_HELD(HttpStatus.CONFLICT, "SHOWTIME-SEAT-409", "Showtime seat is not held"),
+
+  /**
+   * ================================
+   * Seat
+   * ================================
+   */
+
+  /**
    * ✅ 좌석을 찾을 수 없음(도메인 전용 404)
-   * - 공통 404와 다르게 "좌석 도메인에서 없음"이라는 의미가 분명해짐
    * - 예: POST /showtimes/{showtimeId}/hold 에서 없는 seatId 접근
    */
   SEAT_NOT_FOUND(HttpStatus.NOT_FOUND, "SEAT-404", "Seat not found"),
 
   /**
-   * ✅ DB 제약조건 위반(공통 409)
-   * - unique, fk, not null 등 DB 무결성 제약조건을 위반했을 때 사용
-   * - 특정 도메인으로 단정하기 어려운 경우 공통 409로 처리
-   */
-  COMMON_CONFLICT(HttpStatus.CONFLICT, "COMMON-409", "Data integrity violation"),
-
-  /**
-   * ✅ 이메일 중복(도메인 전용 409)
-   * - email에 unique 제약이 걸린 상태에서 중복 email로 생성/수정 시 발생
-   * - 보통 DataIntegrityViolationException(또는 유사 DB 예외)을 전역 예외에서 캐치해 이 코드로 매핑
-   */
-  MEMBER_DUPLICATE_EMAIL(HttpStatus.CONFLICT, "MEMBER-409", "Duplicate email"),
-
-  /**
    * ✅ 선점할 수 없는 좌석 상태일 때 발생(도메인 전용 409)
-   * - 공통 409와 다르게 "좌석 상태 충돌로 HOLD 불가"라는 의미가 분명해짐
+   * - 좌석 상태 충돌로 HOLD 불가
    * - 예: POST /showtimes/{showtimeId}/hold 에서 이미 HELD 또는 RESERVED 상태인 좌석 요청
    */
-  SEAT_NOT_AVAILABLE_FOR_HOLD(HttpStatus.CONFLICT, "SEAT-409", "Seat is not available for hold");
+  SEAT_NOT_AVAILABLE_FOR_HOLD(HttpStatus.CONFLICT, "SEAT-409", "Seat is not available for hold"),
 
   /**
-   * ✅ 이 에러가 반환되어야 하는 HTTP 상태 코드 (ResponseEntity 상태코드로 사용)
+   * ================================
+   * Hold
+   * ================================
    */
+
+  /**
+   * ✅ HOLD를 찾을 수 없음(도메인 전용 404)
+   * - 예: POST /holds/{holdId}/reserve 에서 존재하지 않는 holdId 접근
+   */
+  HOLD_NOT_FOUND(HttpStatus.NOT_FOUND, "HOLD-404", "Hold not found"),
+
+  /**
+   * ✅ 예약 가능한 HOLD 상태가 아님(도메인 전용 409)
+   * - ACTIVE 상태가 아닌 HOLD는 예약 확정할 수 없음
+   * - 예: 이미 EXPIRED 되었거나 CONFIRMED 된 HOLD에 대해 예약 확정 요청
+   */
+  HOLD_NOT_ACTIVE(HttpStatus.CONFLICT, "HOLD-409", "Hold is not active"),
+
+  /**
+   * ✅ 만료된 HOLD(도메인 전용 409)
+   * - expiresAt 기준으로 이미 만료된 HOLD는 예약 확정할 수 없음
+   * - 예: HOLD 만료 시간 이후에 POST /holds/{holdId}/reserve 호출
+   */
+  HOLD_EXPIRED(HttpStatus.CONFLICT, "HOLD-409", "Hold is expired");
+
   private final HttpStatus status;
-
-  /**
-   * ✅ 내부 에러 코드(문자열) - 클라이언트가 이 값으로 분기 처리 가능
-   */
   private final String code;
-
-  /**
-   * ✅ 기본 메시지 - 사람이 읽기 좋은 메시지(필요 시 상세 메시지로 확장 가능)
-   */
   private final String message;
 
-  /**
-   * ✅ enum 상수마다 status/code/message 값을 고정 세트로 보관
-   */
   ErrorCode(HttpStatus status, String code, String message) {
     this.status = status;
     this.code = code;

@@ -11,6 +11,11 @@
   - `/events`
   - `/events/{eventId}/showtimes`
   - `/showtimes/{showtimeId}/seats`
+- 좌석 선점(HOLD) API
+  - `POST /showtimes/{showtimeId}/hold`
+- HOLD 만료 해제 스케줄링
+- 예약 확정(RESERVE) API
+  - `POST /holds/{holdId}/reserve`
 - CI(test)
 
 ---
@@ -21,6 +26,7 @@
 * Member API: `docs/api/member/member.md`
 * Event API: `docs/api/ticketing/event.md`
 * Showtime API: `docs/api/ticketing/showtime.md`
+* Reservation API: `docs/api/ticketing/reservation.md`
 * Devlog: `docs/devlog/README.md`
 * DB Setup (Flyway): `docs/db/README.md`
 

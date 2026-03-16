@@ -1,6 +1,7 @@
 package com.pil97.ticketing.ticketing.domain;
 
 
+import com.pil97.ticketing.member.domain.Member;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -22,6 +23,10 @@ public class Hold {
   @JoinColumn(name = "showtime_seat_id", nullable = false)
   private ShowtimeSeat showtimeSeat;
 
+  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  @JoinColumn(name = "member_id", nullable = false)
+  private Member member;
+
   @Enumerated(EnumType.STRING)
   @Column(nullable = false, length = 20)
   private HoldStatus status;
@@ -35,17 +40,22 @@ public class Hold {
   @Column(name = "updated_at", insertable = false, updatable = false)
   private LocalDateTime updatedAt;
 
-  private Hold(ShowtimeSeat showtimeSeat, LocalDateTime expiresAt, HoldStatus status) {
+  private Hold(ShowtimeSeat showtimeSeat, Member member, LocalDateTime expiresAt, HoldStatus status) {
     this.showtimeSeat = showtimeSeat;
+    this.member = member;
     this.expiresAt = expiresAt;
     this.status = status;
   }
 
-  public static Hold create(ShowtimeSeat showtimeSeat, LocalDateTime expiresAt) {
-    return new Hold(showtimeSeat, expiresAt, HoldStatus.ACTIVE);
+  public static Hold create(ShowtimeSeat showtimeSeat, Member member, LocalDateTime expiresAt) {
+    return new Hold(showtimeSeat, member, expiresAt, HoldStatus.ACTIVE);
   }
 
   public void expire() {
     this.status = HoldStatus.EXPIRED;
+  }
+
+  public void confirm() {
+    this.status = HoldStatus.CONFIRMED;
   }
 }

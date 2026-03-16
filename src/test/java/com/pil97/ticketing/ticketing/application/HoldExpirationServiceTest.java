@@ -50,6 +50,12 @@ class HoldExpirationServiceTest {
     );
     assertThat(showtimeSeatId).isNotNull();
 
+    Long memberId = jdbcTemplate.queryForObject(
+      "select id from members order by id limit 1",
+      Long.class
+    );
+    assertThat(memberId).isNotNull();
+
     // 만료 처리 대상이 되도록 좌석은 HELD, HOLD는 expiresAt < now 상태로 준비
     jdbcTemplate.update(
       "update showtime_seat set status = ? where id = ?",
@@ -61,8 +67,9 @@ class HoldExpirationServiceTest {
     LocalDateTime expiredAt = now.minusMinutes(10);
 
     jdbcTemplate.update(
-      "insert into holds (showtime_seat_id, status, expires_at) values (?, ?, ?)",
+      "insert into holds (showtime_seat_id, member_id, status, expires_at) values (?, ?, ?, ?)",
       showtimeSeatId,
+      memberId,
       HoldStatus.ACTIVE.name(),
       Timestamp.valueOf(expiredAt)
     );
