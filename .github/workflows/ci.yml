@@ -9,12 +9,6 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-    env:
-      TEST_DB_URL: jdbc:mariadb://127.0.0.1:3306/ticketing_test?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Seoul
-      TEST_DB_USERNAME: ${{ secrets.TEST_DB_USERNAME }}
-      TEST_DB_PASSWORD: ${{ secrets.TEST_DB_PASSWORD }}
-      MARIADB_ROOT_PASSWORD: ${{ secrets.MARIADB_ROOT_PASSWORD }}
-
     services:
       mariadb:
         image: mariadb:11.6
@@ -42,11 +36,11 @@ jobs:
       - name: Wait for MariaDB
         run: |
           for i in {1..30}; do
-            if mysqladmin ping -h 127.0.0.1 -P 3306 -u root -p"${MARIADB_ROOT_PASSWORD}" --silent; then
+            if mysqladmin ping -h 127.0.0.1 -P 3306 -u root -p"${{ secrets.MARIADB_ROOT_PASSWORD }}" --silent; then
               echo "MariaDB is up"
               exit 0
             fi
-            echo "Waiting for MariaDB..."
+            echo "Waiting for MariaDB... ($i/30)"
             sleep 2
           done
           echo "MariaDB did not become ready in time"
@@ -55,10 +49,9 @@ jobs:
       - name: Run tests (test profile)
         run: ./gradlew clean test --no-daemon --stacktrace -Dspring.profiles.active=test
         env:
-          SPRING_DATASOURCE_URL: ${{ env.TEST_DB_URL }}
-          SPRING_DATASOURCE_USERNAME: ${{ secrets.TEST_DB_USERNAME }}
-          SPRING_DATASOURCE_PASSWORD: ${{ secrets.TEST_DB_PASSWORD }}
-          SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.mariadb.jdbc.Driver
+          TEST_DB_URL: jdbc:mariadb://127.0.0.1:3306/ticketing_test?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Seoul
+          TEST_DB_USERNAME: ${{ secrets.TEST_DB_USERNAME }}
+          TEST_DB_PASSWORD: ${{ secrets.TEST_DB_PASSWORD }}
 
       - name: Upload test report (always)
         if: always()

@@ -36,9 +36,6 @@ out/
 ### VS Code ###
 .vscode/
 
-# local secrets (do not commit)
-src/main/resources/application-dev.yml
-
 # local env files
 .env
 .env.*
@@ -46,3 +43,4 @@ src/main/resources/application-dev.yml
 
 *.log
 logs/
+.envrc
