@@ -3,7 +3,9 @@ package com.pil97.ticketing.ticketing.domain.repository;
 
 import com.pil97.ticketing.ticketing.application.dto.ShowtimeSeatQueryResult;
 import com.pil97.ticketing.ticketing.domain.ShowtimeSeat;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
@@ -30,4 +32,15 @@ public interface ShowtimeSeatRepository extends JpaRepository<ShowtimeSeat, Long
   List<ShowtimeSeatQueryResult> findSeatSummariesByShowtimeId(Long showtimeId);
 
   Optional<ShowtimeSeat> findByShowtimeIdAndSeatId(Long showtimeId, Long seatId);
+
+  /**
+   * ✅ 비관적 락(Pessimistic Write)을 이용한 좌석 조회
+   * - HOLD 생성 트랜잭션 내에서 사용
+   * - 동시 요청 시 하나의 트랜잭션만 락을 획득하고 나머지는 대기
+   * - 락을 획득한 트랜잭션이 커밋/롤백되면 다음 대기 트랜잭션이 락 획득
+   * - 이미 HELD 상태면 validateAvailable에서 예외 처리
+   */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("select ss from ShowtimeSeat ss where ss.showtime.id = :showtimeId and ss.seat.id = :seatId")
+  Optional<ShowtimeSeat> findByShowtimeIdAndSeatIdWithLock(Long showtimeId, Long seatId);
 }
