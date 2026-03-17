@@ -61,7 +61,7 @@ public class HoldService {
 
     // 3) 해당 회차에 속한 좌석인지 확인
     ShowtimeSeat showtimeSeat = showtimeSeatRepository
-      .findByShowtimeIdAndSeatId(showtime.getId(), seat.getId())
+      .findByShowtimeIdAndSeatIdWithLock(showtime.getId(), seat.getId())
       .orElseThrow(() -> new BusinessException(SHOWTIME_SEAT_NOT_FOUND));
 
     // 4) 회원 존재 여부 확인
