@@ -21,12 +21,13 @@ public class HoldExpirationService {
 
   public void expireHolds(LocalDateTime now) {
 
+    // fetch join으로 showtimeSeat를 한 번에 로드해서 N+1 방지
     List<Hold> expiredTargets =
-      holdRepository.findAllByStatusAndExpiresAtBefore(HoldStatus.ACTIVE, now);
+      holdRepository.findAllByStatusAndExpiresAtBeforeWithSeat(HoldStatus.ACTIVE, now);
 
     for (Hold hold : expiredTargets) {
       hold.expire();
-      hold.getShowtimeSeat().markAvailable();
+      hold.getShowtimeSeat().markAvailable(); // 추가 쿼리 없이 접근 가능
     }
 
     log.info("Expired holds processed. count={}", expiredTargets.size());
