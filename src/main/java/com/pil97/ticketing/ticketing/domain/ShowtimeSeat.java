@@ -18,11 +18,11 @@ public class ShowtimeSeat {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @ManyToOne
+  @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "showtime_id", nullable = false)
   private Showtime showtime;
 
-  @ManyToOne
+  @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "seat_id", nullable = false)
   private Seat seat;
 
