@@ -174,11 +174,31 @@ public enum ErrorCode {
    * - expiresAt 기준으로 이미 만료된 HOLD는 예약 확정할 수 없음
    * - 예: HOLD 만료 시간 이후에 POST /holds/{holdId}/reserve 호출
    */
-  HOLD_EXPIRED(HttpStatus.CONFLICT, "HOLD-409", "Hold is expired");
+  HOLD_EXPIRED(HttpStatus.CONFLICT, "HOLD-409", "Hold is expired"),
+
+  /**
+   * ================================
+   * Reservation
+   * ================================
+   */
+
+  /**
+   * ✅ 예약을 찾을 수 없음(도메인 전용 404)
+   * - 예: DELETE /reservations/{reservationId} 에서 존재하지 않는 reservationId 접근
+   */
+  RESERVATION_NOT_FOUND(HttpStatus.NOT_FOUND, "RESERVATION-404", "Reservation not found"),
+
+  /**
+   * ✅ 예약 취소 가능한 상태가 아님(도메인 전용 409)
+   * - CONFIRMED 상태가 아닌 예약은 취소할 수 없음
+   * - 예: 이미 CANCELLED된 예약에 대해 취소 요청
+   */
+  RESERVATION_NOT_CONFIRMED(HttpStatus.CONFLICT, "RESERVATION-409", "Reservation is not confirmed");
 
   private final HttpStatus status;
   private final String code;
   private final String message;
+
 
   ErrorCode(HttpStatus status, String code, String message) {
     this.status = status;
