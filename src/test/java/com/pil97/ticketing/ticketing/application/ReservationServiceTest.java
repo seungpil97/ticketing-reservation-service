@@ -3,13 +3,7 @@ package com.pil97.ticketing.ticketing.application;
 import com.pil97.ticketing.common.exception.BusinessException;
 import com.pil97.ticketing.member.domain.Member;
 import com.pil97.ticketing.ticketing.api.dto.response.ReservationResponse;
-import com.pil97.ticketing.ticketing.domain.Hold;
-import com.pil97.ticketing.ticketing.domain.HoldStatus;
-import com.pil97.ticketing.ticketing.domain.Reservation;
-import com.pil97.ticketing.ticketing.domain.Seat;
-import com.pil97.ticketing.ticketing.domain.Showtime;
-import com.pil97.ticketing.ticketing.domain.ShowtimeSeat;
-import com.pil97.ticketing.ticketing.domain.ShowtimeSeatStatus;
+import com.pil97.ticketing.ticketing.domain.*;
 import com.pil97.ticketing.ticketing.domain.repository.HoldRepository;
 import com.pil97.ticketing.ticketing.domain.repository.ReservationRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -23,10 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
-import static com.pil97.ticketing.common.error.ErrorCode.HOLD_EXPIRED;
-import static com.pil97.ticketing.common.error.ErrorCode.HOLD_NOT_ACTIVE;
-import static com.pil97.ticketing.common.error.ErrorCode.HOLD_NOT_FOUND;
-import static com.pil97.ticketing.common.error.ErrorCode.SHOWTIME_SEAT_NOT_HELD;
+import static com.pil97.ticketing.common.error.ErrorCode.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -185,5 +176,63 @@ class ReservationServiceTest {
       verify(showtimeSeat, never()).markReserved();
       verify(hold, never()).confirm();
     }
+  }
+
+  @Test
+  @DisplayName("CONFIRMED 상태의 예약이면 취소에 성공한다")
+  void cancel_success() {
+    // given
+    Long reservationId = 1L;
+
+    Reservation reservation = mock(Reservation.class);
+    Hold hold = mock(Hold.class);
+    ShowtimeSeat showtimeSeat = mock(ShowtimeSeat.class);
+
+    given(reservationRepository.findById(reservationId)).willReturn(Optional.of(reservation));
+    given(reservation.getStatus()).willReturn(ReservationStatus.CONFIRMED);
+    given(reservation.getHold()).willReturn(hold);
+    given(hold.getShowtimeSeat()).willReturn(showtimeSeat);
+
+    // when
+    reservationService.cancel(reservationId);
+
+    // then
+    verify(showtimeSeat).markAvailable();
+    verify(reservation).cancel();
+  }
+
+  @Test
+  @DisplayName("존재하지 않는 예약이면 예외가 발생한다")
+  void cancel_fail_when_reservation_not_found() {
+    // given
+    Long reservationId = 1L;
+    given(reservationRepository.findById(reservationId)).willReturn(Optional.empty());
+
+    // when & then
+    assertThatThrownBy(() -> reservationService.cancel(reservationId))
+      .isInstanceOf(BusinessException.class)
+      .extracting("errorCode")
+      .isEqualTo(RESERVATION_NOT_FOUND);
+
+    verify(reservationRepository).findById(reservationId);
+  }
+
+  @Test
+  @DisplayName("이미 취소된 예약이면 예외가 발생한다")
+  void cancel_fail_when_reservation_already_cancelled() {
+    // given
+    Long reservationId = 1L;
+    Reservation reservation = mock(Reservation.class);
+
+    given(reservationRepository.findById(reservationId)).willReturn(Optional.of(reservation));
+    given(reservation.getStatus()).willReturn(ReservationStatus.CANCELLED);
+
+    // when & then
+    assertThatThrownBy(() -> reservationService.cancel(reservationId))
+      .isInstanceOf(BusinessException.class)
+      .extracting("errorCode")
+      .isEqualTo(RESERVATION_NOT_CONFIRMED);
+
+    verify(reservation, never()).cancel();
   }
 }
