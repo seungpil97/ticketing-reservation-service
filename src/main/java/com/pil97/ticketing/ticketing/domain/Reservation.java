@@ -34,6 +34,16 @@ public class Reservation {
   @JoinColumn(name = "member_id", nullable = false)
   private Member member;
 
+  /**
+   * ✅ 예약 상태
+   * - CONFIRMED: 예약 확정 상태
+   * - CANCELLED: 취소 상태
+   * - 예약 생성 시 기본값 CONFIRMED
+   */
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 20)
+  private ReservationStatus status;
+
   @Column(name = "created_at", insertable = false, updatable = false)
   private LocalDateTime createdAt;
 
@@ -45,9 +55,19 @@ public class Reservation {
     this.showtime = showtime;
     this.seat = seat;
     this.member = member;
+    this.status = ReservationStatus.CONFIRMED;
   }
 
   public static Reservation create(Hold hold, Showtime showtime, Seat seat, Member member) {
     return new Reservation(hold, showtime, seat, member);
+  }
+
+  /**
+   * ✅ 예약 취소
+   * - CONFIRMED 상태의 예약만 취소 가능
+   * - 상태를 CANCELLED로 변경
+   */
+  public void cancel() {
+    this.status = ReservationStatus.CANCELLED;
   }
 }

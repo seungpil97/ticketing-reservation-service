@@ -41,9 +41,8 @@ public class ShowtimeSeat {
   }
 
   public void markAvailable() {
-    if (this.status == ShowtimeSeatStatus.HELD) {
-      this.status = ShowtimeSeatStatus.AVAILABLE;
-    }
+    this.status = ShowtimeSeatStatus.AVAILABLE;
+
   }
 
   public void markReserved() {
