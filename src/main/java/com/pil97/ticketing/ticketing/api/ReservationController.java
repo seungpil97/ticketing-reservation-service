@@ -6,6 +6,7 @@ import com.pil97.ticketing.ticketing.application.ReservationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -39,5 +40,18 @@ public class ReservationController {
     return ResponseEntity
       .status(HttpStatus.CREATED)
       .body(ApiResponse.success(response));
+  }
+
+
+  /**
+   * ✅ DELETE /reservations/{reservationId}
+   * - 예약 확정된 좌석을 취소한다
+   * - 성공 시 좌석 상태 AVAILABLE로 복구, 예약 상태 CANCELLED로 변경
+   * - 204 No Content
+   */
+  @DeleteMapping("/reservations/{reservationId}")
+  public ResponseEntity<Void> cancel(@PathVariable Long reservationId) {
+    reservationService.cancel(reservationId);
+    return ResponseEntity.noContent().build();
   }
 }
