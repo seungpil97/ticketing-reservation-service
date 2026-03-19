@@ -2,11 +2,7 @@ package com.pil97.ticketing.ticketing.application;
 
 import com.pil97.ticketing.common.exception.BusinessException;
 import com.pil97.ticketing.ticketing.api.dto.response.ReservationResponse;
-import com.pil97.ticketing.ticketing.domain.Hold;
-import com.pil97.ticketing.ticketing.domain.HoldStatus;
-import com.pil97.ticketing.ticketing.domain.Reservation;
-import com.pil97.ticketing.ticketing.domain.ShowtimeSeat;
-import com.pil97.ticketing.ticketing.domain.ShowtimeSeatStatus;
+import com.pil97.ticketing.ticketing.domain.*;
 import com.pil97.ticketing.ticketing.domain.repository.HoldRepository;
 import com.pil97.ticketing.ticketing.domain.repository.ReservationRepository;
 import lombok.RequiredArgsConstructor;
@@ -15,10 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
-import static com.pil97.ticketing.common.error.ErrorCode.HOLD_EXPIRED;
-import static com.pil97.ticketing.common.error.ErrorCode.HOLD_NOT_ACTIVE;
-import static com.pil97.ticketing.common.error.ErrorCode.HOLD_NOT_FOUND;
-import static com.pil97.ticketing.common.error.ErrorCode.SHOWTIME_SEAT_NOT_HELD;
+import static com.pil97.ticketing.common.error.ErrorCode.*;
 
 @Service
 @RequiredArgsConstructor
@@ -117,12 +110,49 @@ public class ReservationService {
   }
 
   /**
+   * 예약 취소 처리
+   * - reservationId로 예약을 조회한다
+   * - 예약이 존재하는지 검증한다
+   * - 예약 상태가 CONFIRMED인지 검증한다
+   * - 좌석 상태를 RESERVED -> AVAILABLE 로 변경한다
+   * - 예약 상태를 CONFIRMED -> CANCELLED 로 변경한다
+   *
+   * @param reservationId 취소 대상 예약 ID
+   */
+  @Transactional
+  public void cancel(Long reservationId) {
+    // 1) 예약 존재 여부 확인
+    Reservation reservation = reservationRepository.findById(reservationId)
+      .orElseThrow(() -> new BusinessException(RESERVATION_NOT_FOUND));
+
+    // 2) 취소 가능한 예약인지 검증
+    validateCancellable(reservation);
+
+    // 3) 좌석 상태를 AVAILABLE로 복구
+    reservation.getHold().getShowtimeSeat().markAvailable();
+
+    // 4) 예약 상태를 CANCELLED로 변경
+    reservation.cancel();
+  }
+
+
+  /**
    * 연결된 회차별 좌석 상태가 HELD인지 검증
    * - HELD 상태가 아니면 예약 확정할 수 없다
    */
   private void validateHeldSeat(Hold hold) {
     if (hold.getShowtimeSeat().getStatus() != ShowtimeSeatStatus.HELD) {
       throw new BusinessException(SHOWTIME_SEAT_NOT_HELD);
+    }
+  }
+
+  /**
+   * 취소 가능한 예약인지 검증
+   * - CONFIRMED 상태여야 한다
+   */
+  private void validateCancellable(Reservation reservation) {
+    if (reservation.getStatus() != ReservationStatus.CONFIRMED) {
+      throw new BusinessException(RESERVATION_NOT_CONFIRMED);
     }
   }
 }
