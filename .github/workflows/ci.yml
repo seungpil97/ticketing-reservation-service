@@ -20,6 +20,16 @@ jobs:
           MARIADB_PASSWORD: ${{ secrets.TEST_DB_PASSWORD }}
           MARIADB_ROOT_PASSWORD: ${{ secrets.MARIADB_ROOT_PASSWORD }}
 
+      redis:
+        image: redis:7.2
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+
     steps:
       - uses: actions/checkout@v4
 
@@ -52,6 +62,8 @@ jobs:
           TEST_DB_URL: jdbc:mariadb://127.0.0.1:3306/ticketing_test?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Seoul
           TEST_DB_USERNAME: ${{ secrets.TEST_DB_USERNAME }}
           TEST_DB_PASSWORD: ${{ secrets.TEST_DB_PASSWORD }}
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: 6379
 
       - name: Upload test report (always)
         if: always()
