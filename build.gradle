@@ -33,6 +33,9 @@ dependencies {
   implementation 'org.flywaydb:flyway-core'
   implementation 'org.flywaydb:flyway-mysql' // MariaDB/MySQL 호환용 (권장)
 
+  // Redis 분산락
+  implementation 'org.redisson:redisson-spring-boot-starter:3.27.2'
+
   compileOnly 'org.projectlombok:lombok'
   annotationProcessor 'org.projectlombok:lombok'
 

@@ -1,6 +1,7 @@
 package com.pil97.ticketing.ticketing.application;
 
 import com.pil97.ticketing.common.exception.BusinessException;
+import com.pil97.ticketing.common.lock.DistributedLockService;
 import com.pil97.ticketing.member.domain.Member;
 import com.pil97.ticketing.member.domain.repository.MemberRepository;
 import com.pil97.ticketing.ticketing.api.dto.request.HoldCreateRequest;
@@ -35,14 +36,16 @@ public class HoldService {
   private final SeatRepository seatRepository;
   private final ShowtimeSeatRepository showtimeSeatRepository;
   private final MemberRepository memberRepository;
-
+  private final DistributedLockService distributedLockService;
 
   /**
-   * ✅ 좌석 선점(HOLD) 처리
-   * - showtime, seat, showtimeSeat, member 존재 여부를 검증
-   * - AVAILABLE 상태의 좌석만 HOLD 가능
-   * - 성공 시 HOLD를 생성하고 좌석 상태를 HELD로 변경
-   * - HOLD 만료 시간은 현재 시각 기준 5분 뒤로 저장
+   * ✅ 좌석 선점(HOLD) 진입점
+   * - Redis 분산락을 획득한 뒤 실제 선점 로직을 실행한다
+   * - 락 키: "hold:seat:{showtimeId}:{seatId}"
+   * → 같은 회차의 같은 좌석에 대한 동시 요청만 직렬화되도록 설계
+   * - waitTime(3초): 락 획득을 최대 3초 대기
+   * - leaseTime(5초): 락 획득 후 최대 5초 유지
+   * → 5초 안에 처리가 완료되지 않으면 락 자동 해제
    *
    * @param showtimeId 공연 회차 ID
    * @param request    선점 요청 정보(seatId, memberId)
@@ -50,6 +53,30 @@ public class HoldService {
    */
   @Transactional
   public HoldResponse hold(Long showtimeId, HoldCreateRequest request) {
+    return distributedLockService.executeWithLock(
+      "hold:seat:" + showtimeId + ":" + request.getSeatId(),
+      3L,
+      5L,
+      () -> processHold(showtimeId, request)
+    );
+  }
+
+
+  /**
+   * ✅ 좌석 선점(HOLD) 실제 처리
+   * - 분산락 획득 후 호출되는 내부 메서드
+   * - showtime, seat, showtimeSeat, member 존재 여부를 검증
+   * - AVAILABLE 상태의 좌석만 HOLD 가능
+   * - 성공 시 HOLD를 생성하고 좌석 상태를 HELD로 변경
+   * - HOLD 만료 시간은 현재 시각 기준 5분 뒤로 저장
+   * - 비관적 락 없이 분산락 범위 안에서만 실행되므로 동시성 안전
+   *
+   * @param showtimeId 공연 회차 ID
+   * @param request    선점 요청 정보(seatId, memberId)
+   * @return HOLD 생성 결과 응답
+   */
+  @Transactional
+  public HoldResponse processHold(Long showtimeId, HoldCreateRequest request) {
 
     // 1) 회차 존재 여부 확인
     Showtime showtime = showtimeRepository.findById(showtimeId)
@@ -60,8 +87,9 @@ public class HoldService {
       .orElseThrow(() -> new BusinessException(SEAT_NOT_FOUND));
 
     // 3) 해당 회차에 속한 좌석인지 확인
+    //    비관적 락 제거: Redis 분산락이 동시성을 보장하므로 DB 락 불필요
     ShowtimeSeat showtimeSeat = showtimeSeatRepository
-      .findByShowtimeIdAndSeatIdWithLock(showtime.getId(), seat.getId())
+      .findByShowtimeIdAndSeatId(showtime.getId(), seat.getId())
       .orElseThrow(() -> new BusinessException(SHOWTIME_SEAT_NOT_FOUND));
 
     // 4) 회원 존재 여부 확인
