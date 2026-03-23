@@ -5,19 +5,16 @@ import com.pil97.ticketing.common.exception.BusinessException;
 import com.pil97.ticketing.ticketing.api.dto.response.EventSummaryResponse;
 import com.pil97.ticketing.ticketing.api.dto.response.ShowtimeResponse;
 import com.pil97.ticketing.ticketing.application.dto.EventSummaryQueryResult;
-import com.pil97.ticketing.ticketing.domain.Event;
 import com.pil97.ticketing.ticketing.domain.Showtime;
 import com.pil97.ticketing.ticketing.domain.repository.EventRepository;
 import com.pil97.ticketing.ticketing.domain.repository.ShowtimeRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
-
-import static com.pil97.ticketing.ticketing.domain.EventStatus.ON_SALE;
 
 /**
  * 공연 조회 유스케이스를 처리하는 서비스
@@ -33,8 +30,14 @@ public class EventService {
   private final ShowtimeRepository showtimeRepository;
 
   /**
-   * ✅ 공연 목록 조회
+   * ✅ 공연 목록 조회 (Redis 캐시 적용)
+   * - 캐시 키: "events::getAllEvents"
+   * - TTL: 10분 (RedisCacheConfig에서 설정)
+   * - 첫 번째 요청: DB 조회 후 Redis에 저장
+   * - 이후 요청: Redis 캐시에서 반환 (DB 조회 없음)
+   * - TTL 만료 후: 다시 DB 조회 후 캐시 갱신
    */
+  @Cacheable(cacheNames = "events")
   public List<EventSummaryResponse> getAllEvents() {
 
     List<EventSummaryResponse> responses = new ArrayList<>();

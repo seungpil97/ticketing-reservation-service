@@ -273,3 +273,100 @@ curl -X POST http://localhost:8080/holds/2/reserve
 # reserve - showtime seat not held
 curl -X POST http://localhost:8080/holds/3/reserve
 ```
+
+---
+
+### 2) Cancel Reservation
+
+* **DELETE** `/reservations/{reservationId}`
+* **204 No Content**
+
+설명
+
+* 예약 확정된 좌석을 취소한다.
+* 취소 성공 시 좌석 상태는 `RESERVED → AVAILABLE`로 복구된다.
+* 예약 상태는 `CONFIRMED → CANCELLED`로 변경된다.
+
+curl
+```bash
+curl -i -X DELETE http://localhost:8080/reservations/1
+```
+
+Errors
+
+* `404` `RESERVATION-404`
+* `409` `RESERVATION-409`
+
+---
+
+### 2-1) Cancel Reservation - Not Found
+
+* **DELETE** `/reservations/{reservationId}`
+* **404 Not Found**
+
+Response (404)
+```json
+{
+  "data": null,
+  "error": {
+    "code": "RESERVATION-404",
+    "details": [],
+    "message": "Reservation not found",
+    "path": "/reservations/999999",
+    "timestamp": "..."
+  },
+  "success": false,
+  "timestamp": "..."
+}
+```
+
+curl
+```bash
+curl -i -X DELETE http://localhost:8080/reservations/999999
+```
+
+---
+
+### 2-2) Cancel Reservation - Already Cancelled
+
+* **DELETE** `/reservations/{reservationId}`
+* **409 Conflict**
+
+설명
+
+* 이미 `CANCELLED` 상태인 예약은 재취소할 수 없다.
+
+Response (409)
+```json
+{
+  "data": null,
+  "error": {
+    "code": "RESERVATION-409",
+    "details": [],
+    "message": "Reservation is not confirmed",
+    "path": "/reservations/1",
+    "timestamp": "..."
+  },
+  "success": false,
+  "timestamp": "..."
+}
+```
+
+curl
+```bash
+curl -i -X DELETE http://localhost:8080/reservations/1
+```
+
+---
+
+## curl Test Set (Cancel)
+```bash
+# cancel success
+curl -i -X DELETE http://localhost:8080/reservations/1
+
+# cancel - not found
+curl -i -X DELETE http://localhost:8080/reservations/999999
+
+# cancel - already cancelled
+curl -i -X DELETE http://localhost:8080/reservations/1
+```
