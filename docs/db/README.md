@@ -19,6 +19,7 @@
 |---|---|---|---|---|
 | 로컬 dev | ticketing-mariadb-dev | ticketing_flyway | **13305** | 애플리케이션 개발 |
 | 로컬 test | ticketing-mariadb-test | ticketing_test | **13307** | 로컬 테스트 실행 |
+| 로컬 | ticketing-redis | Redis | **6379** | 분산락 / 캐시 |
 | CI | GitHub Actions service | ticketing_test | **3306** | Actions 내부 컨테이너 |
 
 > 로컬에서 `./gradlew test` 실행 전 반드시 `docker-compose up -d` 로 두 컨테이너가 모두 올라와 있어야 합니다.
@@ -270,10 +271,11 @@ colima status
 
 ---
 
-## 6) Dependencies (Flyway)
+## 6) Dependencies
 
-* `spring-boot-starter-flyway`: 애플리케이션 시작 시 Flyway 자동 실행
+* `flyway-core`: 애플리케이션 시작 시 Flyway 자동 실행
 * `flyway-mysql`: MariaDB/MySQL 호환 지원
+* `redisson-spring-boot-starter`: Redis 분산락 / 캐시
 
 ---
 
