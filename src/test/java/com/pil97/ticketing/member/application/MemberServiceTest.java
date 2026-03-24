@@ -14,6 +14,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.*;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
 import java.util.Optional;
@@ -28,6 +29,9 @@ class MemberServiceTest {
   @Mock
   private MemberRepository memberRepository;
 
+  @Mock
+  private PasswordEncoder passwordEncoder;
+
   @InjectMocks
   private MemberService memberService;
 
@@ -38,8 +42,10 @@ class MemberServiceTest {
     MemberCreateRequest request = mock(MemberCreateRequest.class);
     when(request.getEmail()).thenReturn("a@test.com");
     when(request.getName()).thenReturn("sp");
+    when(request.getPassword()).thenReturn("rawPass1!");
+    when(passwordEncoder.encode("rawPass1!")).thenReturn("$2a$encodedPass");
 
-    Member saved = new Member("a@test.com", "sp");
+    Member saved = new Member("a@test.com", "sp", "$2a$encodedPass");
     when(memberRepository.save(any(Member.class))).thenReturn(saved);
 
     // when
@@ -84,7 +90,10 @@ class MemberServiceTest {
       PageRequest.of(0, 2, Sort.by(Sort.Direction.DESC, "id"));
 
     // repository가 돌려줄 Page<Member> 준비
-    List<Member> content = List.of(new Member("a@test.com", "A"), new Member("b@test.com", "B"));
+    List<Member> content = List.of(
+      new Member("a@test.com", "A", "encoded"),
+      new Member("b@test.com", "B", "encoded")
+    );
     Page<Member> pageResult = new PageImpl<>(content, pageable, 2);
 
     when(memberRepository.findAll(any(Pageable.class))).thenReturn(pageResult);
