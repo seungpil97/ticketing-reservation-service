@@ -11,6 +11,7 @@ import com.pil97.ticketing.member.domain.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,7 +19,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * ✅ Member 유스케이스(서비스)
+ * Member 유스케이스(서비스)
  * - 컨트롤러는 얇게 유지하고(요청/응답)
  * - "생성 로직"은 서비스로 옮겨서 레이어 분리
  */
@@ -28,23 +29,29 @@ import java.util.Optional;
 public class MemberService {
 
   private final MemberRepository memberRepository;
+  private final PasswordEncoder passwordEncoder;
 
   /**
-   * ✅ 회원 생성
+   * 회원 생성
    */
   @Transactional
   public MemberResponse create(
     MemberCreateRequest request
   ) {
 
-    Member member = new Member(request.getEmail(), request.getName());
+    Member member = new Member(
+      request.getEmail(),
+      request.getName(),
+      passwordEncoder.encode(request.getPassword())  // BCrypt 암호화
+    );
+
     Member saved = memberRepository.save(member);
 
     return MemberResponse.from(saved);
   }
 
   /**
-   * ✅ 회원 조회
+   * 회원 조회
    */
   public MemberResponse getById(Long id) {
 
@@ -56,7 +63,7 @@ public class MemberService {
 
 
   /**
-   * ✅ 회원 목록 조회 (페이징/정렬)
+   * 회원 목록 조회 (페이징/정렬)
    */
   public MemberPageResponse list(Pageable pageable) {
 
@@ -65,7 +72,7 @@ public class MemberService {
   }
 
   /**
-   * ✅ 회원 수정
+   * 회원 수정
    */
   @Transactional
   public MemberResponse update(
@@ -88,7 +95,7 @@ public class MemberService {
   }
 
   /**
-   * ✅ 회원 삭제
+   * 회원 삭제
    */
   @Transactional
   public void delete(

@@ -1,6 +1,7 @@
 package com.pil97.ticketing.member.api.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -18,4 +19,8 @@ public class MemberCreateRequest {
 
   @NotBlank(message = "name is required")
   private String name;
+
+  @NotBlank(message = "password is required")
+  @Size(min = 8, message = "password must be at least 8 characters")
+  private String password;
 }
