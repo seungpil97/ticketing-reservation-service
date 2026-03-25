@@ -27,7 +27,8 @@ spring:
 
 jwt:
   secret: ${JWT_SECRET:ticketing-secret-key-must-be-at-least-32-characters}
-  expiration-ms: ${JWT_EXPIRATION_MS:3600000}  # 1시간
+  expiration-ms: 900000          # 15분
+  refresh-expiration-ms: 604800000  # 7일
 
 # dev에서는 SQL 로그 보는 게 편함 (common이 이미 debug/trace면 굳이 안 써도 됨)
 # logging:
