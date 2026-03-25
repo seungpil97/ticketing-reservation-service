@@ -20,52 +20,48 @@ import java.util.Date;
 public class JwtProvider {
 
   private final SecretKey secretKey;
-  private final long expirationMs;
+  private final long accessExpirationMs;
+  private final long refreshExpirationMs;
 
   /**
    * JwtProvider 생성자
    * - secretKey: JWT 서명에 사용할 비밀키 (application.yml에서 주입)
-   * - expirationMs: 토큰 만료 시간 (밀리초, application.yml에서 주입)
+   * - accessExpirationMs: AccessToken 만료 시간 (밀리초, application.yml에서 주입)
+   * - refreshExpirationMs: RefreshToken 만료 시간 (밀리초, application.yml에서 주입)
    */
   public JwtProvider(
     @Value("${jwt.secret}") String secret,
-    @Value("${jwt.expiration-ms}") long expirationMs
+    @Value("${jwt.expiration-ms}") long accessExpirationMs,
+    @Value("${jwt.refresh-expiration-ms}") long refreshExpirationMs
   ) {
     this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
-    this.expirationMs = expirationMs;
+    this.accessExpirationMs = accessExpirationMs;
+    this.refreshExpirationMs = refreshExpirationMs;
   }
 
   /**
-   * JWT 토큰 생성
-   * - subject: 토큰 주체 (memberId)
-   * - 발급 시각과 만료 시각을 포함
-   * - HMAC-SHA256 알고리즘으로 서명
+   * AccessToken 생성 (TTL: jwt.expiration-ms)
    */
-  public String generateToken(Long memberId) {
-    Date now = new Date();
-    Date expiry = new Date(now.getTime() + expirationMs);
+  public String generateAccessToken(Long memberId) {
+    return generateToken(memberId, accessExpirationMs);
+  }
 
-    return Jwts.builder()
-      .subject(String.valueOf(memberId))
-      .issuedAt(now)
-      .expiration(expiry)
-      .signWith(secretKey)
-      .compact();
+  /**
+   * RefreshToken 생성 (TTL: jwt.refresh-expiration-ms)
+   */
+  public String generateRefreshToken(Long memberId) {
+    return generateToken(memberId, refreshExpirationMs);
   }
 
   /**
    * JWT 토큰에서 memberId 추출
    */
   public Long getMemberId(String token) {
-    Claims claims = parseClaims(token);
-    return Long.parseLong(claims.getSubject());
+    return Long.parseLong(parseClaims(token).getSubject());
   }
 
   /**
    * JWT 토큰 유효성 검증
-   * - 서명 검증
-   * - 만료 시간 검증
-   * - 형식 검증
    */
   public boolean validateToken(String token) {
     try {
@@ -86,9 +82,26 @@ public class JwtProvider {
   }
 
   /**
-   * JWT 토큰 파싱
-   * - 서명 검증 후 Claims 반환
+   * 토큰 잔여 만료 시간(ms) 반환
+   * - 블랙리스트 TTL 설정에 사용
    */
+  public long getRemainingMs(String token) {
+    Date expiration = parseClaims(token).getExpiration();
+    return expiration.getTime() - System.currentTimeMillis();
+  }
+
+  private String generateToken(Long memberId, long expirationMs) {
+    Date now = new Date();
+    Date expiry = new Date(now.getTime() + expirationMs);
+
+    return Jwts.builder()
+      .subject(String.valueOf(memberId))
+      .issuedAt(now)
+      .expiration(expiry)
+      .signWith(secretKey)
+      .compact();
+  }
+
   private Claims parseClaims(String token) {
     return Jwts.parser()
       .verifyWith(secretKey)
