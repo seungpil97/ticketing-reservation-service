@@ -1,5 +1,6 @@
 package com.pil97.ticketing.common.security;
 
+import com.pil97.ticketing.auth.application.TokenService;
 import com.pil97.ticketing.common.error.ErrorCode;
 import com.pil97.ticketing.common.jwt.JwtProvider;
 import com.pil97.ticketing.member.domain.Member;
@@ -35,8 +36,14 @@ class SecurityIntegrationTest {
   @MockitoBean
   private MemberRepository memberRepository;
 
+  @MockitoBean
+  private TokenService tokenService;
+
   @Value("${jwt.secret}")
   private String jwtSecret;
+
+  @Value("${jwt.refresh-expiration-ms}")
+  private long refreshExpirationMs;
 
   // ────────────────────────────────────────────────
   // 인증 불필요 API → 토큰 없이 통과
@@ -53,11 +60,20 @@ class SecurityIntegrationTest {
   @DisplayName("POST /auth/login → 인증 없이 접근 가능 (401 아님)")
   void authLogin_noToken_notUnauthorized() throws Exception {
     // 빈 바디 → Validation 400 = Security가 막지 않았다는 증명
-    // (Security가 막았으면 AuthService까지 못 가고 401)
     mockMvc.perform(post("/auth/login")
         .contentType("application/json")
         .content("{}"))
-      .andExpect(status().isBadRequest()); // 400
+      .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  @DisplayName("POST /auth/reissue → 인증 없이 접근 가능 (401 아님)")
+  void authReissue_noToken_notUnauthorized() throws Exception {
+    // 빈 바디 → Validation 400 = Security가 막지 않았다는 증명
+    mockMvc.perform(post("/auth/reissue")
+        .contentType("application/json")
+        .content("{}"))
+      .andExpect(status().isBadRequest());
   }
 
   @Test
@@ -115,11 +131,12 @@ class SecurityIntegrationTest {
   void hold_validToken_notUnauthorized() throws Exception {
     // given
     Long memberId = 1L;
-    String token = jwtProvider.generateToken(memberId);
+    String token = jwtProvider.generateAccessToken(memberId);
     Member member = new Member("a@test.com", "sp", "$2a$encoded");
     when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
+    when(tokenService.isBlacklisted(token)).thenReturn(false);
 
-    // when & then: 인증 통과 후 비즈니스 로직(404 등)은 무관
+    // when & then
     mockMvc.perform(post("/showtimes/1/hold")
         .header("Authorization", "Bearer " + token))
       .andExpect(status().is(not(401)));
@@ -132,9 +149,9 @@ class SecurityIntegrationTest {
   @Test
   @DisplayName("POST /showtimes/{id}/hold → 만료된 토큰이면 401")
   void hold_expiredToken_returns401() throws Exception {
-    // given: application-test.yml secret 그대로 사용, 만료 1ms
-    JwtProvider shortLived = new JwtProvider(jwtSecret, 1L);
-    String expiredToken = shortLived.generateToken(1L);
+    // given: 만료 1ms짜리 토큰 생성
+    JwtProvider shortLived = new JwtProvider(jwtSecret, 1L, refreshExpirationMs);
+    String expiredToken = shortLived.generateAccessToken(1L);
     Thread.sleep(10);
 
     mockMvc.perform(post("/showtimes/1/hold")
@@ -155,10 +172,29 @@ class SecurityIntegrationTest {
   @Test
   @DisplayName("POST /showtimes/{id}/hold → Bearer 없이 토큰만 전달하면 401")
   void hold_tokenWithoutBearer_returns401() throws Exception {
-    String token = jwtProvider.generateToken(1L);
+    String token = jwtProvider.generateAccessToken(1L);
 
     mockMvc.perform(post("/showtimes/1/hold")
         .header("Authorization", token))
+      .andExpect(status().isUnauthorized())
+      .andExpect(jsonPath("$.error.code").value(ErrorCode.AUTH_UNAUTHORIZED.getCode()));
+  }
+
+  // ────────────────────────────────────────────────
+  // 블랙리스트 → 401
+  // ────────────────────────────────────────────────
+
+  @Test
+  @DisplayName("POST /showtimes/{id}/hold → 블랙리스트에 등록된 토큰이면 401")
+  void hold_blacklistedToken_returns401() throws Exception {
+    // given
+    Long memberId = 1L;
+    String token = jwtProvider.generateAccessToken(memberId);
+    when(tokenService.isBlacklisted(token)).thenReturn(true);
+
+    // when & then
+    mockMvc.perform(post("/showtimes/1/hold")
+        .header("Authorization", "Bearer " + token))
       .andExpect(status().isUnauthorized())
       .andExpect(jsonPath("$.error.code").value(ErrorCode.AUTH_UNAUTHORIZED.getCode()));
   }

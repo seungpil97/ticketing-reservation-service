@@ -1,6 +1,7 @@
 package com.pil97.ticketing.common.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.pil97.ticketing.auth.application.TokenService;
 import com.pil97.ticketing.common.error.ErrorCode;
 import com.pil97.ticketing.common.jwt.JwtAuthenticationFilter;
 import com.pil97.ticketing.common.jwt.JwtProvider;
@@ -27,6 +28,7 @@ public class SecurityConfig {
 
   private final JwtProvider jwtProvider;
   private final MemberRepository memberRepository;
+  private final TokenService tokenService;
   private final ObjectMapper objectMapper;  // 401 응답을 ApiResponse 포맷으로 직렬화하기 위해 주입
 
   /**
@@ -46,6 +48,7 @@ public class SecurityConfig {
    * - GET  /health/**              헬스체크
    * - POST /members               회원 가입
    * - POST /auth/login            로그인
+   * - POST /auth/reissue          AccessToken 재발급
    * - GET  /events/**             공연/회차 조회
    * - GET  /showtimes/{id}/seats  좌석 조회
    * <p>
@@ -57,7 +60,7 @@ public class SecurityConfig {
    * <p>
    * JWT 필터
    * - UsernamePasswordAuthenticationFilter 앞에 JwtAuthenticationFilter 등록
-   * - 토큰이 없거나 유효하지 않으면 SecurityContext에 저장하지 않고 통과
+   * - 토큰이 없거나 유효하지 않거나 블랙리스트에 있으면 SecurityContext에 저장하지 않고 통과
    * → 인증이 필요한 API는 이후 SecurityConfig에서 401 처리
    */
   @Bean
@@ -86,12 +89,13 @@ public class SecurityConfig {
         .requestMatchers(HttpMethod.GET, "/health/**").permitAll()
         .requestMatchers(HttpMethod.POST, "/members").permitAll()
         .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
+        .requestMatchers(HttpMethod.POST, "/auth/reissue").permitAll()
         .requestMatchers(HttpMethod.GET, "/events/**").permitAll()
         .requestMatchers(HttpMethod.GET, "/showtimes/*/seats").permitAll()
         .anyRequest().authenticated()
       )
       .addFilterBefore(
-        new JwtAuthenticationFilter(jwtProvider, memberRepository),
+        new JwtAuthenticationFilter(jwtProvider, memberRepository, tokenService),
         UsernamePasswordAuthenticationFilter.class
       );
 

@@ -1,5 +1,6 @@
 package com.pil97.ticketing.common.jwt;
 
+import com.pil97.ticketing.auth.application.TokenService;
 import com.pil97.ticketing.member.domain.Member;
 import com.pil97.ticketing.member.domain.repository.MemberRepository;
 import jakarta.servlet.FilterChain;
@@ -23,19 +24,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
   private final JwtProvider jwtProvider;
   private final MemberRepository memberRepository;
+  private final TokenService tokenService;
 
   /**
    * JWT 토큰 검증 필터
    * <p>
    * 동작 흐름:
    * 1) Authorization 헤더에서 Bearer 토큰 추출
-   * 2) 토큰 유효성 검증
-   * 3) 토큰에서 memberId 추출 후 DB에서 회원 조회
-   * 4) SecurityContext에 인증 정보 저장
+   * 2) 토큰 유효성 검증 (서명/만료)
+   * 3) Redis 블랙리스트 등록 여부 확인 (로그아웃된 토큰 차단)
+   * 4) memberId로 회원 조회 후 SecurityContext에 인증 정보 저장
    * 5) 다음 필터로 전달
    * <p>
-   * 토큰이 없거나 유효하지 않으면 SecurityContext에 저장하지 않고 통과
-   * → 인증이 필요한 API는 SecurityConfig에서 막힘
+   * 토큰이 없거나 유효하지 않거나 블랙리스트에 있으면 SecurityContext에 저장하지 않고 통과
+   * → 인증이 필요한 API는 SecurityConfig에서 401 처리
    */
   @Override
   protected void doFilterInternal(
@@ -46,16 +48,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     String token = extractToken(request);
 
-    if (StringUtils.hasText(token) && jwtProvider.validateToken(token)) {
+    if (StringUtils.hasText(token)
+      && jwtProvider.validateToken(token)
+      && !tokenService.isBlacklisted(token)) {
+
       Long memberId = jwtProvider.getMemberId(token);
 
       memberRepository.findById(memberId).ifPresent(member -> {
         UsernamePasswordAuthenticationToken authentication =
-          new UsernamePasswordAuthenticationToken(
-            member,
-            null,
-            List.of()
-          );
+          new UsernamePasswordAuthenticationToken(member, null, List.of());
         authentication.setDetails(
           new WebAuthenticationDetailsSource().buildDetails(request)
         );

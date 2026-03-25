@@ -217,7 +217,20 @@ public enum ErrorCode {
    * 인증되지 않은 요청(401)
    * - 토큰 없이 인증이 필요한 API에 접근한 경우
    */
-  AUTH_UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "AUTH-401", "Unauthorized");
+  AUTH_UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "AUTH-401", "Unauthorized"),
+
+  /**
+   * RefreshToken이 유효하지 않음(401)
+   * - 만료되었거나 서명이 잘못된 RefreshToken
+   * - Redis에 저장된 토큰과 일치하지 않는 경우
+   */
+  AUTH_REFRESH_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "AUTH-401", "Invalid or expired refresh token"),
+
+  /**
+   * RefreshToken이 Redis에 존재하지 않음(401)
+   * - 로그아웃 이후 재발급 요청 또는 미발급 상태에서 요청
+   */
+  AUTH_REFRESH_TOKEN_NOT_FOUND(HttpStatus.UNAUTHORIZED, "AUTH-401", "Refresh token not found");
 
   private final HttpStatus status;
   private final String code;
@@ -229,4 +242,4 @@ public enum ErrorCode {
     this.code = code;
     this.message = message;
   }
-}
+  }
