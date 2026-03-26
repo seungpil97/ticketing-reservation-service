@@ -100,11 +100,11 @@ class AuthControllerTest {
   // ────────────────────────────────────────────────
 
   @Test
-  @DisplayName("POST /auth/reissue: 유효한 RefreshToken → 200 + 새 accessToken 반환")
+  @DisplayName("POST /auth/reissue: 유효한 RefreshToken → 200 + 새 accessToken + 새 refreshToken 반환")
   void reissue_success() throws Exception {
     // given
     when(authService.reissue(any()))
-      .thenReturn(new ReissueResponse("new.access.token"));
+      .thenReturn(new ReissueResponse("new.access.token", "new.refresh.token"));
 
     // when & then
     mockMvc.perform(post("/auth/reissue")
@@ -114,7 +114,8 @@ class AuthControllerTest {
           """))
       .andExpect(status().isOk())
       .andExpect(jsonPath("$.success").value(true))
-      .andExpect(jsonPath("$.data.accessToken").value("new.access.token"));
+      .andExpect(jsonPath("$.data.accessToken").value("new.access.token"))
+      .andExpect(jsonPath("$.data.refreshToken").value("new.refresh.token"));
   }
 
   @Test
@@ -170,11 +171,11 @@ class AuthControllerTest {
 
   @Test
   @DisplayName("POST /auth/logout: Authorization 헤더 누락 → 401")
-void logout_missingHeader_returns401() throws Exception {
-  mockMvc.perform(post("/auth/logout"))
-    .andExpect(status().isUnauthorized())
-    .andExpect(jsonPath("$.error.code").value(ErrorCode.AUTH_INVALID_TOKEN.getCode()));
-}
+  void logout_missingHeader_returns401() throws Exception {
+    mockMvc.perform(post("/auth/logout"))
+      .andExpect(status().isUnauthorized())
+      .andExpect(jsonPath("$.error.code").value(ErrorCode.AUTH_INVALID_TOKEN.getCode()));
+  }
 
   @Test
   @DisplayName("POST /auth/logout: Bearer 형식 아닌 헤더 → 401")

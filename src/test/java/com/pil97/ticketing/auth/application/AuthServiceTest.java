@@ -145,7 +145,7 @@ class AuthServiceTest {
   // ────────────────────────────────────────────────
 
   @Test
-  @DisplayName("reissue: 유효한 RefreshToken → 새 AccessToken 반환")
+  @DisplayName("reissue: 유효한 RefreshToken → 새 AccessToken + 새 RefreshToken 반환 (Rotation)")
   void reissue_success() {
     // given
     ReissueRequest request = mock(ReissueRequest.class);
@@ -154,13 +154,17 @@ class AuthServiceTest {
     when(jwtProvider.getMemberId("valid.refresh.token")).thenReturn(1L);
     when(tokenService.getRefreshToken(1L)).thenReturn(Optional.of("valid.refresh.token"));
     when(jwtProvider.generateAccessToken(1L)).thenReturn("new.access.token");
+    when(jwtProvider.generateRefreshToken(1L)).thenReturn("new.refresh.token");
 
     // when
     ReissueResponse response = authService.reissue(request);
 
     // then
     assertThat(response.accessToken()).isEqualTo("new.access.token");
+    assertThat(response.refreshToken()).isEqualTo("new.refresh.token");
     verify(jwtProvider).generateAccessToken(1L);
+    verify(jwtProvider).generateRefreshToken(1L);
+    verify(tokenService).saveRefreshToken(1L, "new.refresh.token");
   }
 
   @Test
@@ -204,7 +208,7 @@ class AuthServiceTest {
   }
 
   @Test
-  @DisplayName("reissue: Redis 저장값과 요청값 불일치 → AUTH_REFRESH_TOKEN_INVALID")
+  @DisplayName("reissue: Redis 저장값과 요청값 불일치 → 강제 로그아웃 + AUTH_REFRESH_TOKEN_INVALID")
   void reissue_tokenMismatch_throwsException() {
     // given
     ReissueRequest request = mock(ReissueRequest.class);
@@ -221,6 +225,7 @@ class AuthServiceTest {
           .isEqualTo(ErrorCode.AUTH_REFRESH_TOKEN_INVALID);
       });
 
+    verify(tokenService).deleteRefreshToken(1L);
     verify(jwtProvider, never()).generateAccessToken(any());
   }
 

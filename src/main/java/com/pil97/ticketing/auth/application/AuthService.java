@@ -58,31 +58,41 @@ public class AuthService {
   }
 
   /**
-   * AccessToken 재발급
+   * AccessToken 재발급 (RefreshToken Rotation 적용)
    * 1) RefreshToken 서명/만료 검증
    * 2) Redis에 RefreshToken 존재 여부 확인
-   * 3) Redis 저장값과 요청값 일치 여부 확인
-   * 4) 새 AccessToken 발급
-   * <p>
-   * Redis에 없는 RefreshToken = 로그아웃된 사용자이거나 탈취된 토큰
+   * 3) Redis 저장값과 요청값 일치 여부 확인 (불일치 = 탈취 감지)
+   * 4) 새 AccessToken + 새 RefreshToken 발급
+   * 5) Redis에 새 RefreshToken으로 교체 저장 (기존 토큰 무효화)
    */
   public ReissueResponse reissue(ReissueRequest request) {
     String refreshToken = request.getRefreshToken();
 
+    // 1) 서명/만료 검증
     if (!jwtProvider.validateToken(refreshToken)) {
       throw new BusinessException(ErrorCode.AUTH_REFRESH_TOKEN_INVALID);
     }
 
     Long memberId = jwtProvider.getMemberId(refreshToken);
 
+    // 2) Redis 존재 여부 확인
     String storedToken = tokenService.getRefreshToken(memberId)
       .orElseThrow(() -> new BusinessException(ErrorCode.AUTH_REFRESH_TOKEN_NOT_FOUND));
 
+    // 3) 저장값과 요청값 불일치 = 탈취 감지 → 즉시 강제 로그아웃
     if (!storedToken.equals(refreshToken)) {
+      tokenService.deleteRefreshToken(memberId);
       throw new BusinessException(ErrorCode.AUTH_REFRESH_TOKEN_INVALID);
     }
 
-    return new ReissueResponse(jwtProvider.generateAccessToken(memberId));
+    // 4) 새 AccessToken + 새 RefreshToken 발급
+    String newAccessToken = jwtProvider.generateAccessToken(memberId);
+    String newRefreshToken = jwtProvider.generateRefreshToken(memberId);
+
+    // 5) Redis에 새 RefreshToken으로 교체 저장
+    tokenService.saveRefreshToken(memberId, newRefreshToken);
+
+    return new ReissueResponse(newAccessToken, newRefreshToken);
   }
 
   /**
