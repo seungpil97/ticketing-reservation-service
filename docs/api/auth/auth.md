@@ -14,15 +14,16 @@
 
 ### Auth
 
-* `AUTH-401`: Invalid credentials - 이메일/비밀번호 불일치 (401)
-* `AUTH-401`: Invalid or expired refresh token - 유효하지 않거나 만료된 RefreshToken (401)
-* `AUTH-401`: Refresh token not found - Redis에 존재하지 않는 RefreshToken (401)
-* `AUTH-401`: Invalid token - 유효하지 않은 AccessToken (401)
+* `AUTH-001`: Invalid credentials - 이메일/비밀번호 불일치 (401)
+* `AUTH-002`: Invalid or expired token - 유효하지 않거나 만료된 AccessToken (401)
+* `AUTH-003`: Unauthorized - 토큰 없이 인증이 필요한 API에 접근 (401)
+* `AUTH-004`: Invalid or expired refresh token - 유효하지 않거나 만료된 RefreshToken (401)
+* `AUTH-005`: Refresh token not found - Redis에 존재하지 않는 RefreshToken (401)
 
 ### Common
 
 * `COMMON-001`: Validation failed (400)
-* `COMMON-500`: Internal server error (500)
+* `COMMON-007`: Internal server error (500)
 
 ---
 
@@ -67,7 +68,7 @@ curl -X POST http://localhost:8080/auth/login \
 Errors
 
 * `400` `COMMON-001`
-* `401` `AUTH-401` (이메일/비밀번호 불일치)
+* `401` `AUTH-001` (이메일/비밀번호 불일치)
 
 ---
 
@@ -111,8 +112,8 @@ curl -X POST http://localhost:8080/auth/reissue \
 
 Errors
 
-* `401` `AUTH-401` (만료/위조된 RefreshToken)
-* `401` `AUTH-401` (Redis에 없는 RefreshToken - 로그아웃된 사용자)
+* `401` `AUTH-004` (만료/위조된 RefreshToken)
+* `401` `AUTH-005` (Redis에 없는 RefreshToken - 로그아웃된 사용자)
 
 ---
 
@@ -149,7 +150,7 @@ curl -X POST http://localhost:8080/auth/logout \
 
 Errors
 
-* `401` `AUTH-401` (Authorization 헤더 누락 또는 Bearer 형식 아닌 경우)
+* `401` `AUTH-002` (Authorization 헤더 누락 또는 Bearer 형식 아닌 경우)
 
 ---
 

@@ -34,7 +34,7 @@
 {
   "data": null,
   "error": {
-    "code": "EVENT-404",
+    "code": "EVENT-001",
     "details": [],
     "message": "Event not found",
     "path": "/events/999999/showtimes",
@@ -53,13 +53,13 @@
 
 ### Ticketing
 
-* `EVENT-404`: Event not found (404)
+* `EVENT-001`: Event not found (404)
 
 ### Common
 
-* `COMMON-404`: Resource not found (404)
-* `COMMON-405`: Method not allowed (405)
-* `COMMON-500`: Internal server error (500)
+* `COMMON-004`: Resource not found (404)
+* `COMMON-005`: Method not allowed (405)
+* `COMMON-007`: Internal server error (500)
 
 ---
 
@@ -149,7 +149,7 @@ curl http://localhost:8080/events/1/showtimes
 
 Errors
 
-* `404` `EVENT-404`
+* `404` `EVENT-001`
 
 ---
 
@@ -164,7 +164,7 @@ Response (404)
 {
   "data": null,
   "error": {
-    "code": "EVENT-404",
+    "code": "EVENT-001",
     "details": [],
     "message": "Event not found",
     "path": "/events/999999/showtimes",
