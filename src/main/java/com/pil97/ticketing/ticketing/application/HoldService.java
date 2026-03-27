@@ -4,6 +4,9 @@ import com.pil97.ticketing.common.exception.BusinessException;
 import com.pil97.ticketing.common.lock.DistributedLockService;
 import com.pil97.ticketing.member.domain.Member;
 import com.pil97.ticketing.member.domain.repository.MemberRepository;
+import com.pil97.ticketing.seat.error.SeatErrorCode;
+import com.pil97.ticketing.showtime.error.ShowtimeErrorCode;
+import com.pil97.ticketing.showtimeseat.error.ShowtimeSeatErrorCode;
 import com.pil97.ticketing.ticketing.api.dto.request.HoldCreateRequest;
 import com.pil97.ticketing.ticketing.api.dto.response.HoldResponse;
 import com.pil97.ticketing.ticketing.domain.*;
@@ -17,7 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
-import static com.pil97.ticketing.common.error.ErrorCode.*;
+import static com.pil97.ticketing.common.error.CommonErrorCode.*;
 
 @Service
 @RequiredArgsConstructor
@@ -80,21 +83,21 @@ public class HoldService {
 
     // 1) 회차 존재 여부 확인
     Showtime showtime = showtimeRepository.findById(showtimeId)
-      .orElseThrow(() -> new BusinessException(SHOWTIME_NOT_FOUND));
+      .orElseThrow(() -> new BusinessException(ShowtimeErrorCode.NOT_FOUND));
 
     // 2) 좌석 존재 여부 확인
     Seat seat = seatRepository.findById(request.getSeatId())
-      .orElseThrow(() -> new BusinessException(SEAT_NOT_FOUND));
+      .orElseThrow(() -> new BusinessException(SeatErrorCode.NOT_FOUND));
 
     // 3) 해당 회차에 속한 좌석인지 확인
     //    비관적 락 제거: Redis 분산락이 동시성을 보장하므로 DB 락 불필요
     ShowtimeSeat showtimeSeat = showtimeSeatRepository
       .findByShowtimeIdAndSeatId(showtime.getId(), seat.getId())
-      .orElseThrow(() -> new BusinessException(SHOWTIME_SEAT_NOT_FOUND));
+      .orElseThrow(() -> new BusinessException(ShowtimeSeatErrorCode.NOT_FOUND));
 
     // 4) 회원 존재 여부 확인
     Member member = memberRepository.findById(request.getMemberId())
-      .orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
+      .orElseThrow(() -> new BusinessException(SeatErrorCode.NOT_AVAILABLE_FOR_HOLD));
 
     // 5) AVAILABLE 상태인지 검증
     validateAvailable(showtimeSeat);
@@ -127,7 +130,7 @@ public class HoldService {
    */
   private void validateAvailable(ShowtimeSeat showtimeSeat) {
     if (showtimeSeat.getStatus() != ShowtimeSeatStatus.AVAILABLE) {
-      throw new BusinessException(SEAT_NOT_AVAILABLE_FOR_HOLD);
+      throw new BusinessException(SeatErrorCode.NOT_AVAILABLE_FOR_HOLD);
     }
   }
 }

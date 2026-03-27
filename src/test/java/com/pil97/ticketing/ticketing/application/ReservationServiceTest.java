@@ -1,7 +1,10 @@
 package com.pil97.ticketing.ticketing.application;
 
 import com.pil97.ticketing.common.exception.BusinessException;
+import com.pil97.ticketing.hold.error.HoldErrorCode;
 import com.pil97.ticketing.member.domain.Member;
+import com.pil97.ticketing.reservation.error.ReservationErrorCode;
+import com.pil97.ticketing.showtimeseat.error.ShowtimeSeatErrorCode;
 import com.pil97.ticketing.ticketing.api.dto.response.ReservationResponse;
 import com.pil97.ticketing.ticketing.domain.*;
 import com.pil97.ticketing.ticketing.domain.repository.HoldRepository;
@@ -17,7 +20,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
-import static com.pil97.ticketing.common.error.ErrorCode.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -106,7 +108,7 @@ class ReservationServiceTest {
       assertThatThrownBy(() -> reservationService.reserve(holdId))
         .isInstanceOf(BusinessException.class)
         .extracting("errorCode")
-        .isEqualTo(HOLD_NOT_FOUND);
+        .isEqualTo(HoldErrorCode.NOT_FOUND);
 
       verify(reservationRepository, never()).save(any());
     }
@@ -125,7 +127,7 @@ class ReservationServiceTest {
       assertThatThrownBy(() -> reservationService.reserve(holdId))
         .isInstanceOf(BusinessException.class)
         .extracting("errorCode")
-        .isEqualTo(HOLD_NOT_ACTIVE);
+        .isEqualTo(HoldErrorCode.NOT_ACTIVE);
 
       verify(reservationRepository, never()).save(any());
       verify(hold, never()).confirm();
@@ -146,7 +148,7 @@ class ReservationServiceTest {
       assertThatThrownBy(() -> reservationService.reserve(holdId))
         .isInstanceOf(BusinessException.class)
         .extracting("errorCode")
-        .isEqualTo(HOLD_EXPIRED);
+        .isEqualTo(HoldErrorCode.EXPIRED);
 
       verify(reservationRepository, never()).save(any());
       verify(hold, never()).confirm();
@@ -170,7 +172,7 @@ class ReservationServiceTest {
       assertThatThrownBy(() -> reservationService.reserve(holdId))
         .isInstanceOf(BusinessException.class)
         .extracting("errorCode")
-        .isEqualTo(SHOWTIME_SEAT_NOT_HELD);
+        .isEqualTo(ShowtimeSeatErrorCode.NOT_HELD);
 
       verify(reservationRepository, never()).save(any());
       verify(showtimeSeat, never()).markReserved();
@@ -212,7 +214,7 @@ class ReservationServiceTest {
     assertThatThrownBy(() -> reservationService.cancel(reservationId))
       .isInstanceOf(BusinessException.class)
       .extracting("errorCode")
-      .isEqualTo(RESERVATION_NOT_FOUND);
+      .isEqualTo(ReservationErrorCode.NOT_FOUND);
 
     verify(reservationRepository).findById(reservationId);
   }
@@ -231,7 +233,7 @@ class ReservationServiceTest {
     assertThatThrownBy(() -> reservationService.cancel(reservationId))
       .isInstanceOf(BusinessException.class)
       .extracting("errorCode")
-      .isEqualTo(RESERVATION_NOT_CONFIRMED);
+      .isEqualTo(ReservationErrorCode.NOT_CONFIRMED);
 
     verify(reservation, never()).cancel();
   }

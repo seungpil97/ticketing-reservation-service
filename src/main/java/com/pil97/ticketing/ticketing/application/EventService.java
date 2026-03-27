@@ -1,7 +1,7 @@
 package com.pil97.ticketing.ticketing.application;
 
-import com.pil97.ticketing.common.error.ErrorCode;
 import com.pil97.ticketing.common.exception.BusinessException;
+import com.pil97.ticketing.event.error.EventErrorCode;
 import com.pil97.ticketing.ticketing.api.dto.response.EventSummaryResponse;
 import com.pil97.ticketing.ticketing.api.dto.response.ShowtimeResponse;
 import com.pil97.ticketing.ticketing.application.dto.EventSummaryQueryResult;
@@ -66,7 +66,7 @@ public class EventService {
     if (showtimes.isEmpty()) {
       boolean exists = eventRepository.existsById(eventId);
       if (!exists) {
-        throw new BusinessException(ErrorCode.EVENT_NOT_FOUND);
+        throw new BusinessException(EventErrorCode.NOT_FOUND);
       }
       return List.of();
     }

@@ -1,11 +1,11 @@
 package com.pil97.ticketing.member.application;
 
-import com.pil97.ticketing.common.error.ErrorCode;
 import com.pil97.ticketing.common.exception.BusinessException;
 import com.pil97.ticketing.member.api.dto.request.MemberCreateRequest;
 import com.pil97.ticketing.member.api.dto.response.MemberResponse;
 import com.pil97.ticketing.member.domain.Member;
 import com.pil97.ticketing.member.domain.repository.MemberRepository;
+import com.pil97.ticketing.member.error.MemberErrorCode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,7 +19,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import java.util.List;
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -75,7 +76,7 @@ class MemberServiceTest {
       .isInstanceOf(BusinessException.class)
       .satisfies(ex -> {
         BusinessException be = (BusinessException) ex;
-        assertThat(be.getErrorCode()).isEqualTo(ErrorCode.MEMBER_NOT_FOUND);
+        assertThat(be.getErrorCode()).isEqualTo(MemberErrorCode.NOT_FOUND);
       });
 
     verify(memberRepository).findById(missingId);

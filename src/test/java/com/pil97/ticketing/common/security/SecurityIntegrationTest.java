@@ -1,7 +1,7 @@
 package com.pil97.ticketing.common.security;
 
 import com.pil97.ticketing.auth.application.TokenService;
-import com.pil97.ticketing.common.error.ErrorCode;
+import com.pil97.ticketing.auth.error.AuthErrorCode;
 import com.pil97.ticketing.common.jwt.JwtProvider;
 import com.pil97.ticketing.member.domain.Member;
 import com.pil97.ticketing.member.domain.repository.MemberRepository;
@@ -20,7 +20,8 @@ import java.util.Optional;
 import static org.hamcrest.Matchers.not;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -100,7 +101,7 @@ class SecurityIntegrationTest {
     mockMvc.perform(post("/showtimes/1/hold"))
       .andExpect(status().isUnauthorized())
       .andExpect(jsonPath("$.success").value(false))
-      .andExpect(jsonPath("$.error.code").value(ErrorCode.AUTH_UNAUTHORIZED.getCode()))
+      .andExpect(jsonPath("$.error.code").value(AuthErrorCode.UNAUTHORIZED.getCode()))
       .andExpect(jsonPath("$.data").doesNotExist());
   }
 
@@ -110,7 +111,7 @@ class SecurityIntegrationTest {
     mockMvc.perform(post("/holds/1/reserve"))
       .andExpect(status().isUnauthorized())
       .andExpect(jsonPath("$.success").value(false))
-      .andExpect(jsonPath("$.error.code").value(ErrorCode.AUTH_UNAUTHORIZED.getCode()));
+      .andExpect(jsonPath("$.error.code").value(AuthErrorCode.UNAUTHORIZED.getCode()));
   }
 
   @Test
@@ -119,7 +120,7 @@ class SecurityIntegrationTest {
     mockMvc.perform(delete("/reservations/1"))
       .andExpect(status().isUnauthorized())
       .andExpect(jsonPath("$.success").value(false))
-      .andExpect(jsonPath("$.error.code").value(ErrorCode.AUTH_UNAUTHORIZED.getCode()));
+      .andExpect(jsonPath("$.error.code").value(AuthErrorCode.UNAUTHORIZED.getCode()));
   }
 
   // ────────────────────────────────────────────────
@@ -157,7 +158,7 @@ class SecurityIntegrationTest {
     mockMvc.perform(post("/showtimes/1/hold")
         .header("Authorization", "Bearer " + expiredToken))
       .andExpect(status().isUnauthorized())
-      .andExpect(jsonPath("$.error.code").value(ErrorCode.AUTH_UNAUTHORIZED.getCode()));
+      .andExpect(jsonPath("$.error.code").value(AuthErrorCode.UNAUTHORIZED.getCode()));
   }
 
   @Test
@@ -166,7 +167,7 @@ class SecurityIntegrationTest {
     mockMvc.perform(post("/showtimes/1/hold")
         .header("Authorization", "Bearer this.is.not.valid"))
       .andExpect(status().isUnauthorized())
-      .andExpect(jsonPath("$.error.code").value(ErrorCode.AUTH_UNAUTHORIZED.getCode()));
+      .andExpect(jsonPath("$.error.code").value(AuthErrorCode.UNAUTHORIZED.getCode()));
   }
 
   @Test
@@ -177,7 +178,7 @@ class SecurityIntegrationTest {
     mockMvc.perform(post("/showtimes/1/hold")
         .header("Authorization", token))
       .andExpect(status().isUnauthorized())
-      .andExpect(jsonPath("$.error.code").value(ErrorCode.AUTH_UNAUTHORIZED.getCode()));
+      .andExpect(jsonPath("$.error.code").value(AuthErrorCode.UNAUTHORIZED.getCode()));
   }
 
   // ────────────────────────────────────────────────
@@ -196,6 +197,6 @@ class SecurityIntegrationTest {
     mockMvc.perform(post("/showtimes/1/hold")
         .header("Authorization", "Bearer " + token))
       .andExpect(status().isUnauthorized())
-      .andExpect(jsonPath("$.error.code").value(ErrorCode.AUTH_UNAUTHORIZED.getCode()));
+      .andExpect(jsonPath("$.error.code").value(AuthErrorCode.UNAUTHORIZED.getCode()));
   }
 }

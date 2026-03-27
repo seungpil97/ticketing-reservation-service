@@ -3,7 +3,7 @@ package com.pil97.ticketing.auth.api;
 import com.pil97.ticketing.auth.api.dto.response.LoginResponse;
 import com.pil97.ticketing.auth.api.dto.response.ReissueResponse;
 import com.pil97.ticketing.auth.application.AuthService;
-import com.pil97.ticketing.common.error.ErrorCode;
+import com.pil97.ticketing.auth.error.AuthErrorCode;
 import com.pil97.ticketing.common.exception.BusinessException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -60,7 +60,7 @@ class AuthControllerTest {
   void login_invalidCredentials_returns401() throws Exception {
     // given
     when(authService.login(any()))
-      .thenThrow(new BusinessException(ErrorCode.AUTH_INVALID_CREDENTIALS));
+      .thenThrow(new BusinessException(AuthErrorCode.INVALID_CREDENTIALS));
 
     // when & then
     mockMvc.perform(post("/auth/login")
@@ -70,7 +70,7 @@ class AuthControllerTest {
           """))
       .andExpect(status().isUnauthorized())
       .andExpect(jsonPath("$.success").value(false))
-      .andExpect(jsonPath("$.error.code").value(ErrorCode.AUTH_INVALID_CREDENTIALS.getCode()));
+      .andExpect(jsonPath("$.error.code").value(AuthErrorCode.INVALID_CREDENTIALS.getCode()));
   }
 
   @Test
@@ -123,7 +123,7 @@ class AuthControllerTest {
   void reissue_invalidToken_returns401() throws Exception {
     // given
     when(authService.reissue(any()))
-      .thenThrow(new BusinessException(ErrorCode.AUTH_REFRESH_TOKEN_INVALID));
+      .thenThrow(new BusinessException(AuthErrorCode.REFRESH_TOKEN_INVALID));
 
     // when & then
     mockMvc.perform(post("/auth/reissue")
@@ -133,7 +133,7 @@ class AuthControllerTest {
           """))
       .andExpect(status().isUnauthorized())
       .andExpect(jsonPath("$.success").value(false))
-      .andExpect(jsonPath("$.error.code").value(ErrorCode.AUTH_REFRESH_TOKEN_INVALID.getCode()));
+      .andExpect(jsonPath("$.error.code").value(AuthErrorCode.REFRESH_TOKEN_INVALID.getCode()));
   }
 
   @Test
@@ -141,7 +141,7 @@ class AuthControllerTest {
   void reissue_tokenNotFound_returns401() throws Exception {
     // given
     when(authService.reissue(any()))
-      .thenThrow(new BusinessException(ErrorCode.AUTH_REFRESH_TOKEN_NOT_FOUND));
+      .thenThrow(new BusinessException(AuthErrorCode.REFRESH_TOKEN_NOT_FOUND));
 
     // when & then
     mockMvc.perform(post("/auth/reissue")
@@ -151,7 +151,7 @@ class AuthControllerTest {
           """))
       .andExpect(status().isUnauthorized())
       .andExpect(jsonPath("$.success").value(false))
-      .andExpect(jsonPath("$.error.code").value(ErrorCode.AUTH_REFRESH_TOKEN_NOT_FOUND.getCode()));
+      .andExpect(jsonPath("$.error.code").value(AuthErrorCode.REFRESH_TOKEN_NOT_FOUND.getCode()));
   }
 
   // ────────────────────────────────────────────────
@@ -174,7 +174,7 @@ class AuthControllerTest {
   void logout_missingHeader_returns401() throws Exception {
     mockMvc.perform(post("/auth/logout"))
       .andExpect(status().isUnauthorized())
-      .andExpect(jsonPath("$.error.code").value(ErrorCode.AUTH_INVALID_TOKEN.getCode()));
+      .andExpect(jsonPath("$.error.code").value(AuthErrorCode.INVALID_TOKEN.getCode()));
   }
 
   @Test
@@ -184,6 +184,6 @@ class AuthControllerTest {
         .header("Authorization", "InvalidToken"))
       .andExpect(status().isUnauthorized())
       .andExpect(jsonPath("$.success").value(false))
-      .andExpect(jsonPath("$.error.code").value(ErrorCode.AUTH_INVALID_TOKEN.getCode()));
+      .andExpect(jsonPath("$.error.code").value(AuthErrorCode.INVALID_TOKEN.getCode()));
   }
 }

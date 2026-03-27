@@ -1,14 +1,9 @@
 package com.pil97.ticketing.ticketing.application;
 
-import com.pil97.ticketing.common.error.ErrorCode;
 import com.pil97.ticketing.common.exception.BusinessException;
-import com.pil97.ticketing.ticketing.api.dto.response.EventSummaryResponse;
-import com.pil97.ticketing.ticketing.api.dto.response.ShowtimeResponse;
+import com.pil97.ticketing.showtime.error.ShowtimeErrorCode;
 import com.pil97.ticketing.ticketing.api.dto.response.ShowtimeSeatResponse;
-import com.pil97.ticketing.ticketing.application.dto.EventSummaryQueryResult;
 import com.pil97.ticketing.ticketing.application.dto.ShowtimeSeatQueryResult;
-import com.pil97.ticketing.ticketing.domain.Showtime;
-import com.pil97.ticketing.ticketing.domain.repository.EventRepository;
 import com.pil97.ticketing.ticketing.domain.repository.ShowtimeRepository;
 import com.pil97.ticketing.ticketing.domain.repository.ShowtimeSeatRepository;
 import lombok.RequiredArgsConstructor;
@@ -43,7 +38,7 @@ public class ShowtimeService {
     if (results.isEmpty()) {
       boolean exists = showtimeRepository.existsById(showtimeId);
       if (!exists) {
-        throw new BusinessException(ErrorCode.SHOWTIME_NOT_FOUND);
+        throw new BusinessException(ShowtimeErrorCode.NOT_FOUND);
       }
       return List.of();
     }
