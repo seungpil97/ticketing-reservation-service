@@ -158,7 +158,7 @@ class SecurityIntegrationTest {
     mockMvc.perform(post("/showtimes/1/hold")
         .header("Authorization", "Bearer " + expiredToken))
       .andExpect(status().isUnauthorized())
-      .andExpect(jsonPath("$.error.code").value(AuthErrorCode.UNAUTHORIZED.getCode()));
+      .andExpect(jsonPath("$.error.code").value(AuthErrorCode.INVALID_TOKEN.getCode()));
   }
 
   @Test
@@ -167,7 +167,7 @@ class SecurityIntegrationTest {
     mockMvc.perform(post("/showtimes/1/hold")
         .header("Authorization", "Bearer this.is.not.valid"))
       .andExpect(status().isUnauthorized())
-      .andExpect(jsonPath("$.error.code").value(AuthErrorCode.UNAUTHORIZED.getCode()));
+      .andExpect(jsonPath("$.error.code").value(AuthErrorCode.INVALID_TOKEN.getCode()));
   }
 
   @Test
@@ -197,6 +197,6 @@ class SecurityIntegrationTest {
     mockMvc.perform(post("/showtimes/1/hold")
         .header("Authorization", "Bearer " + token))
       .andExpect(status().isUnauthorized())
-      .andExpect(jsonPath("$.error.code").value(AuthErrorCode.UNAUTHORIZED.getCode()));
+      .andExpect(jsonPath("$.error.code").value(AuthErrorCode.INVALID_TOKEN.getCode()));
   }
 }
