@@ -1,5 +1,6 @@
 package com.pil97.ticketing.common.exception;
 
+import com.pil97.ticketing.common.error.CommonErrorCode;
 import com.pil97.ticketing.common.error.ErrorCode;
 import com.pil97.ticketing.common.response.ApiResponse;
 import com.pil97.ticketing.common.response.ErrorResponse;
@@ -16,16 +17,16 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * ✅ 전역 예외 처리기
+ * 전역 예외 처리기
  * <p>
  * 컨트롤러마다 try-catch 하지 않고,
- * 여기서 예외를 잡아서 "표준 에러 응답(ApiResponse.error)" 형태로 내려준다.
+ * 여기서 예외를 잡아서 표준 에러 응답(ApiResponse.error) 형태로 내려준다.
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
   /**
-   * ✅ 1) Validation 실패 처리 (@Valid 걸린 DTO 검증 실패)
+   * 1) Validation 실패 처리 (@Valid 걸린 DTO 검증 실패)
    * - MethodArgumentNotValidException은 스프링이 자동으로 던져줌
    * - 여기서 field error를 details로 내려주면 클라이언트가 처리하기 편함
    */
@@ -42,7 +43,7 @@ public class GlobalExceptionHandler {
       .map(fe -> new FieldErrorDetail(fe.getField(), fe.getDefaultMessage()))
       .collect(Collectors.toList());
 
-    ErrorCode errorCode = ErrorCode.VALIDATION_FAILED;
+    CommonErrorCode errorCode = CommonErrorCode.VALIDATION_FAILED;
 
     ErrorResponse errorResponse = ErrorResponse.of(
       errorCode.getCode(),
@@ -57,7 +58,7 @@ public class GlobalExceptionHandler {
   }
 
   /**
-   * ✅ 2) 비즈니스 예외 처리 (내가 의도적으로 던진 예외)
+   * 2) 비즈니스 예외 처리 (의도적으로 던진 예외)
    * - 서비스/도메인에서 BusinessException을 던지면
    * - errorCode 기준으로 상태/코드/메시지를 표준 응답으로 내려줌
    */
@@ -66,7 +67,7 @@ public class GlobalExceptionHandler {
     BusinessException e,
     HttpServletRequest request
   ) {
-
+    // ErrorCode 인터페이스로 받아 모든 도메인 에러코드 처리 가능
     ErrorCode errorCode = e.getErrorCode();
 
     ErrorResponse errorResponse = ErrorResponse.of(
@@ -81,7 +82,7 @@ public class GlobalExceptionHandler {
   }
 
   /**
-   * ✅ 3) 잘못된 HTTP 메서드 처리 (405)
+   * 3) 잘못된 HTTP 메서드 처리 (405)
    * - 예: POST만 가능한데 GET으로 호출
    */
   @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
@@ -90,7 +91,7 @@ public class GlobalExceptionHandler {
     HttpServletRequest request
   ) {
 
-    ErrorCode errorCode = ErrorCode.COMMON_METHOD_NOT_ALLOWED;
+    CommonErrorCode errorCode = CommonErrorCode.METHOD_NOT_ALLOWED;
 
     ErrorResponse errorResponse = ErrorResponse.of(
       errorCode.getCode(),
@@ -104,7 +105,7 @@ public class GlobalExceptionHandler {
   }
 
   /**
-   * ✅ 3-1) DB 제약조건 위반 처리 (409)
+   * 3-1) DB 제약조건 위반 처리 (409)
    * - unique, fk, not null 등 DB 무결성 제약조건 위반 시 발생
    * - 현재는 특정 도메인으로 단정하지 않고 공통 409로 처리
    * - 프로젝트가 커지면 예외 원인을 분석해 도메인별 코드로 세분화 가능
@@ -115,7 +116,7 @@ public class GlobalExceptionHandler {
     HttpServletRequest request
   ) {
 
-    ErrorCode errorCode = ErrorCode.COMMON_CONFLICT;
+    CommonErrorCode errorCode = CommonErrorCode.CONFLICT;
 
     ErrorResponse errorResponse = ErrorResponse.of(
       errorCode.getCode(),
@@ -129,7 +130,7 @@ public class GlobalExceptionHandler {
   }
 
   /**
-   * ✅ 4) 그 외 모든 예외 (500)
+   * 4) 그 외 모든 예외 (500)
    * - 예상치 못한 에러는 여기로 떨어짐
    * - 실제 운영에서는 여기서 로그를 꼭 남김
    */
@@ -139,7 +140,7 @@ public class GlobalExceptionHandler {
     HttpServletRequest request
   ) {
 
-    ErrorCode errorCode = ErrorCode.COMMON_INTERNAL_ERROR;
+    CommonErrorCode errorCode = CommonErrorCode.INTERNAL_ERROR;
 
     ErrorResponse errorResponse = ErrorResponse.of(
       errorCode.getCode(),

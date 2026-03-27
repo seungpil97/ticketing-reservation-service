@@ -2,7 +2,7 @@ package com.pil97.ticketing.common.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pil97.ticketing.auth.application.TokenService;
-import com.pil97.ticketing.common.error.ErrorCode;
+import com.pil97.ticketing.auth.error.AuthErrorCode;
 import com.pil97.ticketing.common.jwt.JwtAuthenticationFilter;
 import com.pil97.ticketing.common.jwt.JwtProvider;
 import com.pil97.ticketing.common.response.ApiResponse;
@@ -73,8 +73,8 @@ public class SecurityConfig {
       .exceptionHandling(exception -> exception
         .authenticationEntryPoint((request, response, authException) -> {
           ErrorResponse errorResponse = ErrorResponse.of(
-            ErrorCode.AUTH_UNAUTHORIZED.getCode(),
-            ErrorCode.AUTH_UNAUTHORIZED.getMessage(),
+            AuthErrorCode.UNAUTHORIZED.getCode(),
+            AuthErrorCode.UNAUTHORIZED.getMessage(),
             request.getRequestURI()
           );
           response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -95,7 +95,7 @@ public class SecurityConfig {
         .anyRequest().authenticated()
       )
       .addFilterBefore(
-        new JwtAuthenticationFilter(jwtProvider, memberRepository, tokenService),
+        new JwtAuthenticationFilter(jwtProvider, memberRepository, tokenService, objectMapper),
         UsernamePasswordAuthenticationFilter.class
       );
 
