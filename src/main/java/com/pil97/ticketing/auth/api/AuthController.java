@@ -5,14 +5,14 @@ import com.pil97.ticketing.auth.api.dto.request.ReissueRequest;
 import com.pil97.ticketing.auth.api.dto.response.LoginResponse;
 import com.pil97.ticketing.auth.api.dto.response.ReissueResponse;
 import com.pil97.ticketing.auth.application.AuthService;
-import com.pil97.ticketing.common.error.ErrorCode;
+import com.pil97.ticketing.auth.error.AuthErrorCode;
 import com.pil97.ticketing.common.exception.BusinessException;
 import com.pil97.ticketing.common.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
 import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.*;
 
 
 @RestController
@@ -57,7 +57,7 @@ public class AuthController {
     @RequestHeader(value = "Authorization", required = false) String bearerToken
   ) {
     if (!StringUtils.hasText(bearerToken) || !bearerToken.startsWith("Bearer ")) {
-      throw new BusinessException(ErrorCode.AUTH_INVALID_TOKEN);
+      throw new BusinessException(AuthErrorCode.INVALID_TOKEN);
     }
     String accessToken = bearerToken.substring(7);
     authService.logout(accessToken);

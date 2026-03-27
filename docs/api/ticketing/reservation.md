@@ -34,7 +34,7 @@
 {
   "data": null,
   "error": {
-    "code": "HOLD-404",
+    "code": "HOLD-001",
     "details": [],
     "message": "Hold not found",
     "path": "/holds/999999/reserve",
@@ -53,19 +53,24 @@
 
 ### Hold
 
-* `HOLD-404`: Hold not found (404)
-* `HOLD-409`: Hold is not active (409)
-* `HOLD-409`: Hold is expired (409)
+* `HOLD-001`: Hold not found (404)
+* `HOLD-002`: Hold is not active (409)
+* `HOLD-003`: Hold is expired (409)
 
 ### ShowtimeSeat
 
-* `SHOWTIME-SEAT-409`: Showtime seat is not held (409)
+* `SHOWTIME-SEAT-002`: Showtime seat is not held (409)
+
+### Reservation
+
+* `RESERVATION-001`: Reservation not found (404)
+* `RESERVATION-002`: Reservation is not confirmed (409)
 
 ### Common
 
-* `COMMON-404`: Resource not found (404)
-* `COMMON-405`: Method not allowed (405)
-* `COMMON-500`: Internal server error (500)
+* `COMMON-004`: Resource not found (404)
+* `COMMON-005`: Method not allowed (405)
+* `COMMON-007`: Internal server error (500)
 
 ---
 
@@ -111,9 +116,10 @@ curl -X POST http://localhost:8080/holds/1/reserve
 
 Errors
 
-* `404` `HOLD-404`
-* `409` `HOLD-409`
-* `409` `SHOWTIME-SEAT-409`
+* `404` `HOLD-001`
+* `409` `HOLD-002`
+* `409` `HOLD-003` (Hold is expired)
+* `409` `SHOWTIME-SEAT-002`
 
 ---
 
@@ -128,7 +134,7 @@ Response (404)
 {
   "data": null,
   "error": {
-    "code": "HOLD-404",
+    "code": "HOLD-001",
     "details": [],
     "message": "Hold not found",
     "path": "/holds/999999/reserve",
@@ -163,7 +169,7 @@ Response (409)
 {
   "data": null,
   "error": {
-    "code": "HOLD-409",
+    "code": "HOLD-002",
     "details": [],
     "message": "Hold is not active",
     "path": "/holds/1/reserve",
@@ -197,7 +203,7 @@ Response (409)
 {
   "data": null,
   "error": {
-    "code": "HOLD-409",
+    "code": "HOLD-003",
     "details": [],
     "message": "Hold is expired",
     "path": "/holds/2/reserve",
@@ -232,7 +238,7 @@ Response (409)
 {
   "data": null,
   "error": {
-    "code": "SHOWTIME-SEAT-409",
+    "code": "SHOWTIME-SEAT-002",
     "details": [],
     "message": "Showtime seat is not held",
     "path": "/holds/3/reserve",
@@ -294,8 +300,8 @@ curl -i -X DELETE http://localhost:8080/reservations/1
 
 Errors
 
-* `404` `RESERVATION-404`
-* `409` `RESERVATION-409`
+* `404` `RESERVATION-001`
+* `409` `RESERVATION-002`
 
 ---
 
@@ -309,7 +315,7 @@ Response (404)
 {
   "data": null,
   "error": {
-    "code": "RESERVATION-404",
+    "code": "RESERVATION-001",
     "details": [],
     "message": "Reservation not found",
     "path": "/reservations/999999",
@@ -341,7 +347,7 @@ Response (409)
 {
   "data": null,
   "error": {
-    "code": "RESERVATION-409",
+    "code": "RESERVATION-002",
     "details": [],
     "message": "Reservation is not confirmed",
     "path": "/reservations/1",

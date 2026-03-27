@@ -4,6 +4,7 @@ import com.pil97.ticketing.auth.api.dto.request.LoginRequest;
 import com.pil97.ticketing.auth.api.dto.request.ReissueRequest;
 import com.pil97.ticketing.auth.api.dto.response.LoginResponse;
 import com.pil97.ticketing.auth.api.dto.response.ReissueResponse;
+import com.pil97.ticketing.auth.error.AuthErrorCode;
 import com.pil97.ticketing.common.error.ErrorCode;
 import com.pil97.ticketing.common.exception.BusinessException;
 import com.pil97.ticketing.common.jwt.JwtProvider;
@@ -83,7 +84,7 @@ class AuthServiceTest {
       .isInstanceOf(BusinessException.class)
       .satisfies(ex -> {
         BusinessException be = (BusinessException) ex;
-        assertThat(be.getErrorCode()).isEqualTo(ErrorCode.AUTH_INVALID_CREDENTIALS);
+        assertThat(be.getErrorCode()).isEqualTo(AuthErrorCode.INVALID_CREDENTIALS);
       });
 
     verify(jwtProvider, never()).generateAccessToken(any());
@@ -107,7 +108,7 @@ class AuthServiceTest {
       .isInstanceOf(BusinessException.class)
       .satisfies(ex -> {
         BusinessException be = (BusinessException) ex;
-        assertThat(be.getErrorCode()).isEqualTo(ErrorCode.AUTH_INVALID_CREDENTIALS);
+        assertThat(be.getErrorCode()).isEqualTo(AuthErrorCode.INVALID_CREDENTIALS);
       });
 
     verify(jwtProvider, never()).generateAccessToken(any());
@@ -137,7 +138,7 @@ class AuthServiceTest {
       () -> authService.login(wrongPw)).getErrorCode();
 
     // then
-    assertThat(code1).isEqualTo(code2).isEqualTo(ErrorCode.AUTH_INVALID_CREDENTIALS);
+    assertThat(code1).isEqualTo(code2).isEqualTo(AuthErrorCode.INVALID_CREDENTIALS);
   }
 
   // ────────────────────────────────────────────────
@@ -180,7 +181,7 @@ class AuthServiceTest {
       .isInstanceOf(BusinessException.class)
       .satisfies(ex -> {
         assertThat(((BusinessException) ex).getErrorCode())
-          .isEqualTo(ErrorCode.AUTH_REFRESH_TOKEN_INVALID);
+          .isEqualTo(AuthErrorCode.REFRESH_TOKEN_INVALID);
       });
 
     verify(jwtProvider, never()).generateAccessToken(any());
@@ -201,7 +202,7 @@ class AuthServiceTest {
       .isInstanceOf(BusinessException.class)
       .satisfies(ex -> {
         assertThat(((BusinessException) ex).getErrorCode())
-          .isEqualTo(ErrorCode.AUTH_REFRESH_TOKEN_NOT_FOUND);
+          .isEqualTo(AuthErrorCode.REFRESH_TOKEN_NOT_FOUND);
       });
 
     verify(jwtProvider, never()).generateAccessToken(any());
@@ -222,7 +223,7 @@ class AuthServiceTest {
       .isInstanceOf(BusinessException.class)
       .satisfies(ex -> {
         assertThat(((BusinessException) ex).getErrorCode())
-          .isEqualTo(ErrorCode.AUTH_REFRESH_TOKEN_INVALID);
+          .isEqualTo(AuthErrorCode.REFRESH_TOKEN_INVALID);
       });
 
     verify(tokenService).deleteRefreshToken(1L);

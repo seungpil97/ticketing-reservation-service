@@ -1,6 +1,6 @@
 package com.pil97.ticketing.common.exception;
 
-import com.pil97.ticketing.common.error.ErrorCode;
+import com.pil97.ticketing.common.error.CommonErrorCode;
 
 /**
  * ✅ 404(Not Found) 계열 예외를 "의미 있게" 분리하기 위한 전용 예외 클래스(옵션)
@@ -35,7 +35,7 @@ public class NotFoundException extends BusinessException {
    * - GlobalExceptionHandler가 BusinessException을 잡아서
    * errorCode의 status/code/message로 표준 응답을 만들기 때문
    */
-  public NotFoundException(ErrorCode errorCode) {
+  public NotFoundException(CommonErrorCode errorCode) {
     super(errorCode);
   }
 }

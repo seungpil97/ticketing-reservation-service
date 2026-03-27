@@ -1,6 +1,9 @@
 package com.pil97.ticketing.ticketing.application;
 
 import com.pil97.ticketing.common.exception.BusinessException;
+import com.pil97.ticketing.hold.error.HoldErrorCode;
+import com.pil97.ticketing.reservation.error.ReservationErrorCode;
+import com.pil97.ticketing.showtimeseat.error.ShowtimeSeatErrorCode;
 import com.pil97.ticketing.ticketing.api.dto.response.ReservationResponse;
 import com.pil97.ticketing.ticketing.domain.*;
 import com.pil97.ticketing.ticketing.domain.repository.HoldRepository;
@@ -10,8 +13,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-
-import static com.pil97.ticketing.common.error.ErrorCode.*;
 
 @Service
 @RequiredArgsConstructor
@@ -39,7 +40,7 @@ public class ReservationService {
   public ReservationResponse reserve(Long holdId) {
     // 1) HOLD 존재 여부 확인
     Hold hold = holdRepository.findById(holdId)
-      .orElseThrow(() -> new BusinessException(HOLD_NOT_FOUND));
+      .orElseThrow(() -> new BusinessException(HoldErrorCode.NOT_FOUND));
 
     // 2) 예약 가능한 HOLD인지 검증
     validateReservableHold(hold);
@@ -93,7 +94,7 @@ public class ReservationService {
    */
   private void validateActiveHold(Hold hold) {
     if (hold.getStatus() != HoldStatus.ACTIVE) {
-      throw new BusinessException(HOLD_NOT_ACTIVE);
+      throw new BusinessException(HoldErrorCode.NOT_ACTIVE);
     }
   }
 
@@ -105,7 +106,7 @@ public class ReservationService {
     LocalDateTime now = LocalDateTime.now();
 
     if (!hold.getExpiresAt().isAfter(now)) {
-      throw new BusinessException(HOLD_EXPIRED);
+      throw new BusinessException(HoldErrorCode.EXPIRED);
     }
   }
 
@@ -123,7 +124,7 @@ public class ReservationService {
   public void cancel(Long reservationId) {
     // 1) 예약 존재 여부 확인
     Reservation reservation = reservationRepository.findById(reservationId)
-      .orElseThrow(() -> new BusinessException(RESERVATION_NOT_FOUND));
+      .orElseThrow(() -> new BusinessException(ReservationErrorCode.NOT_FOUND));
 
     // 2) 취소 가능한 예약인지 검증
     validateCancellable(reservation);
@@ -142,7 +143,7 @@ public class ReservationService {
    */
   private void validateHeldSeat(Hold hold) {
     if (hold.getShowtimeSeat().getStatus() != ShowtimeSeatStatus.HELD) {
-      throw new BusinessException(SHOWTIME_SEAT_NOT_HELD);
+      throw new BusinessException(ShowtimeSeatErrorCode.NOT_HELD);
     }
   }
 
@@ -152,7 +153,7 @@ public class ReservationService {
    */
   private void validateCancellable(Reservation reservation) {
     if (reservation.getStatus() != ReservationStatus.CONFIRMED) {
-      throw new BusinessException(RESERVATION_NOT_CONFIRMED);
+      throw new BusinessException(ReservationErrorCode.NOT_CONFIRMED);
     }
   }
 }

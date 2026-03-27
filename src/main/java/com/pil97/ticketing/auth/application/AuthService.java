@@ -4,7 +4,7 @@ import com.pil97.ticketing.auth.api.dto.request.LoginRequest;
 import com.pil97.ticketing.auth.api.dto.request.ReissueRequest;
 import com.pil97.ticketing.auth.api.dto.response.LoginResponse;
 import com.pil97.ticketing.auth.api.dto.response.ReissueResponse;
-import com.pil97.ticketing.common.error.ErrorCode;
+import com.pil97.ticketing.auth.error.AuthErrorCode;
 import com.pil97.ticketing.common.exception.BusinessException;
 import com.pil97.ticketing.common.jwt.JwtProvider;
 import com.pil97.ticketing.member.domain.Member;
@@ -40,11 +40,11 @@ public class AuthService {
 
     // 1) 이메일로 회원 조회
     Member member = memberRepository.findByEmail(request.getEmail())
-      .orElseThrow(() -> new BusinessException(ErrorCode.AUTH_INVALID_CREDENTIALS));
+      .orElseThrow(() -> new BusinessException(AuthErrorCode.INVALID_CREDENTIALS));
 
     // 2) 비밀번호 검증
     if (!passwordEncoder.matches(request.getPassword(), member.getPassword())) {
-      throw new BusinessException(ErrorCode.AUTH_INVALID_CREDENTIALS);
+      throw new BusinessException(AuthErrorCode.INVALID_CREDENTIALS);
     }
 
     // 3) AccessToken + RefreshToken 발급
@@ -70,19 +70,19 @@ public class AuthService {
 
     // 1) 서명/만료 검증
     if (!jwtProvider.validateToken(refreshToken)) {
-      throw new BusinessException(ErrorCode.AUTH_REFRESH_TOKEN_INVALID);
+      throw new BusinessException(AuthErrorCode.REFRESH_TOKEN_INVALID);
     }
 
     Long memberId = jwtProvider.getMemberId(refreshToken);
 
     // 2) Redis 존재 여부 확인
     String storedToken = tokenService.getRefreshToken(memberId)
-      .orElseThrow(() -> new BusinessException(ErrorCode.AUTH_REFRESH_TOKEN_NOT_FOUND));
+      .orElseThrow(() -> new BusinessException(AuthErrorCode.REFRESH_TOKEN_NOT_FOUND));
 
     // 3) 저장값과 요청값 불일치 = 탈취 감지 → 즉시 강제 로그아웃
     if (!storedToken.equals(refreshToken)) {
       tokenService.deleteRefreshToken(memberId);
-      throw new BusinessException(ErrorCode.AUTH_REFRESH_TOKEN_INVALID);
+      throw new BusinessException(AuthErrorCode.REFRESH_TOKEN_INVALID);
     }
 
     // 4) 새 AccessToken + 새 RefreshToken 발급
