@@ -51,6 +51,8 @@ public class SecurityConfig {
    * - POST /auth/reissue          AccessToken 재발급
    * - GET  /events/**             공연/회차 조회
    * - GET  /showtimes/{id}/seats  좌석 조회
+   * -      /swagger-ui/**         Swagger UI
+   * -      /v3/api-docs/**        Swagger API 스펙
    * <p>
    * 인증 필요 API (authenticated)
    * - POST   /showtimes/{id}/hold     좌석 선점
@@ -92,6 +94,8 @@ public class SecurityConfig {
         .requestMatchers(HttpMethod.POST, "/auth/reissue").permitAll()
         .requestMatchers(HttpMethod.GET, "/events/**").permitAll()
         .requestMatchers(HttpMethod.GET, "/showtimes/*/seats").permitAll()
+        // Swagger UI 접근 허용
+        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
         .anyRequest().authenticated()
       )
       .addFilterBefore(
