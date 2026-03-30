@@ -3,6 +3,7 @@ package com.pil97.ticketing.showtime.api;
 import com.pil97.ticketing.common.response.ApiResponse;
 import com.pil97.ticketing.showtime.api.dto.response.ShowtimeSeatResponse;
 import com.pil97.ticketing.showtime.application.ShowtimeService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+@Tag(name = "4. Showtime", description = "회차 API - 회차 좌석 목록 조회")
 @RestController
 @RequestMapping("/showtimes")
 @RequiredArgsConstructor
@@ -20,7 +22,7 @@ public class ShowtimeController {
   private final ShowtimeService showtimeService;
 
   /**
-   * ✅ GET /showtimes/{showtimeId}/seats
+   * GET /showtimes/{showtimeId}/seats
    * <p>
    * 이 API의 목적:
    * - 특정 회차의 좌석 목록을 조회한다.
@@ -36,10 +38,10 @@ public class ShowtimeController {
     @PathVariable Long showtimeId
   ) {
 
-    // ✅ 서비스 호출: 특정 회차의 좌석 목록 조회
+    // 서비스 호출: 특정 회차의 좌석 목록 조회
     List<ShowtimeSeatResponse> responses = showtimeService.getSeats(showtimeId);
 
-    // ✅ 200 OK + 표준 응답
+    // 200 OK + 표준 응답
     return ResponseEntity.ok(ApiResponse.success(responses));
   }
 }
