@@ -1,6 +1,6 @@
 package com.pil97.ticketing.member.api.dto.response;
 
-import com.pil97.ticketing.common.api.dto.PageInfo;
+import com.pil97.ticketing.common.response.PageInfo;
 import com.pil97.ticketing.member.domain.Member;
 import org.springframework.data.domain.Page;
 
