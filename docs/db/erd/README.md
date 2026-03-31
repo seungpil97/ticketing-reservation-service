@@ -70,7 +70,7 @@ erDiagram
 
     reservations {
         bigint id PK
-        bigint hold_id FK UK "NOT NULL"
+        bigint hold_id FK "NOT NULL UK - HOLD 1:1 예약 보장"
         bigint showtime_id FK "NOT NULL"
         bigint seat_id FK "NOT NULL"
         bigint member_id FK "NOT NULL"
