@@ -6,6 +6,7 @@ import com.pil97.ticketing.member.api.dto.request.MemberUpdateRequest;
 import com.pil97.ticketing.member.api.dto.response.MemberPageResponse;
 import com.pil97.ticketing.member.api.dto.response.MemberResponse;
 import com.pil97.ticketing.member.application.MemberService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -19,12 +20,13 @@ import java.net.URI;
 import java.util.List;
 
 /**
- * ✅ API 컨트롤러
+ * API 컨트롤러
  * - 요청을 받고(@RequestBody)
  * - 검증하고(@Valid)
  * - 서비스 호출하고
  * - 표준 응답(ApiResponse)으로 감싸서 반환
  */
+@Tag(name = "2. Member", description = "회원 API - 회원 생성 / 조회 / 수정 / 삭제")
 @RestController
 @RequestMapping("/members")
 @RequiredArgsConstructor
@@ -33,7 +35,7 @@ public class MemberController {
   private final MemberService memberService;
 
   /**
-   * ✅ GET /members/{id}
+   * GET /members/{id}
    * <p>
    * 이 API의 목적:
    * - 특정 id의 회원을 "단건 조회"한다.
@@ -49,19 +51,19 @@ public class MemberController {
    */
   @GetMapping("/{id}")
   public ResponseEntity<ApiResponse<MemberResponse>> getById(
-    // ✅ @PathVariable: URL 경로의 {id} 값을 메서드 파라미터로 바인딩
+    // @PathVariable: URL 경로의 {id} 값을 메서드 파라미터로 바인딩
     // 예) GET /members/10  -> id = 10
     @PathVariable Long id
   ) {
-    // ✅ 서비스 호출: 조회 로직/예외 처리는 서비스가 담당 (컨트롤러는 얇게 유지)
+    // 서비스 호출: 조회 로직/예외 처리는 서비스가 담당 (컨트롤러는 얇게 유지)
     MemberResponse response = memberService.getById(id);
 
-    // ✅ 200 OK + 표준 응답 포맷(ApiResponse)
+    // 200 OK + 표준 응답 포맷(ApiResponse)
     return ResponseEntity.ok(ApiResponse.success(response));
   }
 
   /**
-   * ✅ GET /members
+   * GET /members
    * <p>
    * 이 API의 목적:
    * - 회원 목록을 페이징으로 조회한다.
@@ -83,15 +85,15 @@ public class MemberController {
     @PageableDefault(size = 20, sort = "id", direction = Sort.Direction.DESC) Pageable pageable
   ) {
 
-    // ✅ 서비스 호출: 페이징/정렬 입력(Pageable)을 서비스로 전달
+    // 서비스 호출: 페이징/정렬 입력(Pageable)을 서비스로 전달
     MemberPageResponse responses = memberService.list(pageable);
 
-    // ✅ 200 OK + 표준 응답
+    // 200 OK + 표준 응답
     return ResponseEntity.ok(ApiResponse.success(responses));
   }
 
   /**
-   * ✅ POST /members
+   * POST /members
    * <p>
    * 이 API의 목적:
    * - "회원 생성" 요청을 받아 새 회원을 만든다.
@@ -108,15 +110,15 @@ public class MemberController {
    */
   @PostMapping
   public ResponseEntity<ApiResponse<MemberResponse>> create(
-    // ✅ @RequestBody: HTTP body(JSON)를 MemberCreateRequest로 변환해서 받는다.
-    // ✅ @Valid: 변환된 객체에 대해 Bean Validation(@NotBlank 등)을 수행한다.
+    // @RequestBody: HTTP body(JSON)를 MemberCreateRequest로 변환해서 받는다.
+    // @Valid: 변환된 객체에 대해 Bean Validation(@NotBlank 등)을 수행한다.
     @Valid @RequestBody MemberCreateRequest request
   ) {
-    // ✅ 서비스(유스케이스) 호출: 실제 생성 로직은 서비스에 위임해서 컨트롤러를 얇게 유지
+    // 서비스(유스케이스) 호출: 실제 생성 로직은 서비스에 위임해서 컨트롤러를 얇게 유지
     MemberResponse response = memberService.create(request);
 
     /**
-     * ✅ Location 헤더에 넣을 URI 생성
+     * Location 헤더에 넣을 URI 생성
      *
      * fromCurrentRequest():
      * - 현재 요청 URI를 기반으로 시작한다.
@@ -137,11 +139,11 @@ public class MemberController {
     URI location = ServletUriComponentsBuilder
       .fromCurrentRequest()
       .path("/{id}")
-      .buildAndExpand(response.id()) // ✅ record accessor: id 값 가져오기
+      .buildAndExpand(response.id()) // record accessor: id 값 가져오기
       .toUri();
 
     /**
-     * ✅ 201 Created + Location 헤더 + 표준 응답 바디
+     * 201 Created + Location 헤더 + 표준 응답 바디
      *
      * ResponseEntity.created(location):
      * - HTTP 상태를 201 Created로 설정하고
@@ -156,7 +158,7 @@ public class MemberController {
 
 
   /**
-   * ✅ DELETE /members/{id}
+   * DELETE /members/{id}
    * <p>
    * 목적:
    * - 특정 회원(id)을 삭제한다.
@@ -180,7 +182,7 @@ public class MemberController {
 
 
   /**
-   * ✅ DELETE /members/{id}
+   * DELETE /members/{id}
    * <p>
    * 목적:
    * - 특정 회원(id)의 정보를 삭제한다. (DELETE)

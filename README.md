@@ -36,6 +36,9 @@
 * Showtime API: `docs/api/ticketing/showtime.md`
 * Reservation API: `docs/api/ticketing/reservation.md`
 * Auth API: `docs/api/auth/auth.md`
+* ERD: [`docs/erd/README.md`](docs/erd/README.md)
+* 아키텍처 다이어그램: [`docs/architecture/README.md`](docs/architecture/README.md)
+* Swagger UI: `http://localhost:8080/swagger-ui/index.html`
 * Devlog: `docs/devlog/README.md`
 * DB Setup (Flyway): `docs/db/README.md`
 

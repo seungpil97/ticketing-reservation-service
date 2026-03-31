@@ -8,6 +8,7 @@ import com.pil97.ticketing.auth.application.AuthService;
 import com.pil97.ticketing.auth.error.AuthErrorCode;
 import com.pil97.ticketing.common.exception.BusinessException;
 import com.pil97.ticketing.common.response.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +16,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 
+@Tag(name = "1. Auth", description = "인증 API - 로그인 / 토큰 재발급 / 로그아웃")
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
