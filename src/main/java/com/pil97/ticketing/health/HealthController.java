@@ -5,7 +5,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "7. Health", description = "헬스체크 API - 서버 / DB 상태 확인")
+@Tag(name = "99. Health", description = "헬스체크 API - 서버 / DB 상태 확인")
 @RestController
 public class HealthController {
 

@@ -30,6 +30,11 @@ jwt:
   expiration-ms: 900000          # 15분
   refresh-expiration-ms: 604800000  # 7일
 
+queue:
+  scheduler:
+    batch-size: 5          # 스케줄러 1회 실행 시 입장 허용 인원
+    fixed-delay-ms: 10000  # 스케줄러 실행 주기 (10초)
+
 # dev에서는 SQL 로그 보는 게 편함 (common이 이미 debug/trace면 굳이 안 써도 됨)
 # logging:
 #   level:
