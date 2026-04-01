@@ -43,9 +43,9 @@ flowchart TD
 
 ## 2. 대기열 흐름
 
-> **초안 문서입니다.** TASK-029 구현 완료 후 실제 구현 기준으로 업데이트 예정입니다.
-
 Redis Sorted Set 기반으로 순번을 발급하고 입장을 허용하는 흐름입니다.
+
+> **참고:** 입장 허용 스케줄러(`admitMembers`)의 이벤트별 순회 로직은 TASK-030에서 완성 예정입니다.
 
 ```mermaid
 sequenceDiagram
@@ -70,6 +70,8 @@ sequenceDiagram
     end
 
     User->>API: GET /queue/status (대기 상태 확인)
+    API->>Redis: EXISTS token:user:{userId} (입장 토큰 확인)
+    Redis-->>API: 토큰 없음
     API->>Redis: ZRANK queue:event:{eventId} userId
     Redis-->>API: 현재 순번
     API-->>User: 200 OK (현재 순번 또는 입장 가능 여부)
@@ -116,11 +118,11 @@ flowchart TD
 
 ## Redis Key 요약
 
-| Key | 용도 | TTL |
-|---|---|---|
-| `refresh:{memberId}` | RefreshToken 저장 | 7일 |
-| `blacklist:{accessToken}` | AccessToken 블랙리스트 | 잔여 만료 시간 |
-| `events:list` | 이벤트 목록 캐시 | 10분 |
-| `queue:event:{eventId}` | 대기열 순번 (Sorted Set) | 이벤트 종료 시 |
-| `token:user:{userId}` | 대기열 입장 토큰 | 30분 |
-| `lock:seat:{seatId}` | 좌석 분산락 | 락 획득 TTL |
+| Key                       | 용도                  | TTL      |
+|---------------------------|---------------------|----------|
+| `refresh:{memberId}`      | RefreshToken 저장     | 7일       |
+| `blacklist:{accessToken}` | AccessToken 블랙리스트   | 잔여 만료 시간 |
+| `events:list`             | 이벤트 목록 캐시           | 10분      |
+| `queue:event:{eventId}`   | 대기열 순번 (Sorted Set) | 이벤트 종료 시 |
+| `token:user:{userId}`     | 대기열 입장 토큰           | 30분      |
+| `lock:seat:{seatId}`      | 좌석 분산락              | 락 획득 TTL |
