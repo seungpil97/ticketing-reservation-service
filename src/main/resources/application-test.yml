@@ -27,8 +27,15 @@ jwt:
   expiration-ms: 900000          # 15분
   refresh-expiration-ms: 604800000  # 7일
 
+queue:
+  scheduler:
+    batch-size: 5
+    fixed-delay-ms: 10000
+
+
 # test에서는 로그 소음 줄이기
 logging:
   level:
     org.hibernate.SQL: off
     org.hibernate.orm.jdbc.bind: off
+

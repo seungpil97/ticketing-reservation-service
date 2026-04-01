@@ -5,6 +5,7 @@ import com.pil97.ticketing.common.lock.DistributedLockService;
 import com.pil97.ticketing.hold.domain.Hold;
 import com.pil97.ticketing.member.domain.Member;
 import com.pil97.ticketing.member.domain.repository.MemberRepository;
+import com.pil97.ticketing.queue.application.QueueService;
 import com.pil97.ticketing.seat.domain.Seat;
 import com.pil97.ticketing.seat.error.SeatErrorCode;
 import com.pil97.ticketing.showtime.domain.Showtime;
@@ -30,7 +31,7 @@ import java.time.LocalDateTime;
 public class HoldService {
 
   /**
-   * ✅ HOLD 기본 만료 시간(분)
+   * HOLD 기본 만료 시간(분)
    * - 이번 TASK에서는 고정 5분으로 처리
    * - 추후 설정값 분리(application.yml) 또는 정책화 가능
    */
@@ -42,9 +43,10 @@ public class HoldService {
   private final ShowtimeSeatRepository showtimeSeatRepository;
   private final MemberRepository memberRepository;
   private final DistributedLockService distributedLockService;
+  private final QueueService queueService;
 
   /**
-   * ✅ 좌석 선점(HOLD) 진입점
+   * 좌석 선점(HOLD) 진입점
    * - Redis 분산락을 획득한 뒤 실제 선점 로직을 실행한다
    * - 락 키: "hold:seat:{showtimeId}:{seatId}"
    * → 같은 회차의 같은 좌석에 대한 동시 요청만 직렬화되도록 설계
@@ -58,6 +60,10 @@ public class HoldService {
    */
   @Transactional
   public HoldResponse hold(Long showtimeId, HoldCreateRequest request) {
+
+    // 입장 토큰 검증 - 대기열을 통해 입장 허용된 유저만 HOLD 가능
+    queueService.validateAdmissionToken(request.getMemberId());
+
     return distributedLockService.executeWithLock(
       "hold:seat:" + showtimeId + ":" + request.getSeatId(),
       3L,
@@ -68,7 +74,7 @@ public class HoldService {
 
 
   /**
-   * ✅ 좌석 선점(HOLD) 실제 처리
+   * 좌석 선점(HOLD) 실제 처리
    * - 분산락 획득 후 호출되는 내부 메서드
    * - showtime, seat, showtimeSeat, member 존재 여부를 검증
    * - AVAILABLE 상태의 좌석만 HOLD 가능
@@ -126,7 +132,7 @@ public class HoldService {
   }
 
   /**
-   * ✅ 좌석이 선점 가능한 상태인지 검증
+   * 좌석이 선점 가능한 상태인지 검증
    * - AVAILABLE 상태가 아니면 HOLD 불가
    * - 이미 HELD 또는 RESERVED 상태인 경우 409 예외 처리
    */

@@ -2,6 +2,7 @@ package com.pil97.ticketing.hold.application;
 
 import com.pil97.ticketing.hold.api.dto.request.HoldCreateRequest;
 import com.pil97.ticketing.hold.application.HoldService;
+import com.pil97.ticketing.queue.domain.repository.QueueRepository;
 import com.pil97.ticketing.showtimeseat.domain.ShowtimeSeatStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -40,6 +41,9 @@ class HoldConcurrencyTest {
   @Autowired
   private JdbcTemplate jdbcTemplate;
 
+  @Autowired
+  private QueueRepository queueRepository;
+
   private Long showtimeId;
   private Long seatId;
   private Long memberId;
@@ -68,6 +72,10 @@ class HoldConcurrencyTest {
         + "select id from showtime_seat where showtime_id = ? and seat_id = ?)",
       showtimeId, seatId
     );
+
+    // 동시성 테스트에서는 입장 토큰 검증 우회
+    // memberId 1번에 대해 임시 입장 토큰 발급
+    queueRepository.saveAdmissionToken(memberId, "test-token");
   }
 
   @Test

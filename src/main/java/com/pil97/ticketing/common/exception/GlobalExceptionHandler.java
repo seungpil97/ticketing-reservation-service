@@ -6,8 +6,10 @@ import com.pil97.ticketing.common.response.ApiResponse;
 import com.pil97.ticketing.common.response.ErrorResponse;
 import com.pil97.ticketing.common.response.FieldErrorDetail;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -22,6 +24,7 @@ import java.util.stream.Collectors;
  * 컨트롤러마다 try-catch 하지 않고,
  * 여기서 예외를 잡아서 표준 에러 응답(ApiResponse.error) 형태로 내려준다.
  */
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -140,6 +143,9 @@ public class GlobalExceptionHandler {
     HttpServletRequest request
   ) {
 
+    // 예상치 못한 예외는 반드시 로그를 남긴다
+    log.error("Unhandled exception: path={} message={}", request.getRequestURI(), e.getMessage(), e);
+
     CommonErrorCode errorCode = CommonErrorCode.INTERNAL_ERROR;
 
     ErrorResponse errorResponse = ErrorResponse.of(
@@ -148,6 +154,25 @@ public class GlobalExceptionHandler {
       request.getRequestURI()
     );
 
+    return ResponseEntity
+      .status(errorCode.getStatus())
+      .body(ApiResponse.error(errorResponse));
+  }
+
+  @ExceptionHandler(HttpMessageNotReadableException.class)
+  public ResponseEntity<ApiResponse<Void>> handleHttpMessageNotReadable(
+    HttpMessageNotReadableException e,
+    HttpServletRequest request
+  ) {
+    // 클라이언트 요청 오류이므로 WARN 레벨
+    log.warn("Request body missing or malformed: path={}", request.getRequestURI());
+
+    CommonErrorCode errorCode = CommonErrorCode.VALIDATION_FAILED;
+    ErrorResponse errorResponse = ErrorResponse.of(
+      errorCode.getCode(),
+      errorCode.getMessage(),
+      request.getRequestURI()
+    );
     return ResponseEntity
       .status(errorCode.getStatus())
       .body(ApiResponse.error(errorResponse));
