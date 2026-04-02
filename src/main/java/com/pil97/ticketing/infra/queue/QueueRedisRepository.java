@@ -22,6 +22,7 @@ public class QueueRedisRepository implements QueueRepository {
 
   private static final String QUEUE_KEY_PREFIX = "queue:event:";
   private static final String TOKEN_KEY_PREFIX = "token:user:";
+  private static final String ACTIVE_EVENTS_KEY = "queue:active:events";
   private static final Duration ADMISSION_TOKEN_TTL = Duration.ofMinutes(30);
 
   private final StringRedisTemplate redisTemplate;
@@ -85,6 +86,46 @@ public class QueueRedisRepository implements QueueRepository {
   @Override
   public boolean hasAdmissionToken(Long memberId) {
     return Boolean.TRUE.equals(redisTemplate.hasKey(tokenKey(memberId)));
+  }
+
+  /**
+   * 활성 대기열 이벤트 등록
+   * SADD queue:active:events {eventId}
+   */
+  @Override
+  public void addActiveEvent(Long eventId) {
+    redisTemplate.opsForSet()
+      .add(ACTIVE_EVENTS_KEY, String.valueOf(eventId));
+  }
+
+  /**
+   * 활성 대기열 이벤트 제거
+   * SREM queue:active:events {eventId}
+   */
+  @Override
+  public void removeActiveEvent(Long eventId) {
+    redisTemplate.opsForSet()
+      .remove(ACTIVE_EVENTS_KEY, String.valueOf(eventId));
+  }
+
+  /**
+   * 활성 대기열 이벤트 ID 목록 조회
+   * SMEMBERS queue:active:events
+   */
+  @Override
+  public Set<String> getActiveEventIds() {
+    Set<String> members = redisTemplate.opsForSet()
+      .members(ACTIVE_EVENTS_KEY);
+    return members != null ? members : Collections.emptySet();
+  }
+
+  /**
+   * 대기열 key 삭제
+   * DEL queue:event:{eventId}
+   */
+  @Override
+  public void deleteQueue(Long eventId) {
+    redisTemplate.delete(queueKey(eventId));
   }
 
   // queue:event:{eventId}

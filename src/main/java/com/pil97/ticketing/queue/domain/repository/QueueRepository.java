@@ -64,4 +64,40 @@ public interface QueueRepository {
    * @return 토큰이 유효하면 true, 없거나 만료되면 false
    */
   boolean hasAdmissionToken(Long memberId);
+
+  /**
+   * 활성 대기열 이벤트 등록
+   * SADD queue:active:events {eventId}
+   * 대기열 등록(POST /queue/enter) 시 호출한다.
+   *
+   * @param eventId 이벤트 ID
+   */
+  void addActiveEvent(Long eventId);
+
+  /**
+   * 활성 대기열 이벤트 제거
+   * SREM queue:active:events {eventId}
+   * 이벤트 종료 시 스케줄러에서 호출한다.
+   *
+   * @param eventId 이벤트 ID
+   */
+  void removeActiveEvent(Long eventId);
+
+  /**
+   * 활성 대기열 이벤트 ID 목록 조회
+   * SMEMBERS queue:active:events
+   * 스케줄러에서 처리 대상 이벤트 목록을 가져올 때 사용한다.
+   *
+   * @return 활성 이벤트 ID 문자열 Set
+   */
+  Set<String> getActiveEventIds();
+
+  /**
+   * 대기열 key 삭제
+   * DEL queue:event:{eventId}
+   * 이벤트 종료 시 스케줄러에서 호출한다.
+   *
+   * @param eventId 이벤트 ID
+   */
+  void deleteQueue(Long eventId);
 }
