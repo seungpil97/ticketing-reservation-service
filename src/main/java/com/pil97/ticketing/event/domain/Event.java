@@ -28,9 +28,18 @@ public class Event {
   @Column(nullable = false, length = 30)
   private EventStatus status;
 
+  // 이벤트 종료 시각 - 스케줄러에서 대기열 자동 종료 판단 기준으로 사용
+  @Column(name = "end_time")
+  private LocalDateTime endTime;
+
   @Column(name = "created_at", nullable = false, updatable = false)
   private LocalDateTime createdAt;
 
   @Column(name = "updated_at", nullable = false)
   private LocalDateTime updatedAt;
+
+  // end_time 기준으로 이벤트 종료 여부 판단
+  public boolean isEnded() {
+    return endTime != null && LocalDateTime.now().isAfter(endTime);
+  }
 }
