@@ -1,11 +1,12 @@
 package com.pil97.ticketing.queue.application;
 
+import com.pil97.ticketing.queue.application.scheduler.QueueScheduler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
@@ -25,8 +26,12 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 3. 등록된 유저 수 == 100, 순번 중복 없음 검증
  */
 @ActiveProfiles("test")
-@SpringBootTest(properties = "spring.task.scheduling.enabled=false")
+@SpringBootTest
 class QueueConcurrencyTest {
+
+  // QueueScheduler가 테스트 중 실행되면 대기열에서 멤버를 제거해 순번 검증이 깨지므로 MockBean으로 비활성화
+  @MockBean
+  private QueueScheduler queueScheduler;
 
   @Autowired
   private QueueService queueService;
@@ -100,7 +105,7 @@ class QueueConcurrencyTest {
         .filter(memberId -> {
           Long r = redisTemplate.opsForZSet()
             .rank("queue:event:" + eventId, memberId);
-          return r != null && r == rank;
+          return r != null && r.equals(rank);
         })
         .count();
       assertThat(countAtRank).isEqualTo(1);
