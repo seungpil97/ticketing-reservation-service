@@ -37,19 +37,13 @@ public class QueueController {
    * - 등록 성공 시 200 OK (이미 등록된 유저도 기존 순번 반환)
    * <p>
    * 인증:
-   * - JWT 필수, memberId는 @AuthenticationPrincipal로 추출
+   * - JWT 필수, Security Filter에서 인증 처리 후 @AuthenticationPrincipal로 추출
    */
   @PostMapping("/enter")
   public ResponseEntity<ApiResponse<QueueEnterResponse>> enter(
     @AuthenticationPrincipal Member member,
     @Valid @RequestBody EnterQueueRequest request
   ) {
-    // member가 null이면 JWT 필터에서 인증이 처리되지 않은 것
-    if (member == null) {
-      return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-        .body(ApiResponse.error(null));
-    }
-
     QueueEnterResponse response = queueService.enter(request.getEventId(), member.getId());
     return ResponseEntity.ok(ApiResponse.success(response));
   }
@@ -60,13 +54,13 @@ public class QueueController {
    * 이 API의 목적:
    * - 현재 대기 순번 또는 입장 가능 여부를 반환한다.
    * - 입장 토큰이 존재하면 admitted=true 반환
-   * - 대기열에 없으면 QUEUE-001 에러 반환
+   * - 토큰 만료 + 대기열 미등록이면 reEnterRequired=true 반환
    * <p>
    * 상태코드 정책:
    * - 조회 성공 시 200 OK
    * <p>
    * 인증:
-   * - JWT 필수, memberId는 @AuthenticationPrincipal로 추출
+   * - JWT 필수, Security Filter에서 인증 처리 후 @AuthenticationPrincipal로 추출
    */
   @GetMapping("/status")
   public ResponseEntity<ApiResponse<QueueStatusResponse>> status(

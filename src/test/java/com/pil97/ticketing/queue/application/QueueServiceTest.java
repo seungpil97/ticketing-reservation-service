@@ -31,9 +31,10 @@ class QueueServiceTest {
   @InjectMocks
   private QueueService queueService;
 
-  // @Value로 주입되는 batchSize를 테스트에서 직접 설정
-  private void setBatchSize(int size) {
-    ReflectionTestUtils.setField(queueService, "batchSize", size);
+  // @Value로 주입되는 batchSize, fixedDelayMs를 테스트에서 직접 설정
+  private void setSchedulerConfig(int batchSize, long fixedDelayMs) {
+    ReflectionTestUtils.setField(queueService, "batchSize", batchSize);
+    ReflectionTestUtils.setField(queueService, "fixedDelayMs", fixedDelayMs);
   }
 
   @Test
@@ -58,7 +59,7 @@ class QueueServiceTest {
   @DisplayName("enter: 신규 등록 시 순번(1-based)과 예상 대기 시간을 반환한다")
   void enter_newMember_returnsRankAndEstimatedWait() {
     // given
-    setBatchSize(5);
+    setSchedulerConfig(5, 10000L);
     Long eventId = 1L;
     Long memberId = 42L;
 
@@ -82,7 +83,7 @@ class QueueServiceTest {
   @DisplayName("enter: 이미 등록된 유저는 ZADD NX로 기존 순번을 그대로 반환한다")
   void enter_duplicateMember_returnsExistingRank() {
     // given
-    setBatchSize(5);
+    setSchedulerConfig(5, 10000L);
     Long eventId = 1L;
     Long memberId = 42L;
 
@@ -116,26 +117,26 @@ class QueueServiceTest {
   }
 
   @Test
-  @DisplayName("getStatus: 대기열에 없는 유저면 BusinessException(NOT_IN_QUEUE)을 던진다")
-  void getStatus_notInQueue_throwsBusinessException() {
+  @DisplayName("getStatus: 토큰 만료 + 대기열 미등록이면 reEnterRequired=true를 반환한다")
+  void getStatus_notInQueue_returnsReEnterRequired() {
     // given
     when(queueRepository.hasAdmissionToken(42L)).thenReturn(false);
     when(queueRepository.getRank(1L, 42L)).thenReturn(null);
 
-    // when & then
-    assertThatThrownBy(() -> queueService.getStatus(1L, 42L))
-      .isInstanceOf(BusinessException.class)
-      .satisfies(ex -> {
-        BusinessException be = (BusinessException) ex;
-        assertThat(be.getErrorCode()).isEqualTo(QueueErrorCode.NOT_IN_QUEUE);
-      });
+    // when
+    QueueStatusResponse response = queueService.getStatus(1L, 42L);
+
+    // then
+    assertThat(response.admitted()).isFalse();
+    assertThat(response.reEnterRequired()).isTrue();
+    assertThat(response.rank()).isEqualTo(0L);
   }
 
   @Test
   @DisplayName("getStatus: 대기 중인 유저는 순번과 예상 대기 시간을 반환한다")
   void getStatus_waiting_returnsRankAndEstimatedWait() {
     // given
-    setBatchSize(5);
+    setSchedulerConfig(5, 10000L);
     when(queueRepository.hasAdmissionToken(42L)).thenReturn(false);
     // 0-based rank 2 → 1-based rank 3
     when(queueRepository.getRank(1L, 42L)).thenReturn(2L);
