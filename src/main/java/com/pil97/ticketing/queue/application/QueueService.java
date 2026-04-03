@@ -47,15 +47,15 @@ public class QueueService {
   private final EventRepository eventRepository;
 
   /**
-   * 대기열 등록
+   * 대기열 등록 및 재진입
    * <p>
-   * 이미 등록된 유저는 ZADD NX 옵션으로 기존 순번 그대로 반환한다.
+   * 최초 등록: ZADD NX로 순번 발급
+   * 재진입: ZREM → ZADD로 기존 순번 초기화 후 맨 뒤 재등록
    * 존재하지 않는 eventId 요청 시 QueueErrorCode.EVENT_NOT_FOUND 예외 발생
-   * 대기열 등록 시 queue:active:events Set에 eventId를 추가한다.
    *
    * @param eventId  이벤트 ID
    * @param memberId JWT에서 추출한 회원 ID
-   * @return 순번(1 - based), 예상 대기 시간(초)
+   * @return 순번(1-based), 예상 대기 시간(초)
    */
   public QueueEnterResponse enter(Long eventId, Long memberId) {
 
@@ -64,9 +64,17 @@ public class QueueService {
       throw new BusinessException(QueueErrorCode.EVENT_NOT_FOUND);
     }
 
-    // ZADD NX - 이미 등록된 유저는 score 갱신 없이 무시
     double score = System.currentTimeMillis();
-    queueRepository.addIfAbsent(eventId, memberId, score);
+    boolean isReEnter = queueRepository.hasAdmittedHistory(eventId, memberId);
+
+    if (isReEnter) {
+      // 재진입: 기존 순번 초기화 후 맨 뒤 재등록
+      queueRepository.addOrReplace(eventId, memberId, score);
+      log.info("memberId={} action=QUEUE_REENTERED eventId={}", memberId, eventId);
+    } else {
+      // 최초 등록: 이미 대기열에 있으면 기존 순번 유지
+      queueRepository.addIfAbsent(eventId, memberId, score);
+    }
 
     // 활성 대기열 이벤트 목록에 등록 - 스케줄러가 이 Set을 순회하며 처리
     queueRepository.addActiveEvent(eventId);
@@ -87,7 +95,8 @@ public class QueueService {
    * <p>
    * 케이스 1: 입장 토큰 존재 → admitted=true 반환
    * 케이스 2: 대기열에 존재 → 현재 순번 + 예상 대기 시간 반환
-   * 케이스 3: 토큰 만료 + 대기열 미등록 → reEnterRequired=true 반환 (재등록 안내)
+   * 케이스 3: 대기열 미등록 + 입장 이력 없음 → reEnterType=NONE (최초 미진입)
+   * 케이스 4: 대기열 미등록 + 입장 이력 있음 → reEnterType=EXPIRED (토큰 만료 재진입)
    *
    * @param eventId  이벤트 ID
    * @param memberId JWT에서 추출한 회원 ID
@@ -103,10 +112,18 @@ public class QueueService {
     // 대기열 순번 조회
     Long rank = queueRepository.getRank(eventId, memberId);
 
-    // 케이스 3: 토큰 만료 + 대기열 미등록 → 재등록 안내
     if (rank == null) {
-      log.info("memberId={} action=QUEUE_REENTER_REQUIRED eventId={}", memberId, eventId);
-      return QueueStatusResponse.ofReEnterRequired();
+      // 입장 이력 여부로 최초 미진입 vs 토큰 만료 구분
+      boolean hasHistory = queueRepository.hasAdmittedHistory(eventId, memberId);
+      if (hasHistory) {
+        // 케이스 4: 토큰 만료 후 재진입 필요
+        log.info("memberId={} action=QUEUE_REENTER_REQUIRED eventId={} type=EXPIRED", memberId, eventId);
+        return QueueStatusResponse.ofReEnterRequired(QueueStatusResponse.ReEnterType.EXPIRED);
+      } else {
+        // 케이스 3: 최초 미진입
+        log.info("memberId={} action=QUEUE_REENTER_REQUIRED eventId={} type=NONE", memberId, eventId);
+        return QueueStatusResponse.ofReEnterRequired(QueueStatusResponse.ReEnterType.NONE);
+      }
     }
 
     // 케이스 2: 대기열에 존재 → 순번 반환
@@ -131,6 +148,7 @@ public class QueueService {
   /**
    * 특정 이벤트 대기열에서 상위 N명 입장 허용
    * QueueScheduler에서 이벤트별로 호출한다.
+   * 입장 토큰 발급 시 입장 허용 이력을 함께 저장한다.
    *
    * @param eventId 이벤트 ID
    */
@@ -144,6 +162,9 @@ public class QueueService {
       // 입장 토큰 발급 (TTL 30분)
       queueRepository.saveAdmissionToken(memberId, token);
 
+      // 입장 허용 이력 저장 - getStatus()에서 토큰 만료 케이스 구분에 사용
+      queueRepository.saveAdmittedHistory(eventId, memberId);
+
       // 대기열에서 제거
       queueRepository.remove(eventId, memberId);
 
@@ -154,13 +175,14 @@ public class QueueService {
   /**
    * 종료된 이벤트 대기열 정리
    * QueueScheduler에서 호출한다.
-   * queue:event:{eventId} 삭제 + queue:active:events에서 제거
+   * queue:event:{eventId} 삭제 + queue:active:events 제거 + 입장 허용 이력 삭제
    *
    * @param eventId 이벤트 ID
    */
   public void cleanUpEndedQueue(Long eventId) {
     queueRepository.deleteQueue(eventId);
     queueRepository.removeActiveEvent(eventId);
+    queueRepository.deleteAdmittedHistory(eventId);
     log.info("action=QUEUE_CLEANED_UP eventId={}", eventId);
   }
 
