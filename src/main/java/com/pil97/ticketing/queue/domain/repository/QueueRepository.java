@@ -22,6 +22,17 @@ public interface QueueRepository {
   boolean addIfAbsent(Long eventId, Long memberId, double score);
 
   /**
+   * 대기열 강제 등록
+   * ZREM 후 ZADD로 기존 순번을 초기화하고 맨 뒤로 재등록한다.
+   * 재진입 시 사용한다.
+   *
+   * @param eventId  이벤트 ID
+   * @param memberId 회원 ID
+   * @param score    진입 timestamp (System.currentTimeMillis())
+   */
+  void addOrReplace(Long eventId, Long memberId, double score);
+
+  /**
    * 대기열 순번 조회 (0-based)
    * 순번이 없으면 null 반환
    *
@@ -100,4 +111,44 @@ public interface QueueRepository {
    * @param eventId 이벤트 ID
    */
   void deleteQueue(Long eventId);
+
+  /**
+   * 입장 허용 이력 저장
+   * SADD queue:admitted:members:{eventId} {memberId}
+   * admitTopMembers() 에서 입장 토큰 발급 시 함께 호출한다.
+   *
+   * @param eventId  이벤트 ID
+   * @param memberId 회원 ID
+   */
+  void saveAdmittedHistory(Long eventId, Long memberId);
+
+  /**
+   * 입장 허용 이력 존재 여부 확인
+   * SISMEMBER queue:admitted:members:{eventId} {memberId}
+   * getStatus()에서 최초 미진입 vs 토큰 만료 구분에 사용한다.
+   *
+   * @param eventId  이벤트 ID
+   * @param memberId 회원 ID
+   * @return 입장 허용 이력이 있으면 true
+   */
+  boolean hasAdmittedHistory(Long eventId, Long memberId);
+
+  /**
+   * 입장 허용 이력 Set 전체 조회
+   * SMEMBERS queue:admitted:members:{eventId}
+   * 이벤트 종료 시 cleanUpEndedQueue()에서 이력 key 일괄 삭제에 사용한다.
+   *
+   * @param eventId 이벤트 ID
+   * @return 입장 허용된 memberId 문자열 Set
+   */
+  Set<String> getAdmittedMembers(Long eventId);
+
+  /**
+   * 입장 허용 이력 key 삭제
+   * DEL queue:admitted:members:{eventId}
+   * 이벤트 종료 시 cleanUpEndedQueue()에서 호출한다.
+   *
+   * @param eventId 이벤트 ID
+   */
+  void deleteAdmittedHistory(Long eventId);
 }
