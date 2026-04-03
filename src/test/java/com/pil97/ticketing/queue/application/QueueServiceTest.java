@@ -64,6 +64,8 @@ class QueueServiceTest {
     Long memberId = 42L;
 
     when(eventRepository.existsById(eventId)).thenReturn(true);
+    // 입장 이력 없음 → 최초 등록
+    when(queueRepository.hasAdmittedHistory(eventId, memberId)).thenReturn(false);
     when(queueRepository.addIfAbsent(eq(eventId), eq(memberId), anyDouble())).thenReturn(true);
     // 0-based rank 4 → 1-based rank 5
     when(queueRepository.getRank(eventId, memberId)).thenReturn(4L);
@@ -76,7 +78,7 @@ class QueueServiceTest {
     assertThat(response.estimatedWaitSeconds()).isGreaterThanOrEqualTo(0L);
 
     verify(queueRepository).addIfAbsent(eq(eventId), eq(memberId), anyDouble());
-    verify(queueRepository).getRank(eventId, memberId);
+    verify(queueRepository, never()).addOrReplace(anyLong(), anyLong(), anyDouble());
   }
 
   @Test
@@ -88,7 +90,7 @@ class QueueServiceTest {
     Long memberId = 42L;
 
     when(eventRepository.existsById(eventId)).thenReturn(true);
-    // addIfAbsent가 false를 반환해도 기존 순번 조회는 정상 동작
+    when(queueRepository.hasAdmittedHistory(eventId, memberId)).thenReturn(false);
     when(queueRepository.addIfAbsent(eq(eventId), eq(memberId), anyDouble())).thenReturn(false);
     when(queueRepository.getRank(eventId, memberId)).thenReturn(2L);
 
@@ -97,6 +99,30 @@ class QueueServiceTest {
 
     // then
     assertThat(response.rank()).isEqualTo(3L);
+    verify(queueRepository, never()).addOrReplace(anyLong(), anyLong(), anyDouble());
+  }
+
+  @Test
+  @DisplayName("enter: 재진입 시 ZREM 후 ZADD로 순번을 초기화하고 맨 뒤로 재등록한다")
+  void enter_reEnter_resetsRankToBack() {
+    // given
+    setSchedulerConfig(5, 10000L);
+    Long eventId = 1L;
+    Long memberId = 42L;
+
+    when(eventRepository.existsById(eventId)).thenReturn(true);
+    // 입장 이력 있음 → 재진입
+    when(queueRepository.hasAdmittedHistory(eventId, memberId)).thenReturn(true);
+    // 재진입 후 맨 뒤 순번 반환
+    when(queueRepository.getRank(eventId, memberId)).thenReturn(9L);
+
+    // when
+    QueueEnterResponse response = queueService.enter(eventId, memberId);
+
+    // then
+    assertThat(response.rank()).isEqualTo(10L);
+    verify(queueRepository).addOrReplace(eq(eventId), eq(memberId), anyDouble());
+    verify(queueRepository, never()).addIfAbsent(anyLong(), anyLong(), anyDouble());
   }
 
   @Test
@@ -111,25 +137,41 @@ class QueueServiceTest {
     // then
     assertThat(response.admitted()).isTrue();
     assertThat(response.rank()).isEqualTo(0L);
+    assertThat(response.reEnterType()).isNull();
 
-    // 입장 허용 상태면 대기열 순번 조회 불필요
     verify(queueRepository, never()).getRank(anyLong(), anyLong());
   }
 
   @Test
-  @DisplayName("getStatus: 토큰 만료 + 대기열 미등록이면 reEnterRequired=true를 반환한다")
-  void getStatus_notInQueue_returnsReEnterRequired() {
+  @DisplayName("getStatus: 대기열 미등록 + 입장 이력 없으면 reEnterType=NONE을 반환한다")
+  void getStatus_notInQueue_noHistory_returnsNone() {
     // given
     when(queueRepository.hasAdmissionToken(42L)).thenReturn(false);
     when(queueRepository.getRank(1L, 42L)).thenReturn(null);
+    when(queueRepository.hasAdmittedHistory(1L, 42L)).thenReturn(false);
 
     // when
     QueueStatusResponse response = queueService.getStatus(1L, 42L);
 
     // then
     assertThat(response.admitted()).isFalse();
-    assertThat(response.reEnterRequired()).isTrue();
-    assertThat(response.rank()).isEqualTo(0L);
+    assertThat(response.reEnterType()).isEqualTo(QueueStatusResponse.ReEnterType.NONE);
+  }
+
+  @Test
+  @DisplayName("getStatus: 대기열 미등록 + 입장 이력 있으면 reEnterType=EXPIRED를 반환한다")
+  void getStatus_notInQueue_hasHistory_returnsExpired() {
+    // given
+    when(queueRepository.hasAdmissionToken(42L)).thenReturn(false);
+    when(queueRepository.getRank(1L, 42L)).thenReturn(null);
+    when(queueRepository.hasAdmittedHistory(1L, 42L)).thenReturn(true);
+
+    // when
+    QueueStatusResponse response = queueService.getStatus(1L, 42L);
+
+    // then
+    assertThat(response.admitted()).isFalse();
+    assertThat(response.reEnterType()).isEqualTo(QueueStatusResponse.ReEnterType.EXPIRED);
   }
 
   @Test
@@ -148,5 +190,6 @@ class QueueServiceTest {
     assertThat(response.admitted()).isFalse();
     assertThat(response.rank()).isEqualTo(3L);
     assertThat(response.estimatedWaitSeconds()).isGreaterThanOrEqualTo(0L);
+    assertThat(response.reEnterType()).isNull();
   }
 }

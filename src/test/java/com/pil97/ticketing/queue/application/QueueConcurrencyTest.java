@@ -6,10 +6,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
@@ -29,8 +29,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest
 class QueueConcurrencyTest {
 
-  // QueueScheduler가 테스트 중 실행되면 대기열에서 멤버를 제거해 순번 검증이 깨지므로 MockBean으로 비활성화
-  @MockBean
+  // QueueScheduler가 테스트 중 실행되면 대기열에서 멤버를 제거해 순번 검증이 깨지므로 MockitoBean으로 비활성화
+  @MockitoBean
   private QueueScheduler queueScheduler;
 
   @Autowired
@@ -50,8 +50,9 @@ class QueueConcurrencyTest {
     eventId = jdbcTemplate.queryForObject(
       "select id from event order by id limit 1", Long.class);
 
-    // 테스트 전 대기열 초기화
+    // 테스트 전 대기열 및 입장 허용 이력 초기화
     redisTemplate.delete("queue:event:" + eventId);
+    redisTemplate.delete("queue:admitted:members:" + eventId);
   }
 
   @Test
@@ -98,18 +99,15 @@ class QueueConcurrencyTest {
       .range("queue:event:" + eventId, 0, -1);
     assertThat(members).hasSize(threadCount);
 
-    // 순번 중복 없음 확인 - 0~99 순번이 각 1개씩 존재해야 함
-    for (int i = 0; i < threadCount; i++) {
-      final long rank = i;
-      long countAtRank = members.stream()
-        .filter(memberId -> {
-          Long r = redisTemplate.opsForZSet()
-            .rank("queue:event:" + eventId, memberId);
-          return r != null && r.equals(rank);
-        })
-        .count();
-      assertThat(countAtRank).isEqualTo(1);
-    }
+    // 순번 중복 없음 확인 - 0~99 순번이 모두 채워져 있어야 함
+    // Redis Sorted Set은 동일 순번을 허용하지 않으므로 100개가 있으면 0~99가 각 1개씩 존재
+    Set<Long> ranks = members.stream()
+      .map(memberId -> redisTemplate.opsForZSet()
+        .rank("queue:event:" + eventId, memberId))
+      .collect(java.util.stream.Collectors.toSet());
+
+    assertThat(ranks).hasSize(threadCount);
+    assertThat(ranks).allMatch(r -> r >= 0 && r < threadCount);
   }
 
   @Test

@@ -15,6 +15,8 @@ import java.util.Set;
  * Redis Key 규칙:
  * - 대기열: queue:event:{eventId} (Sorted Set, score = 진입 timestamp)
  * - 입장 토큰: token:user:{memberId} (String, TTL 30분)
+ * - 활성 대기열 이벤트 목록: queue:active:events (Set)
+ * - 입장 허용 이력: queue:admitted:members:{eventId} (Set)
  */
 @Repository
 @RequiredArgsConstructor
@@ -23,6 +25,7 @@ public class QueueRedisRepository implements QueueRepository {
   private static final String QUEUE_KEY_PREFIX = "queue:event:";
   private static final String TOKEN_KEY_PREFIX = "token:user:";
   private static final String ACTIVE_EVENTS_KEY = "queue:active:events";
+  private static final String ADMITTED_MEMBERS_KEY_PREFIX = "queue:admitted:members:";
   private static final Duration ADMISSION_TOKEN_TTL = Duration.ofMinutes(30);
 
   private final StringRedisTemplate redisTemplate;
@@ -36,6 +39,18 @@ public class QueueRedisRepository implements QueueRepository {
     Boolean result = redisTemplate.opsForZSet()
       .addIfAbsent(queueKey(eventId), String.valueOf(memberId), score);
     return Boolean.TRUE.equals(result);
+  }
+
+  /**
+   * 대기열 강제 등록 - ZREM 후 ZADD
+   * 기존 순번을 초기화하고 맨 뒤로 재등록한다.
+   * 재진입 시 사용한다.
+   */
+  @Override
+  public void addOrReplace(Long eventId, Long memberId, double score) {
+    // 기존 순번 제거 후 새 score로 재등록
+    redisTemplate.opsForZSet().remove(queueKey(eventId), String.valueOf(memberId));
+    redisTemplate.opsForZSet().add(queueKey(eventId), String.valueOf(memberId), score);
   }
 
   /**
@@ -128,6 +143,46 @@ public class QueueRedisRepository implements QueueRepository {
     redisTemplate.delete(queueKey(eventId));
   }
 
+  /**
+   * 입장 허용 이력 저장
+   * SADD queue:admitted:members:{eventId} {memberId}
+   */
+  @Override
+  public void saveAdmittedHistory(Long eventId, Long memberId) {
+    redisTemplate.opsForSet()
+      .add(admittedMembersKey(eventId), String.valueOf(memberId));
+  }
+
+  /**
+   * 입장 허용 이력 존재 여부 확인
+   * SISMEMBER queue:admitted:members:{eventId} {memberId}
+   */
+  @Override
+  public boolean hasAdmittedHistory(Long eventId, Long memberId) {
+    return Boolean.TRUE.equals(redisTemplate.opsForSet()
+      .isMember(admittedMembersKey(eventId), String.valueOf(memberId)));
+  }
+
+  /**
+   * 입장 허용 이력 Set 전체 조회
+   * SMEMBERS queue:admitted:members:{eventId}
+   */
+  @Override
+  public Set<String> getAdmittedMembers(Long eventId) {
+    Set<String> members = redisTemplate.opsForSet()
+      .members(admittedMembersKey(eventId));
+    return members != null ? members : Collections.emptySet();
+  }
+
+  /**
+   * 입장 허용 이력 key 삭제
+   * DEL queue:admitted:members:{eventId}
+   */
+  @Override
+  public void deleteAdmittedHistory(Long eventId) {
+    redisTemplate.delete(admittedMembersKey(eventId));
+  }
+
   // queue:event:{eventId}
   private String queueKey(Long eventId) {
     return QUEUE_KEY_PREFIX + eventId;
@@ -136,5 +191,10 @@ public class QueueRedisRepository implements QueueRepository {
   // token:user:{memberId}
   private String tokenKey(Long memberId) {
     return TOKEN_KEY_PREFIX + memberId;
+  }
+
+  // queue:admitted:members:{eventId}
+  private String admittedMembersKey(Long eventId) {
+    return ADMITTED_MEMBERS_KEY_PREFIX + eventId;
   }
 }
