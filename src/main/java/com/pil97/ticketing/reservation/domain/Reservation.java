@@ -58,18 +58,25 @@ public class Reservation {
     this.showtime = showtime;
     this.seat = seat;
     this.member = member;
-    this.status = ReservationStatus.CONFIRMED;
+    // 결제 완료 전까지 PENDING 상태로 생성
+    this.status = ReservationStatus.PENDING;
   }
 
   public static Reservation create(Hold hold, Showtime showtime, Seat seat, Member member) {
     return new Reservation(hold, showtime, seat, member);
   }
 
-  /**
-   * ✅ 예약 취소
-   * - CONFIRMED 상태의 예약만 취소 가능
-   * - 상태를 CANCELLED로 변경
-   */
+  // 결제 성공 시 CONFIRMED로 전환
+  public void confirm() {
+    this.status = ReservationStatus.CONFIRMED;
+  }
+
+  // 결제 실패 시 FAILED로 전환
+  public void fail() {
+    this.status = ReservationStatus.FAILED;
+  }
+
+  // 예약 취소 - CONFIRMED 상태에서만 가능
   public void cancel() {
     this.status = ReservationStatus.CANCELLED;
   }
