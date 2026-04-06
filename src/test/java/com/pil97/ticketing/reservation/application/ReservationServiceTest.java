@@ -51,7 +51,7 @@ class ReservationServiceTest {
   class Reserve {
 
     @Test
-    @DisplayName("유효한 HOLD면 예약 확정에 성공한다")
+    @DisplayName("유효한 HOLD면 예약을 PENDING 상태로 생성한다")
     void reserve_success() {
       // given
       Long holdId = 1L;
@@ -69,15 +69,12 @@ class ReservationServiceTest {
 
       given(holdRepository.findById(holdId)).willReturn(Optional.of(hold));
       given(hold.getId()).willReturn(holdId);
-
-      // 검증 시 ACTIVE, 응답 생성 시 CONFIRMED
-      given(hold.getStatus()).willReturn(HoldStatus.ACTIVE, HoldStatus.CONFIRMED);
+      given(hold.getStatus()).willReturn(HoldStatus.ACTIVE);
       given(hold.getExpiresAt()).willReturn(LocalDateTime.now().plusMinutes(5));
       given(hold.getShowtimeSeat()).willReturn(showtimeSeat);
       given(hold.getMember()).willReturn(member);
 
-      // 검증 시 HELD, 응답 생성 시 RESERVED
-      given(showtimeSeat.getStatus()).willReturn(ShowtimeSeatStatus.HELD, ShowtimeSeatStatus.RESERVED);
+      given(showtimeSeat.getStatus()).willReturn(ShowtimeSeatStatus.HELD);
       given(showtimeSeat.getShowtime()).willReturn(showtime);
       given(showtimeSeat.getSeat()).willReturn(seat);
 
@@ -97,12 +94,14 @@ class ReservationServiceTest {
       assertThat(response.showtimeId()).isEqualTo(showtimeId);
       assertThat(response.seatId()).isEqualTo(seatId);
       assertThat(response.memberId()).isEqualTo(memberId);
-      assertThat(response.seatStatus()).isEqualTo("RESERVED");
-      assertThat(response.holdStatus()).isEqualTo("CONFIRMED");
+      // 결제 완료 전이므로 좌석/HOLD 상태 변경 없음
+      assertThat(response.seatStatus()).isEqualTo("HELD");
+      assertThat(response.holdStatus()).isEqualTo("ACTIVE");
 
       verify(reservationRepository).save(any(Reservation.class));
-      verify(showtimeSeat).markReserved();
-      verify(hold).confirm();
+      // 좌석/HOLD 상태 변경은 PaymentService에서 처리하므로 호출되지 않아야 함
+      verify(showtimeSeat, never()).markReserved();
+      verify(hold, never()).confirm();
     }
 
     @Test

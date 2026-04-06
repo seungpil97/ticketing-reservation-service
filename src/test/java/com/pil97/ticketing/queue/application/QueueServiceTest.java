@@ -69,6 +69,7 @@ class QueueServiceTest {
     when(queueRepository.addIfAbsent(eq(eventId), eq(memberId), anyDouble())).thenReturn(true);
     // 0-based rank 4 → 1-based rank 5
     when(queueRepository.getRank(eventId, memberId)).thenReturn(4L);
+    when(queueRepository.nextScore(eventId)).thenReturn(1L);
 
     // when
     QueueEnterResponse response = queueService.enter(eventId, memberId);
@@ -93,6 +94,7 @@ class QueueServiceTest {
     when(queueRepository.hasAdmittedHistory(eventId, memberId)).thenReturn(false);
     when(queueRepository.addIfAbsent(eq(eventId), eq(memberId), anyDouble())).thenReturn(false);
     when(queueRepository.getRank(eventId, memberId)).thenReturn(2L);
+    when(queueRepository.nextScore(eventId)).thenReturn(1L);
 
     // when
     QueueEnterResponse response = queueService.enter(eventId, memberId);
@@ -115,6 +117,7 @@ class QueueServiceTest {
     when(queueRepository.hasAdmittedHistory(eventId, memberId)).thenReturn(true);
     // 재진입 후 맨 뒤 순번 반환
     when(queueRepository.getRank(eventId, memberId)).thenReturn(9L);
+    when(queueRepository.nextScore(eventId)).thenReturn(1L);
 
     // when
     QueueEnterResponse response = queueService.enter(eventId, memberId);
