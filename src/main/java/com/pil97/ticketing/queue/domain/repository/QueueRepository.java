@@ -151,4 +151,14 @@ public interface QueueRepository {
    * @param eventId 이벤트 ID
    */
   void deleteAdmittedHistory(Long eventId);
+
+  /**
+   * 대기열 순번용 전역 카운터 증가 및 반환
+   * INCR queue:seq:{eventId}
+   * 동시 요청 시 score 충돌 없이 고유한 순번을 보장한다.
+   *
+   * @param eventId 이벤트 ID
+   * @return 증가된 카운터 값 (고유 score로 사용)
+   */
+  long nextScore(Long eventId);
 }
