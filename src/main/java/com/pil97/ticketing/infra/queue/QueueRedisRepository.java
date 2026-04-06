@@ -27,6 +27,7 @@ public class QueueRedisRepository implements QueueRepository {
   private static final String ACTIVE_EVENTS_KEY = "queue:active:events";
   private static final String ADMITTED_MEMBERS_KEY_PREFIX = "queue:admitted:members:";
   private static final Duration ADMISSION_TOKEN_TTL = Duration.ofMinutes(30);
+  private static final String QUEUE_SEQ_KEY_PREFIX = "queue:seq:";
 
   private final StringRedisTemplate redisTemplate;
 
@@ -191,6 +192,22 @@ public class QueueRedisRepository implements QueueRepository {
   // token:user:{memberId}
   private String tokenKey(Long memberId) {
     return TOKEN_KEY_PREFIX + memberId;
+  }
+
+  /**
+   * 대기열 순번용 전역 카운터 증가
+   * INCR queue:seq:{eventId} - Redis 단일 스레드 보장으로 동시성 안전
+   */
+  @Override
+  public long nextScore(Long eventId) {
+    Long seq = redisTemplate.opsForValue()
+      .increment(seqKey(eventId));
+    return seq != null ? seq : 0L;
+  }
+
+  // queue:seq:{eventId}
+  private String seqKey(Long eventId) {
+    return QUEUE_SEQ_KEY_PREFIX + eventId;
   }
 
   // queue:admitted:members:{eventId}

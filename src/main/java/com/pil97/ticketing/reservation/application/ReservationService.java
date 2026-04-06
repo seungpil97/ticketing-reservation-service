@@ -28,18 +28,17 @@ public class ReservationService {
   private final ReservationRepository reservationRepository;
 
   /**
-   * 예약 확정(RESERVE) 처리
+   * 예약 생성 처리 (결제 대기 상태)
    * - holdId로 HOLD를 조회한다
    * - HOLD가 존재하는지 검증한다
    * - HOLD가 ACTIVE 상태인지 검증한다
    * - HOLD가 만료되지 않았는지 검증한다
    * - 연결된 좌석 상태가 HELD인지 검증한다
-   * - 예약 정보를 저장한다
-   * - 좌석 상태를 HELD -> RESERVED 로 변경한다
-   * - HOLD 상태를 ACTIVE -> CONFIRMED 로 변경한다
+   * - 예약을 PENDING 상태로 저장한다
+   * - 좌석/HOLD 상태 변경은 결제 완료(PaymentService) 시점에 처리한다
    *
-   * @param holdId 예약 확정 대상 HOLD ID
-   * @return 예약 확정 결과 응답
+   * @param holdId 예약 대상 HOLD ID
+   * @return 예약 생성 결과 응답
    */
   @Transactional
   public ReservationResponse reserve(Long holdId) {
@@ -53,7 +52,8 @@ public class ReservationService {
     // 3) 연결된 회차별 좌석 조회
     ShowtimeSeat showtimeSeat = hold.getShowtimeSeat();
 
-    // 4) 예약 생성 및 저장
+    // 4) 예약 PENDING 상태로 생성 및 저장
+    // 좌석/HOLD 상태 변경은 결제 완료 시점(PaymentService)에 처리
     Reservation reservation = Reservation.create(
       hold,
       showtimeSeat.getShowtime(),
@@ -63,13 +63,7 @@ public class ReservationService {
 
     Reservation savedReservation = reservationRepository.save(reservation);
 
-    // 5) 좌석 상태를 RESERVED로 변경
-    showtimeSeat.markReserved();
-
-    // 6) HOLD 상태를 CONFIRMED로 변경
-    hold.confirm();
-
-    // 7) 응답 반환
+    // 5) 응답 반환 - 좌석/HOLD 상태는 아직 변경되지 않음
     return new ReservationResponse(
       savedReservation.getId(),
       hold.getId(),
@@ -82,46 +76,9 @@ public class ReservationService {
   }
 
   /**
-   * 예약 가능한 HOLD인지 검증
-   * - ACTIVE 상태여야 한다
-   * - 만료 시간이 현재 시각보다 이후여야 한다
-   * - 연결된 좌석 상태가 HELD 여야 한다
-   */
-  private void validateReservableHold(Hold hold) {
-    validateActiveHold(hold);
-    validateNotExpired(hold);
-    validateHeldSeat(hold);
-  }
-
-  /**
-   * HOLD 상태가 ACTIVE인지 검증
-   * - ACTIVE가 아니면 이미 만료되었거나 처리된 HOLD로 판단한다
-   */
-  private void validateActiveHold(Hold hold) {
-    if (hold.getStatus() != HoldStatus.ACTIVE) {
-      throw new BusinessException(HoldErrorCode.NOT_ACTIVE);
-    }
-  }
-
-  /**
-   * HOLD가 만료되지 않았는지 검증
-   * - expiresAt이 현재 시각보다 이전이거나 같으면 예약 불가
-   */
-  private void validateNotExpired(Hold hold) {
-    LocalDateTime now = LocalDateTime.now();
-
-    if (!hold.getExpiresAt().isAfter(now)) {
-      throw new BusinessException(HoldErrorCode.EXPIRED);
-    }
-  }
-
-  /**
    * 예약 취소 처리
-   * - reservationId로 예약을 조회한다
-   * - 예약이 존재하는지 검증한다
-   * - 예약 상태가 CONFIRMED인지 검증한다
-   * - 좌석 상태를 RESERVED -> AVAILABLE 로 변경한다
-   * - 예약 상태를 CONFIRMED -> CANCELLED 로 변경한다
+   * - PENDING: 결제 전 취소 - 좌석 HELD -> AVAILABLE 복구
+   * - CONFIRMED: 결제 후 취소 - 좌석 RESERVED -> AVAILABLE 복구
    *
    * @param reservationId 취소 대상 예약 ID
    */
@@ -131,7 +88,7 @@ public class ReservationService {
     Reservation reservation = reservationRepository.findById(reservationId)
       .orElseThrow(() -> new BusinessException(ReservationErrorCode.NOT_FOUND));
 
-    // 2) 취소 가능한 예약인지 검증
+    // 2) 취소 가능한 예약인지 검증 (PENDING, CONFIRMED만 허용)
     validateCancellable(reservation);
 
     // 3) 좌석 상태를 AVAILABLE로 복구
@@ -141,10 +98,35 @@ public class ReservationService {
     reservation.cancel();
   }
 
+  /**
+   * 예약 가능한 HOLD인지 검증
+   */
+  private void validateReservableHold(Hold hold) {
+    validateActiveHold(hold);
+    validateNotExpired(hold);
+    validateHeldSeat(hold);
+  }
+
+  /**
+   * HOLD 상태가 ACTIVE인지 검증
+   */
+  private void validateActiveHold(Hold hold) {
+    if (hold.getStatus() != HoldStatus.ACTIVE) {
+      throw new BusinessException(HoldErrorCode.NOT_ACTIVE);
+    }
+  }
+
+  /**
+   * HOLD가 만료되지 않았는지 검증
+   */
+  private void validateNotExpired(Hold hold) {
+    if (!hold.getExpiresAt().isAfter(LocalDateTime.now())) {
+      throw new BusinessException(HoldErrorCode.EXPIRED);
+    }
+  }
 
   /**
    * 연결된 회차별 좌석 상태가 HELD인지 검증
-   * - HELD 상태가 아니면 예약 확정할 수 없다
    */
   private void validateHeldSeat(Hold hold) {
     if (hold.getShowtimeSeat().getStatus() != ShowtimeSeatStatus.HELD) {
@@ -154,10 +136,13 @@ public class ReservationService {
 
   /**
    * 취소 가능한 예약인지 검증
-   * - CONFIRMED 상태여야 한다
+   * - PENDING: 결제 전 취소 허용
+   * - CONFIRMED: 결제 후 취소 허용
+   * - FAILED, CANCELLED: 취소 불가
    */
   private void validateCancellable(Reservation reservation) {
-    if (reservation.getStatus() != ReservationStatus.CONFIRMED) {
+    if (reservation.getStatus() != ReservationStatus.PENDING
+      && reservation.getStatus() != ReservationStatus.CONFIRMED) {
       throw new BusinessException(ReservationErrorCode.NOT_CONFIRMED);
     }
   }

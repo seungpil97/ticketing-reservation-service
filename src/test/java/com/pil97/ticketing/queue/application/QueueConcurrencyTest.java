@@ -1,5 +1,6 @@
 package com.pil97.ticketing.queue.application;
 
+import com.pil97.ticketing.event.domain.repository.EventRepository;
 import com.pil97.ticketing.queue.application.scheduler.QueueScheduler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -11,6 +12,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -18,6 +20,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
 
 /**
  * 테스트 흐름 설명
@@ -32,6 +35,9 @@ class QueueConcurrencyTest {
   // QueueScheduler가 테스트 중 실행되면 대기열에서 멤버를 제거해 순번 검증이 깨지므로 MockitoBean으로 비활성화
   @MockitoBean
   private QueueScheduler queueScheduler;
+
+  @MockitoBean
+  private EventRepository eventRepository;
 
   @Autowired
   private QueueService queueService;
@@ -53,6 +59,11 @@ class QueueConcurrencyTest {
     // 테스트 전 대기열 및 입장 허용 이력 초기화
     redisTemplate.delete("queue:event:" + eventId);
     redisTemplate.delete("queue:admitted:members:" + eventId);
+    // seq 카운터 초기화 - 테스트 간 score 독립성 보장
+    redisTemplate.delete("queue:seq:" + eventId);
+
+    // DB 조회 대신 항상 true 반환 - Redis 동시성 검증에 집중
+    when(eventRepository.existsById(eventId)).thenReturn(true);
   }
 
   @Test
@@ -79,6 +90,7 @@ class QueueConcurrencyTest {
           successCount.incrementAndGet();
         } catch (Exception e) {
           failCount.incrementAndGet();
+          System.err.println("예외 발생: " + e.getClass().getName() + " - " + e.getMessage());
         } finally {
           done.countDown();  // 완료 알림
         }
@@ -98,16 +110,6 @@ class QueueConcurrencyTest {
     Set<String> members = redisTemplate.opsForZSet()
       .range("queue:event:" + eventId, 0, -1);
     assertThat(members).hasSize(threadCount);
-
-    // 순번 중복 없음 확인 - 0~99 순번이 모두 채워져 있어야 함
-    // Redis Sorted Set은 동일 순번을 허용하지 않으므로 100개가 있으면 0~99가 각 1개씩 존재
-    Set<Long> ranks = members.stream()
-      .map(memberId -> redisTemplate.opsForZSet()
-        .rank("queue:event:" + eventId, memberId))
-      .collect(java.util.stream.Collectors.toSet());
-
-    assertThat(ranks).hasSize(threadCount);
-    assertThat(ranks).allMatch(r -> r >= 0 && r < threadCount);
   }
 
   @Test

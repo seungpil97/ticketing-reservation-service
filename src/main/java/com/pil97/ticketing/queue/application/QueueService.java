@@ -55,7 +55,7 @@ public class QueueService {
    *
    * @param eventId  이벤트 ID
    * @param memberId JWT에서 추출한 회원 ID
-   * @return 순번(1-based), 예상 대기 시간(초)
+   * @return 순번(1 - based), 예상 대기 시간(초)
    */
   public QueueEnterResponse enter(Long eventId, Long memberId) {
 
@@ -64,7 +64,8 @@ public class QueueService {
       throw new BusinessException(QueueErrorCode.EVENT_NOT_FOUND);
     }
 
-    double score = System.currentTimeMillis();
+    // Redis INCR 기반 전역 카운터로 score 충돌 완전 방지
+    double score = queueRepository.nextScore(eventId);
     boolean isReEnter = queueRepository.hasAdmittedHistory(eventId, memberId);
 
     if (isReEnter) {
