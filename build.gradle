@@ -20,6 +20,10 @@ configurations {
   }
 }
 
+bootRun {
+  jvmArgs = ['-Duser.timezone=Asia/Seoul']
+}
+
 repositories {
   mavenCentral()
 }
