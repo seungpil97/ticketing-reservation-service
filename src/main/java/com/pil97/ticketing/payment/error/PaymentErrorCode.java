@@ -8,7 +8,7 @@ import com.pil97.ticketing.common.error.ErrorCode;
 
 /**
  * 결제 도메인 에러코드
- * 새 항목 추가 시 다음 순번으로 추가할 것 (현재 마지막: PAYMENT-003)
+ * 새 항목 추가 시 다음 순번으로 추가할 것 (현재 마지막: PAYMENT-004)
  * 이 파일은 결제 도메인에서 발생하는 비즈니스 예외를 정의하는 enum입니다.
  */
 @Getter
@@ -22,7 +22,10 @@ public enum PaymentErrorCode implements ErrorCode {
   PAYMENT_ALREADY_PROCESSED(HttpStatus.CONFLICT, "PAYMENT-002", "Payment already processed"),
 
   // 결제 처리 중 실패 (forceFailure 또는 내부 오류)
-  PAYMENT_FAILED(HttpStatus.BAD_REQUEST, "PAYMENT-003", "Payment failed");
+  PAYMENT_FAILED(HttpStatus.BAD_REQUEST, "PAYMENT-003", "Payment failed"),
+
+  // Idempotency-Key 헤더 누락 시
+  IDEMPOTENCY_KEY_MISSING(HttpStatus.BAD_REQUEST, "PAYMENT-004", "Idempotency-Key header is required");
 
   private final HttpStatus status;
   private final String code;

@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "7. Payment", description = "결제 API - Mock 결제 처리")
@@ -29,6 +30,11 @@ public class PaymentController {
    * - 결제 실패 시 예약 FAILED로 전환된다.
    * - forceFailure: true이면 강제 실패 처리 (Mock 결제 실패 시나리오 재현용)
    * <p>
+   * Idempotency-Key 정책:
+   * - 클라이언트가 UUID를 생성해 헤더에 담아 전송
+   * - 동일 key 재요청 시 기존 결과 반환 (DB 처리 없음)
+   * - 헤더 누락 시 400 에러 반환 (PAYMENT-004)
+   * <p>
    * 상태코드 정책:
    * - 결제 처리 성공 시 201 Created
    * <p>
@@ -37,10 +43,11 @@ public class PaymentController {
    */
   @PostMapping("/payments")
   public ResponseEntity<ApiResponse<PaymentResponse>> pay(
+    @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
     @RequestBody @Valid CreatePaymentRequest request) {
 
-    // 서비스 호출: 결제 처리
-    PaymentResponse response = paymentService.pay(request);
+    // Service 호출: idempotency key 검증 + 결제 처리
+    PaymentResponse response = paymentService.pay(idempotencyKey, request);
 
     // 201 Created + 표준 응답
     return ResponseEntity

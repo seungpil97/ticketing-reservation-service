@@ -26,6 +26,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -74,11 +75,12 @@ class PaymentControllerTest {
   void pay_success() throws Exception {
     // given
     setAuthentication(42L);
-    when(paymentService.pay(any()))
+    when(paymentService.pay(any(), any()))
       .thenReturn(new PaymentResponse(1L, "SUCCESS", LocalDateTime.of(2026, 4, 6, 10, 0, 0)));
 
     // when & then
     mockMvc.perform(post("/payments")
+        .header("Idempotency-Key", "test-key-001")
         .contentType(MediaType.APPLICATION_JSON)
         .content("""
           {
@@ -99,11 +101,12 @@ class PaymentControllerTest {
   void pay_forceFailure() throws Exception {
     // given
     setAuthentication(42L);
-    when(paymentService.pay(any()))
+    when(paymentService.pay(any(), any()))
       .thenReturn(new PaymentResponse(2L, "FAIL", null));
 
     // when & then
     mockMvc.perform(post("/payments")
+        .header("Idempotency-Key", "test-key-002")
         .contentType(MediaType.APPLICATION_JSON)
         .content("""
           {
@@ -119,6 +122,56 @@ class PaymentControllerTest {
   }
 
   @Test
+  @DisplayName("POST /payments: Idempotency-Key 헤더 누락 → 400 + PAYMENT-004 반환")
+  void pay_missingIdempotencyKey_returns400() throws Exception {
+    // given
+    setAuthentication(42L);
+    when(paymentService.pay(eq(null), any()))
+      .thenThrow(new BusinessException(PaymentErrorCode.IDEMPOTENCY_KEY_MISSING));
+
+    // when & then
+    mockMvc.perform(post("/payments")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("""
+          {
+            "reservationId": 1,
+            "amount": 150000,
+            "forceFailure": false
+          }
+          """))
+      .andExpect(status().isBadRequest())
+      .andExpect(jsonPath("$.success").value(false))
+      .andExpect(jsonPath("$.error.code").value(PaymentErrorCode.IDEMPOTENCY_KEY_MISSING.getCode()));
+  }
+
+  @Test
+  @DisplayName("POST /payments: 동일 Idempotency-Key 재요청 → 201 + 기존 결과 반환")
+  void pay_duplicateIdempotencyKey_returnsCachedResponse() throws Exception {
+    // given
+    setAuthentication(42L);
+
+    // Redis에서 기존 결과 반환 시나리오
+    when(paymentService.pay(eq("duplicate-key-001"), any()))
+      .thenReturn(new PaymentResponse(1L, "SUCCESS", LocalDateTime.of(2026, 4, 6, 10, 0, 0)));
+
+    // when & then
+    mockMvc.perform(post("/payments")
+        .header("Idempotency-Key", "duplicate-key-001")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("""
+          {
+            "reservationId": 1,
+            "amount": 150000,
+            "forceFailure": false
+          }
+          """))
+      .andExpect(status().isCreated())
+      .andExpect(jsonPath("$.success").value(true))
+      .andExpect(jsonPath("$.data.paymentId").value(1))
+      .andExpect(jsonPath("$.data.status").value("SUCCESS"));
+  }
+
+  @Test
   @DisplayName("POST /payments: reservationId 누락 → 400")
   void pay_missingReservationId_returns400() throws Exception {
     // given
@@ -126,6 +179,7 @@ class PaymentControllerTest {
 
     // when & then
     mockMvc.perform(post("/payments")
+        .header("Idempotency-Key", "test-key-003")
         .contentType(MediaType.APPLICATION_JSON)
         .content("""
           {
@@ -143,6 +197,7 @@ class PaymentControllerTest {
 
     // when & then
     mockMvc.perform(post("/payments")
+        .header("Idempotency-Key", "test-key-004")
         .contentType(MediaType.APPLICATION_JSON)
         .content("""
           {
@@ -158,11 +213,12 @@ class PaymentControllerTest {
   void pay_reservationNotFound_returns404() throws Exception {
     // given
     setAuthentication(42L);
-    when(paymentService.pay(any()))
+    when(paymentService.pay(any(), any()))
       .thenThrow(new BusinessException(ReservationErrorCode.NOT_FOUND));
 
     // when & then
     mockMvc.perform(post("/payments")
+        .header("Idempotency-Key", "test-key-005")
         .contentType(MediaType.APPLICATION_JSON)
         .content("""
           {
@@ -180,11 +236,12 @@ class PaymentControllerTest {
   void pay_alreadyProcessed_returns409() throws Exception {
     // given
     setAuthentication(42L);
-    when(paymentService.pay(any()))
+    when(paymentService.pay(any(), any()))
       .thenThrow(new BusinessException(PaymentErrorCode.PAYMENT_ALREADY_PROCESSED));
 
     // when & then
     mockMvc.perform(post("/payments")
+        .header("Idempotency-Key", "test-key-006")
         .contentType(MediaType.APPLICATION_JSON)
         .content("""
           {
