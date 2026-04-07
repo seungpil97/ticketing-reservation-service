@@ -6,5 +6,8 @@ public enum PaymentStatus {
   // 결제 성공
   SUCCESS,
   // 결제 실패
-  FAIL
+  FAIL,
+
+  // 환불 완료
+  REFUNDED
 }
