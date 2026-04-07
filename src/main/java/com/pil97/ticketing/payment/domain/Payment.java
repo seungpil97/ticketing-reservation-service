@@ -35,6 +35,10 @@ public class Payment {
   @Column(name = "paid_at")
   private LocalDateTime paidAt;
 
+  // 환불 완료 시각 - 환불 전 null
+  @Column(name = "refunded_at")
+  private LocalDateTime refundedAt;
+
   @Column(name = "created_at", insertable = false, updatable = false)
   private LocalDateTime createdAt;
 
@@ -61,5 +65,11 @@ public class Payment {
   // 결제 실패 처리 - 상태를 FAIL로 전환, paidAt은 null 유지
   public void fail() {
     this.status = PaymentStatus.FAIL;
+  }
+
+  // 환불 처리 - 상태를 REFUNDED로 전환하고 환불 시각 기록
+  public void refund() {
+    this.status = PaymentStatus.REFUNDED;
+    this.refundedAt = LocalDateTime.now();
   }
 }
