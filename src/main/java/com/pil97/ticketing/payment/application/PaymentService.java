@@ -33,8 +33,7 @@ public class PaymentService {
    * - Payment를 PENDING 상태로 저장한다
    * - forceFailure가 true이면 결제 실패 처리한다 (Redis 저장 안 함 - 재시도 허용)
    * - 결제 성공 시: Payment SUCCESS, 예약 CONFIRMED, 좌석 RESERVED, HOLD CONFIRMED, Redis 저장
-   * - 결제 실패 시: Payment FAIL, 예약 FAILED
-   * - 좌석/HOLD 복구는 TASK-036-1에서 처리 예정
+   * - 결제 실패 시: Payment FAIL, 예약 FAILED, HOLD EXPIRED, 좌석 AVAILABLE 복구
    * - 실운영 시 PG 콜백 기반 비동기 처리로 전환 필요
    *
    * @param idempotencyKey 클라이언트가 전달한 idempotency key
@@ -51,6 +50,42 @@ public class PaymentService {
     // 2) 동일 key로 재요청 시 Redis에서 기존 결과 반환 (DB 처리 없음)
     return idempotencyRedisRepository.find(idempotencyKey)
       .orElseGet(() -> processPayment(idempotencyKey, request));
+  }
+
+  /**
+   * 환불 처리
+   * - paymentId로 결제를 조회한다
+   * - SUCCESS 상태인 경우만 환불 가능 - 그 외 상태는 예외 발생
+   * - Payment REFUNDED, 예약 CANCELLED, HOLD EXPIRED, 좌석 AVAILABLE 순서로 전환
+   *
+   * @param paymentId 환불 대상 결제 ID
+   * @return 환불 처리 결과 응답
+   */
+  @Transactional
+  public PaymentResponse refund(Long paymentId) {
+    // 1) 결제 존재 여부 확인
+    Payment payment = paymentRepository.findById(paymentId)
+      .orElseThrow(() -> new BusinessException(PaymentErrorCode.PAYMENT_NOT_FOUND));
+
+    // 2) SUCCESS 상태인 경우만 환불 가능
+    if (payment.getStatus() != com.pil97.ticketing.payment.domain.PaymentStatus.SUCCESS) {
+      throw new BusinessException(PaymentErrorCode.REFUND_NOT_ALLOWED);
+    }
+
+    // 3) Payment 상태 REFUNDED 전환
+    payment.refund();
+
+    // 4) 예약 상태 CANCELLED 전환
+    Reservation reservation = payment.getReservation();
+    reservation.cancel();
+
+    // 5) HOLD 상태 EXPIRED 전환 - 기존 만료 스케줄러와 동일한 상태값 사용
+    reservation.getHold().expire();
+
+    // 6) 좌석 상태 AVAILABLE 전환
+    reservation.getHold().getShowtimeSeat().markAvailable();
+
+    return PaymentResponse.of(payment);
   }
 
   /**
@@ -73,6 +108,9 @@ public class PaymentService {
     if (request.isForceFailure()) {
       savedPayment.fail();
       reservation.fail();
+      // 결제 실패 시 HOLD EXPIRED, 좌석 AVAILABLE 복구
+      reservation.getHold().expire();
+      reservation.getHold().getShowtimeSeat().markAvailable();
       return PaymentResponse.of(savedPayment);
     }
 

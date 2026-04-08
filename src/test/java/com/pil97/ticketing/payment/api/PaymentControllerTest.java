@@ -76,7 +76,7 @@ class PaymentControllerTest {
     // given
     setAuthentication(42L);
     when(paymentService.pay(any(), any()))
-      .thenReturn(new PaymentResponse(1L, "SUCCESS", LocalDateTime.of(2026, 4, 6, 10, 0, 0)));
+      .thenReturn(new PaymentResponse(1L, "SUCCESS", LocalDateTime.of(2026, 4, 6, 10, 0, 0), null));
 
     // when & then
     mockMvc.perform(post("/payments")
@@ -102,7 +102,7 @@ class PaymentControllerTest {
     // given
     setAuthentication(42L);
     when(paymentService.pay(any(), any()))
-      .thenReturn(new PaymentResponse(2L, "FAIL", null));
+      .thenReturn(new PaymentResponse(2L, "FAIL", null, null));
 
     // when & then
     mockMvc.perform(post("/payments")
@@ -118,7 +118,8 @@ class PaymentControllerTest {
       .andExpect(status().isCreated())
       .andExpect(jsonPath("$.success").value(true))
       .andExpect(jsonPath("$.data.status").value("FAIL"))
-      .andExpect(jsonPath("$.data.paidAt").doesNotExist());
+      .andExpect(jsonPath("$.data.paidAt").doesNotExist())
+      .andExpect(jsonPath("$.data.refundedAt").doesNotExist());
   }
 
   @Test
@@ -152,7 +153,7 @@ class PaymentControllerTest {
 
     // Redis에서 기존 결과 반환 시나리오
     when(paymentService.pay(eq("duplicate-key-001"), any()))
-      .thenReturn(new PaymentResponse(1L, "SUCCESS", LocalDateTime.of(2026, 4, 6, 10, 0, 0)));
+      .thenReturn(new PaymentResponse(1L, "SUCCESS", LocalDateTime.of(2026, 4, 6, 10, 0, 0), null));
 
     // when & then
     mockMvc.perform(post("/payments")
