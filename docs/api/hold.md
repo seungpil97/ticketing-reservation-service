@@ -35,7 +35,8 @@
 | `HOLD-003` | 409 | Hold is expired (expiresAt 초과) |
 | `QUEUE-002` | 403 | Admission token not found (입장 토큰 없음) |
 | `QUEUE-003` | 403 | Admission token has expired (입장 토큰 만료) |
-| `SHOWTIME-SEAT-001` | 409 | Showtime seat already held or reserved |
+| `SHOWTIME-SEAT-001` | 404 | Showtime seat not found (해당 회차에 속하지 않는 seatId) |
+| `SHOWTIME-SEAT-002` | 409 | Showtime seat is not held |
 | `COMMON-001` | 400 | Validation failed |
 | `COMMON-007` | 500 | Internal server error |
 
@@ -96,7 +97,8 @@ Errors
 * `400` `COMMON-001` (seatId 또는 memberId 누락)
 * `403` `QUEUE-002` (입장 토큰 없음)
 * `403` `QUEUE-003` (입장 토큰 만료)
-* `409` `SHOWTIME-SEAT-001` (이미 선점 또는 예약된 좌석)
+* `404` `SHOWTIME-SEAT-001` (해당 회차에 속하지 않는 seatId)
+* `409` `SHOWTIME-SEAT-002` (이미 선점 또는 예약된 좌석)
 
 ---
 
@@ -129,7 +131,35 @@ Response (403)
 
 ---
 
-### 1-2) Hold Seat - Already Held or Reserved
+### 1-2) Hold Seat - Showtime Seat Not Found
+
+* **POST** `/showtimes/{showtimeId}/hold`
+* **404 Not Found**
+
+설명
+
+* 해당 회차에 속하지 않는 seatId로 선점을 시도한 경우.
+
+Response (404)
+
+```json
+{
+  "data": null,
+  "error": {
+    "code": "SHOWTIME-SEAT-001",
+    "details": [],
+    "message": "Showtime seat not found",
+    "path": "/showtimes/1/hold",
+    "timestamp": "..."
+  },
+  "success": false,
+  "timestamp": "..."
+}
+```
+
+---
+
+### 1-3) Hold Seat - Already Held or Reserved
 
 * **POST** `/showtimes/{showtimeId}/hold`
 * **409 Conflict**
@@ -144,9 +174,9 @@ Response (409)
 {
   "data": null,
   "error": {
-    "code": "SHOWTIME-SEAT-001",
+    "code": "SHOWTIME-SEAT-002",
     "details": [],
-    "message": "Showtime seat already held or reserved",
+    "message": "Showtime seat is not held",
     "path": "/showtimes/1/hold",
     "timestamp": "..."
   },
@@ -170,6 +200,12 @@ curl -X POST http://localhost:8080/showtimes/1/hold \
 curl -X POST http://localhost:8080/showtimes/1/hold \
   -H "Content-Type: application/json" \
   -d '{"seatId": 3, "memberId": 1}'
+
+# hold - showtime seat not found
+curl -X POST http://localhost:8080/showtimes/1/hold \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer eyJhbG..." \
+  -d '{"seatId": 999, "memberId": 1}'
 
 # hold - already held
 curl -X POST http://localhost:8080/showtimes/1/hold \
