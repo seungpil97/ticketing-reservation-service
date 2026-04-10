@@ -254,4 +254,69 @@ class PaymentControllerTest {
       .andExpect(jsonPath("$.success").value(false))
       .andExpect(jsonPath("$.error.code").value(PaymentErrorCode.PAYMENT_ALREADY_PROCESSED.getCode()));
   }
+
+// ────────────────────────────────────────────────
+  // POST /payments/{paymentId}/refund
+  // ────────────────────────────────────────────────
+
+  @Test
+  @DisplayName("POST /payments/{paymentId}/refund: 환불 성공 → 200 + REFUNDED 반환")
+  void refund_success() throws Exception {
+    // given
+    setAuthentication(1L);
+    when(paymentService.refund(eq(1L), any(Member.class)))
+      .thenReturn(new PaymentResponse(1L, "REFUNDED", LocalDateTime.of(2026, 4, 6, 10, 0, 0), LocalDateTime.of(2026, 4, 7, 10, 0, 0)));
+
+    // when & then
+    mockMvc.perform(post("/payments/1/refund"))
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.success").value(true))
+      .andExpect(jsonPath("$.data.status").value("REFUNDED"))
+      .andExpect(jsonPath("$.data.refundedAt").isNotEmpty());
+  }
+
+  @Test
+  @DisplayName("POST /payments/{paymentId}/refund: 타인 결제 환불 시도 → 403 + PAYMENT-006 반환")
+  void refund_notOwner_returns403() throws Exception {
+    // given
+    setAuthentication(2L);
+    when(paymentService.refund(eq(1L), any(Member.class)))
+      .thenThrow(new BusinessException(PaymentErrorCode.REFUND_FORBIDDEN));
+
+    // when & then
+    mockMvc.perform(post("/payments/1/refund"))
+      .andExpect(status().isForbidden())
+      .andExpect(jsonPath("$.success").value(false))
+      .andExpect(jsonPath("$.error.code").value(PaymentErrorCode.REFUND_FORBIDDEN.getCode()));
+  }
+
+  @Test
+  @DisplayName("POST /payments/{paymentId}/refund: SUCCESS 상태가 아닌 결제 환불 시도 → 409 + PAYMENT-005 반환")
+  void refund_notSuccess_returns409() throws Exception {
+    // given
+    setAuthentication(1L);
+    when(paymentService.refund(eq(1L), any(Member.class)))
+      .thenThrow(new BusinessException(PaymentErrorCode.REFUND_NOT_ALLOWED));
+
+    // when & then
+    mockMvc.perform(post("/payments/1/refund"))
+      .andExpect(status().isConflict())
+      .andExpect(jsonPath("$.success").value(false))
+      .andExpect(jsonPath("$.error.code").value(PaymentErrorCode.REFUND_NOT_ALLOWED.getCode()));
+  }
+
+  @Test
+  @DisplayName("POST /payments/{paymentId}/refund: 존재하지 않는 paymentId → 404 + PAYMENT-001 반환")
+  void refund_paymentNotFound_returns404() throws Exception {
+    // given
+    setAuthentication(1L);
+    when(paymentService.refund(eq(999L), any(Member.class)))
+      .thenThrow(new BusinessException(PaymentErrorCode.PAYMENT_NOT_FOUND));
+
+    // when & then
+    mockMvc.perform(post("/payments/999/refund"))
+      .andExpect(status().isNotFound())
+      .andExpect(jsonPath("$.success").value(false))
+      .andExpect(jsonPath("$.error.code").value(PaymentErrorCode.PAYMENT_NOT_FOUND.getCode()));
+  }
 }
