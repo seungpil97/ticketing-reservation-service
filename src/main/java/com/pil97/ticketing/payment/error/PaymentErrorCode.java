@@ -8,7 +8,7 @@ import com.pil97.ticketing.common.error.ErrorCode;
 
 /**
  * 결제 도메인 에러코드
- * 새 항목 추가 시 다음 순번으로 추가할 것 (현재 마지막: PAYMENT-005)
+ * 새 항목 추가 시 다음 순번으로 추가할 것 (현재 마지막: PAYMENT-006)
  * 이 파일은 결제 도메인에서 발생하는 비즈니스 예외를 정의하는 enum입니다.
  */
 @Getter
@@ -28,7 +28,10 @@ public enum PaymentErrorCode implements ErrorCode {
   IDEMPOTENCY_KEY_MISSING(HttpStatus.BAD_REQUEST, "PAYMENT-004", "Idempotency-Key header is required"),
 
   // SUCCESS 상태가 아닌 결제에 환불 시도 시
-  REFUND_NOT_ALLOWED(HttpStatus.CONFLICT, "PAYMENT-005", "Refund is only allowed for successful payments");
+  REFUND_NOT_ALLOWED(HttpStatus.CONFLICT, "PAYMENT-005", "Refund is only allowed for successful payments"),
+
+  // 본인 소유가 아닌 결제에 환불 시도 시
+  REFUND_FORBIDDEN(HttpStatus.FORBIDDEN, "PAYMENT-006", "You are not allowed to refund this payment");
 
 
   private final HttpStatus status;
