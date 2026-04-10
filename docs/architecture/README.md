@@ -33,7 +33,7 @@ flowchart TD
     JwtFilter -->|인증 실패 401| Client
     Controller -->|비즈니스 로직 위임| Service
     Service -->|데이터 조회/저장| Repository
-    Service -->|캐시 조회/저장 분산락| Redis
+    Service -->|캐시 조회/저장 분산락 대기열| Redis
     Repository -->|JPA| MariaDB
     Service -->|응답 DTO 반환| Controller
     Controller -->|HTTP Response| Client
@@ -44,8 +44,6 @@ flowchart TD
 ## 2. 대기열 흐름
 
 Redis Sorted Set 기반으로 순번을 발급하고 입장을 허용하는 흐름입니다.
-
-> **참고:** 입장 허용 스케줄러(`admitMembers`)의 이벤트별 순회 로직은 TASK-030에서 완성 예정입니다.
 
 ```mermaid
 sequenceDiagram
@@ -65,11 +63,12 @@ sequenceDiagram
     loop 스케줄러 주기적 실행
         Scheduler->>Redis: ZRANGE queue:event:{eventId} 0 N (상위 N명 조회)
         Redis-->>Scheduler: 입장 허용 대상 userId 목록
-        Scheduler->>Redis: SET token:user:{userId} (입장 토큰 발급, TTL 30분)
+        Scheduler->>Redis: SET token:user:{userId} TTL 30분 (입장 토큰 발급)
         Scheduler->>Redis: ZREM queue:event:{eventId} userId (대기열에서 제거)
+        Scheduler->>Redis: 만료된 입장 토큰 정리 (TTL 자동 만료)
     end
 
-    User->>API: GET /queue/status (대기 상태 확인)
+    User->>API: GET /queue/status?eventId={eventId} (대기 상태 확인)
     API->>Redis: EXISTS token:user:{userId} (입장 토큰 확인)
     Redis-->>API: 토큰 없음
     API->>Redis: ZRANK queue:event:{eventId} userId
@@ -118,11 +117,13 @@ flowchart TD
 
 ## Redis Key 요약
 
-| Key                       | 용도                  | TTL      |
-|---------------------------|---------------------|----------|
-| `refresh:{memberId}`      | RefreshToken 저장     | 7일       |
-| `blacklist:{accessToken}` | AccessToken 블랙리스트   | 잔여 만료 시간 |
-| `events:list`             | 이벤트 목록 캐시           | 10분      |
-| `queue:event:{eventId}`   | 대기열 순번 (Sorted Set) | 이벤트 종료 시 |
-| `token:user:{userId}`     | 대기열 입장 토큰           | 30분      |
-| `lock:seat:{seatId}`      | 좌석 분산락              | 락 획득 TTL |
+| Key | 용도 | TTL |
+|---|---|---|
+| `refresh:{memberId}` | RefreshToken 저장 | 7일 |
+| `blacklist:{accessToken}` | AccessToken 블랙리스트 | 잔여 만료 시간 |
+| `events:list` | 이벤트 목록 캐시 | 10분 |
+| `queue:event:{eventId}` | 대기열 순번 (Sorted Set) | 이벤트 종료 시 |
+| `token:user:{userId}` | 대기열 입장 토큰 | 30분 |
+| `lock:seat:{seatId}` | 좌석 분산락 | 락 획득 TTL |
+| `idempotency:{key}` | 결제 멱등성 키 | 24시간 |
+```
