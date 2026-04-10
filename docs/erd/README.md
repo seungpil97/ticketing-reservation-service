@@ -79,6 +79,17 @@ erDiagram
         datetime updated_at "NOT NULL"
     }
 
+    payment {
+        bigint id PK
+        bigint reservation_id FK "NOT NULL"
+        int amount "NOT NULL 결제 금액"
+        varchar status "NOT NULL PENDING / SUCCESS / FAIL / REFUNDED"
+        datetime paid_at "결제 완료 시각 실패 시 null"
+        datetime refunded_at "환불 완료 시각 환불 전 null"
+        datetime created_at "NOT NULL"
+        datetime updated_at "NOT NULL"
+    }
+
     event ||--o{ showtime : "1:N"
     event ||--o{ seat_grade_price : "1:N"
     showtime ||--o{ showtime_seat : "1:N"
@@ -89,6 +100,7 @@ erDiagram
     showtime ||--o{ reservations : "1:N"
     seat ||--o{ reservations : "1:N"
     members ||--o{ reservations : "1:N"
+    reservations ||--o{ payment : "1:N"
 ```
 
 ---
@@ -105,6 +117,7 @@ erDiagram
 | `showtime_seat` | 회차별 좌석 상태 (AVAILABLE / HELD / RESERVED) |
 | `holds` | 좌석 선점 정보 (만료 일시/상태) |
 | `reservations` | 예약 확정 정보 (CONFIRMED / CANCELLED) |
+| `payment` | 결제 정보 (PENDING / SUCCESS / FAIL / REFUNDED) |
 
 ---
 
@@ -120,3 +133,5 @@ erDiagram
 | `holds` | `idx_holds_showtime_seat_id` | `showtime_seat_id` | 회차 좌석 선점 조회 최적화 |
 | `holds` | `idx_holds_status_expires_at` | `status, expires_at` | 만료 HOLD 스케줄러 조회 최적화 |
 | `reservations` | `uk_reservations_hold_id` | `hold_id` | HOLD 1:1 예약 보장 |
+| `payment` | `idx_payment_reservation_id` | `reservation_id` | 예약별 결제 조회 최적화 |
+```
