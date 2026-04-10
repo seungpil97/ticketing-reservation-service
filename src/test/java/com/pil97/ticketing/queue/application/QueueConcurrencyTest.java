@@ -1,6 +1,5 @@
 package com.pil97.ticketing.queue.application;
 
-import com.pil97.ticketing.event.domain.repository.EventRepository;
 import com.pil97.ticketing.queue.application.scheduler.QueueScheduler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -12,7 +11,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -20,13 +18,17 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.when;
 
 /**
  * 테스트 흐름 설명
  * 1. 100개 스레드가 동시에 동일 이벤트 대기열에 등록 요청
  * 2. Redis Sorted Set ZADD NX로 각 memberId가 중복 없이 등록되는지 검증
  * 3. 등록된 유저 수 == 100, 순번 중복 없음 검증
+ * <p>
+ * EventRepository mock 제거 이유:
+ * - @BeforeEach의 Mockito stub은 메인 스레드 기준으로 등록되므로 워커 스레드에서 보장되지 않는다.
+ * - 동시성 테스트의 목적은 Redis Sorted Set 동시 접근 안정성 검증이므로 DB는 실제 환경을 사용한다.
+ * - @BeforeEach에서 jdbcTemplate으로 실제 seed 데이터의 eventId를 조회하므로 mock이 불필요하다.
  */
 @ActiveProfiles("test")
 @SpringBootTest
@@ -35,9 +37,6 @@ class QueueConcurrencyTest {
   // QueueScheduler가 테스트 중 실행되면 대기열에서 멤버를 제거해 순번 검증이 깨지므로 MockitoBean으로 비활성화
   @MockitoBean
   private QueueScheduler queueScheduler;
-
-  @MockitoBean
-  private EventRepository eventRepository;
 
   @Autowired
   private QueueService queueService;
@@ -52,7 +51,7 @@ class QueueConcurrencyTest {
 
   @BeforeEach
   void setUp() {
-    // seed 데이터 기준으로 첫 번째 이벤트 사용
+    // seed 데이터 기준으로 첫 번째 이벤트 사용 - 실제 DB에 존재하는 이벤트이므로 mock 불필요
     eventId = jdbcTemplate.queryForObject(
       "select id from event order by id limit 1", Long.class);
 
@@ -61,9 +60,8 @@ class QueueConcurrencyTest {
     redisTemplate.delete("queue:admitted:members:" + eventId);
     // seq 카운터 초기화 - 테스트 간 score 독립성 보장
     redisTemplate.delete("queue:seq:" + eventId);
-
-    // DB 조회 대신 항상 true 반환 - Redis 동시성 검증에 집중
-    when(eventRepository.existsById(eventId)).thenReturn(true);
+    // queue:active:events에서 해당 eventId 제거 - 테스트 간 잔여 데이터 방지
+    redisTemplate.opsForSet().remove("queue:active:events", String.valueOf(eventId));
   }
 
   @Test
