@@ -229,6 +229,7 @@ docker compose up -d
 | DB Setup (Flyway) | `docs/db/README.md`                           |
 | Devlog            | `docs/devlog/README.md`                       |
 | Swagger UI        | `http://localhost:8080/swagger-ui/index.html` |
+| Performance       | `docs/performance/traffic-scenario.md`        |
 
 ---
 
