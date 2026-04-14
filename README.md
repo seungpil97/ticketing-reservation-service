@@ -213,23 +213,24 @@ docker compose up -d
 
 ## Docs
 
-| 문서                | 경로                                            |
-|-------------------|-----------------------------------------------|
-| API 명세 전체         | `docs/api/README.md`                          |
-| Auth API          | `docs/api/auth.md`                            |
-| Member API        | `docs/api/member.md`                          |
-| Event API         | `docs/api/event.md`                           |
-| Showtime API      | `docs/api/showtime.md`                        |
-| Hold API          | `docs/api/hold.md`                            |
-| Reservation API   | `docs/api/reservation.md`                     |
-| Payment API       | `docs/api/payment.md`                         |
-| Queue API         | `docs/api/queue.md`                           |
-| ERD               | `docs/erd/README.md`                          |
-| 아키텍처 다이어그램        | `docs/architecture/README.md`                 |
+| 문서                       | 경로                 |
+|--------------------------|--------------------|
+| **서비스 전체 요약 (One Page)** | `docs/overview.md` |
+| API 명세 전체 | `docs/api/README.md`                          |
+| Auth API | `docs/api/auth.md`                            |
+| Member API | `docs/api/member.md`                          |
+| Event API | `docs/api/event.md`                           |
+| Showtime API | `docs/api/showtime.md`                        |
+| Hold API | `docs/api/hold.md`                            |
+| Reservation API | `docs/api/reservation.md`                     |
+| Payment API | `docs/api/payment.md`                         |
+| Queue API | `docs/api/queue.md`                           |
+| ERD | `docs/erd/README.md`                          |
+| 아키텍처 다이어그램 | `docs/architecture/README.md`                 |
 | DB Setup (Flyway) | `docs/db/README.md`                           |
-| Devlog            | `docs/devlog/README.md`                       |
-| Swagger UI        | `http://localhost:8080/swagger-ui/index.html` |
-| Performance       | `docs/performance/traffic-scenario.md`        |
+| Devlog | `docs/devlog/README.md`                       |
+| Swagger UI | `http://localhost:8080/swagger-ui/index.html` |
+| Performance | `docs/performance/traffic-scenario.md`        |
 
 ---
 
