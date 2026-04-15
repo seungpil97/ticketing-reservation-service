@@ -15,19 +15,61 @@
 
 ---
 
-## 전체 예약 플로우
+## Reservation Flow
 
+로그인부터 결제, 환불까지 이어지는 전체 예약 흐름입니다.
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Server
+    participant Redis
+    participant DB
+
+    Client->>Server: 1. POST /auth/login
+    Server->>Redis: RefreshToken 저장 (TTL 7일)
+    Server-->>Client: AccessToken + RefreshToken 반환
+
+    Client->>Server: 2. POST /queue/enter
+    Server->>Redis: ZADD queue:event:{eventId} (순번 발급)
+    Server-->>Client: 대기 순번 + 예상 대기 시간 반환
+
+    Note over Server,Redis: Scheduler — 상위 N명 입장 토큰 발급 (TTL 30분)
+
+    Client->>Server: 3. POST /showtimes/{showtimeId}/hold
+    Server->>Redis: 분산락 획득 (hold:seat:{showtimeId}:{seatId})
+    Server->>DB: Hold 생성, 좌석 HELD
+    Server-->>Client: holdId 반환
+
+    Client->>Server: 4. POST /holds/{holdId}/reserve
+    Server->>DB: Reservation 생성 (PENDING)
+    Server-->>Client: reservationId 반환
+
+    Client->>Server: 5. POST /payments (idempotencyKey)
+    Server->>Redis: 멱등성 키 중복 확인
+    Server->>DB: Payment SUCCESS, Reservation CONFIRMED, 좌석 RESERVED
+    Server-->>Client: 결제 완료
+
+    Client->>Server: 6. DELETE /reservations/{reservationId}
+    Server->>DB: Reservation CANCELLED, 좌석 AVAILABLE
+    Server-->>Client: 예약 취소 완료
+
+    Client->>Server: 7. POST /payments/{paymentId}/refund
+    Server->>DB: Payment REFUNDED, HOLD EXPIRED
+    Server-->>Client: 환불 완료
 ```
 
-로그인
-→ 대기열 입장 (Redis Sorted Set 순번 발급)
-→ 입장 토큰 발급 (스케줄러가 상위 N명 허용, TTL 30분)
-→ 좌석 선점 HOLD (Redis 분산락으로 중복 방지, 10분 유효)
-→ 예약 확정 RESERVE
-→ 결제 (Mock 결제 + Idempotency Key 멱등성 보장)
-→ 취소 / 환불 (본인 소유권 검증)
+| 단계   | 핵심 기술 포인트                                             |
+|------|-------------------------------------------------------|
+| 로그인  | JWT + Redis RefreshToken 저장 (Rotation 방식으로 탈취 감지)     |
+| 대기열  | Redis Sorted Set + Scheduler 기반 비동기 입장 허용             |
+| HOLD | Redisson 분산락으로 동일 회차·좌석 동시 선점 요청 직렬화                  |
+| 결제   | idempotencyKey 기반 중복 결제 방지 (Redis 캐싱)                 |
+| 환불   | 소유권 검증 선행 후 상태 전이 (Payment → Reservation → HOLD → 좌석) |
 
-```
+예약 취소와 결제 환불은 분리된 API로 처리하며
+시나리오별 상세 흐름과 예외 분기는 [reservation-flow.md](docs/diagrams/reservation-flow.md)를
+참고하세요.
 
 ---
 
@@ -59,7 +101,7 @@
 
 ### 예약 플로우
 
-- `POST /showtimes/{showtimeId}/hold` — 좌석 선점 (Redis 분산락 + 10분 유효)
+- `POST /showtimes/{showtimeId}/hold` — 좌석 선점 (Redis 분산락 + 5분 유효)
 - `POST /holds/{holdId}/reserve` — 예약 확정
 - `DELETE /reservations/{reservationId}` — 예약 취소 (본인 소유권 검증)
 
@@ -71,7 +113,7 @@
 ### 대기열
 
 - `POST /queue/enter` — 대기열 등록 (Redis Sorted Set 순번 발급)
-- `GET /queue/status` — 현재 순번 / 입장 토큰 여부 확인
+- `GET /queue/status?eventId={eventId}` — 현재 순번 / 입장 토큰 여부 확인
 - 스케줄러 — 상위 N명 입장 허용 + 입장 토큰 발급 (TTL 30분)
 - 스케줄러 — 만료 토큰 / 이탈 처리 + reEnterType 구분
 
@@ -213,24 +255,25 @@ docker compose up -d
 
 ## Docs
 
-| 문서                       | 경로                 |
-|--------------------------|--------------------|
-| **서비스 전체 요약 (One Page)** | `docs/overview.md` |
-| API 명세 전체 | `docs/api/README.md`                          |
-| Auth API | `docs/api/auth.md`                            |
-| Member API | `docs/api/member.md`                          |
-| Event API | `docs/api/event.md`                           |
-| Showtime API | `docs/api/showtime.md`                        |
-| Hold API | `docs/api/hold.md`                            |
-| Reservation API | `docs/api/reservation.md`                     |
-| Payment API | `docs/api/payment.md`                         |
-| Queue API | `docs/api/queue.md`                           |
-| ERD | `docs/erd/README.md`                          |
-| 아키텍처 다이어그램 | `docs/architecture/README.md`                 |
-| DB Setup (Flyway) | `docs/db/README.md`                           |
-| Devlog | `docs/devlog/README.md`                       |
-| Swagger UI | `http://localhost:8080/swagger-ui/index.html` |
-| Performance | `docs/performance/traffic-scenario.md`        |
+| 문서                       | 경로                                            |
+|--------------------------|-----------------------------------------------|
+| **서비스 전체 요약 (One Page)** | `docs/overview.md`                            |
+| API 명세 전체                | `docs/api/README.md`                          |
+| Auth API                 | `docs/api/auth.md`                            |
+| Member API               | `docs/api/member.md`                          |
+| Event API                | `docs/api/event.md`                           |
+| Showtime API             | `docs/api/showtime.md`                        |
+| Hold API                 | `docs/api/hold.md`                            |
+| Reservation API          | `docs/api/reservation.md`                     |
+| Payment API              | `docs/api/payment.md`                         |
+| Queue API                | `docs/api/queue.md`                           |
+| ERD                      | `docs/erd/README.md`                          |
+| 아키텍처 다이어그램               | `docs/architecture/README.md`                 |
+| DB Setup (Flyway)        | `docs/db/README.md`                           |
+| Devlog                   | `docs/devlog/README.md`                       |
+| Swagger UI               | `http://localhost:8080/swagger-ui/index.html` |
+| Performance              | `docs/performance/traffic-scenario.md`        |
+| Reservation Flow         | `docs/diagrams/reservation-flow.md`           |
 
 ---
 
