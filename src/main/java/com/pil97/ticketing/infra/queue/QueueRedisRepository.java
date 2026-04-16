@@ -13,10 +13,11 @@ import java.util.Set;
  * QueueRepository의 Redis 구현체
  * <p>
  * Redis Key 규칙:
- * - 대기열: queue:event:{eventId} (Sorted Set, score = 진입 timestamp)
+ * - 대기열: queue:event:{eventId} (Sorted Set, score = queue:seq:{eventId}의 INCR 결과)
  * - 입장 토큰: token:user:{memberId} (String, TTL 30분)
  * - 활성 대기열 이벤트 목록: queue:active:events (Set)
  * - 입장 허용 이력: queue:admitted:members:{eventId} (Set)
+ * - 대기열 순번 카운터: queue:seq:{eventId} (String/Counter, INCR)
  */
 @Repository
 @RequiredArgsConstructor

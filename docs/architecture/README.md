@@ -32,8 +32,8 @@ flowchart TD
     JwtFilter -->|인증 통과| Controller
     JwtFilter -->|인증 실패 401| Client
     Controller -->|비즈니스 로직 위임| Service
-    Service -->|데이터 조회/저장| Repository
-    Service -->|캐시 조회/저장 분산락 대기열| Redis
+    Service -->|JPA Repository 호출| Repository
+    Service -->|락/토큰/대기열 등 Redis 연산| Redis
     Repository -->|JPA| MariaDB
     Service -->|응답 DTO 반환| Controller
     Controller -->|HTTP Response| Client
@@ -50,34 +50,54 @@ sequenceDiagram
     actor User
     participant API
     participant QueueService
+    participant HoldService
+    participant DistributedLockService
     participant Redis
     participant Scheduler
 
     User->>API: POST /queue/enter (이벤트 입장 요청)
     API->>QueueService: 대기열 등록 요청
-    QueueService->>Redis: ZADD queue:event:{eventId} timestamp userId
-    Redis-->>QueueService: 순번 반환
+    QueueService->>Redis: INCR queue:seq:{eventId}
+    Redis-->>QueueService: score 반환
+    QueueService->>Redis: ZADD NX queue:event:{eventId} score userId
+    QueueService->>Redis: ZRANK queue:event:{eventId} userId
+    Redis-->>QueueService: 현재 순번 반환
     QueueService-->>API: 대기 순번 응답
     API-->>User: 200 OK (대기 순번, 예상 대기 시간)
 
     loop 스케줄러 주기적 실행
         Scheduler->>Redis: ZRANGE queue:event:{eventId} 0 N (상위 N명 조회)
         Redis-->>Scheduler: 입장 허용 대상 userId 목록
-        Scheduler->>Redis: SET token:user:{userId} TTL 30분 (입장 토큰 발급)
-        Scheduler->>Redis: ZREM queue:event:{eventId} userId (대기열에서 제거)
-        Scheduler->>Redis: 만료된 입장 토큰 정리 (TTL 자동 만료)
+        Scheduler->>Redis: SET token:user:{userId} TTL 30분
+        Scheduler->>Redis: SADD queue:admitted:members:{eventId} userId
+        Scheduler->>Redis: ZREM queue:event:{eventId} userId
+        Note over Redis: 입장 토큰은 TTL 만료 시 자동 삭제
     end
 
     User->>API: GET /queue/status?eventId={eventId} (대기 상태 확인)
-    API->>Redis: EXISTS token:user:{userId} (입장 토큰 확인)
-    Redis-->>API: 토큰 없음
-    API->>Redis: ZRANK queue:event:{eventId} userId
-    Redis-->>API: 현재 순번
-    API-->>User: 200 OK (현재 순번 또는 입장 가능 여부)
+    API->>QueueService: 상태 조회 요청
+    QueueService->>Redis: EXISTS token:user:{userId}
+    Redis-->>QueueService: 토큰 존재 여부
+    
+    alt 토큰 존재
+        QueueService-->>API: 입장 가능 응답
+    else 토큰 없음
+        QueueService->>Redis: ZRANK queue:event:{eventId} userId
+        Redis-->>QueueService: 현재 순번 또는 null
+        QueueService->>Redis: SISMEMBER queue:admitted:members:{eventId} userId
+        Redis-->>QueueService: 입장 이력 여부
+        QueueService-->>API: 대기중 / 재진입 필요 응답
+    end   
+    API-->>User: 200 OK
 
     User->>API: POST /showtimes/{id}/hold (입장 토큰으로 좌석 선점)
-    API->>Redis: GET token:user:{userId} (입장 토큰 검증)
-    Redis-->>API: 토큰 유효
+    API->>HoldService: HOLD 요청
+    HoldService->>QueueService: 입장 토큰 검증
+    HoldService->>DistributedLockService: executeWithLock(...)
+    DistributedLockService->>Redis: tryLock hold:seat:{showtimeId}:{seatId}
+    DistributedLockService-->>HoldService: 락 획득
+    HoldService->>HoldService: processHold(...)
+    HoldService-->>API: HOLD 결과 반환
     API-->>User: 201 Created (HOLD 성공)
 ```
 
@@ -92,19 +112,19 @@ flowchart TD
     Client([Client])
     Controller[EventController]
     Service[EventService]
-    Redis[(Redis\ncache: events:list)]
+    Redis[(Redis\ncache: events)]
     DB[(MariaDB)]
 
     Client -->|GET /events| Controller
     Controller --> Service
 
-    Service -->|Cache 조회\nGET events:list| Redis
+    Service -->|Cache 조회\nGET events 캐시| Redis
 
     Redis -->|Cache Hit\nTTL 10분 이내| Service
     Redis -->|Cache Miss\nkey 없음 또는 만료| DB
 
     DB -->|조회 결과 반환| Service
-    Service -->|Cache 저장\nSET events:list TTL 10분| Redis
+    Service -->|Cache 저장\nSET events 캐시 TTL 10분| Redis
 
     Service -->|DTO 반환| Controller
     Controller -->|HTTP Response| Client
@@ -117,13 +137,15 @@ flowchart TD
 
 ## Redis Key 요약
 
-| Key | 용도 | TTL |
-|---|---|---|
-| `refresh:{memberId}` | RefreshToken 저장 | 7일 |
-| `blacklist:{accessToken}` | AccessToken 블랙리스트 | 잔여 만료 시간 |
-| `events:list` | 이벤트 목록 캐시 | 10분 |
-| `queue:event:{eventId}` | 대기열 순번 (Sorted Set) | 이벤트 종료 시 |
-| `token:user:{userId}` | 대기열 입장 토큰 | 30분 |
-| `lock:seat:{seatId}` | 좌석 분산락 | 락 획득 TTL |
-| `idempotency:{key}` | 결제 멱등성 키 | 24시간 |
-```
+| Key                                    | 용도                  | TTL / 정리 방식                             |
+|----------------------------------------|---------------------|-----------------------------------------|
+| `refresh:{memberId}`                   | RefreshToken 저장     | 7일                                      |
+| `blacklist:{accessToken}`              | AccessToken 블랙리스트   | 잔여 만료 시간                                |
+| `events` 캐시 (`events::*`)              | 이벤트 목록 캐시           | 10분                                     |
+| `queue:event:{eventId}`                | 대기열 순번 (Sorted Set) | 이벤트 종료 시 key 삭제                         |
+| `token:user:{userId}`                  | 대기열 입장 토큰           | 30분                                     |
+| `hold:seat:{showtimeId}:{seatId}`      | 좌석 분산락              | Redisson leaseTime 기반 자동 해제             |
+| `idempotency:payment:{idempotencyKey}` | 결제 멱등성 키            | 24시간                                    |
+| `queue:active:events`                  | 활성 대기열 이벤트 목록 (Set) | 종료된 이벤트는 Set에서 제거                       |
+| `queue:admitted:members:{eventId}`     | 대기열 입장 허용 이력 (Set)  | 이벤트 종료 시 key 삭제                         |
+| `queue:seq:{eventId}`                  | 대기열 순번 카운터 (INCR)   | 현재 구현상 명시적 TTL 없음 / 종료 정리 코드에서 별도 삭제 없음 |
