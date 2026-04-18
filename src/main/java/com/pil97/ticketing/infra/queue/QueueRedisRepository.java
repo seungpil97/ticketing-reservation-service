@@ -206,6 +206,17 @@ public class QueueRedisRepository implements QueueRepository {
     return seq != null ? seq : 0L;
   }
 
+  /**
+   * 대기열 순번 카운터 key 삭제
+   * DEL queue:seq:{eventId}
+   * 이벤트 종료 시 cleanUpEndedQueue()에서 호출한다.
+   * 삭제하지 않으면 동일 eventId 재오픈 시 이전 카운터 값을 이어받는다.
+   */
+  @Override
+  public void deleteSeq(Long eventId) {
+    redisTemplate.delete(seqKey(eventId));
+  }
+
   // queue:seq:{eventId}
   private String seqKey(Long eventId) {
     return QUEUE_SEQ_KEY_PREFIX + eventId;

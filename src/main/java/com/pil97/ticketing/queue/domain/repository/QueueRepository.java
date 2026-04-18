@@ -161,4 +161,14 @@ public interface QueueRepository {
    * @return 증가된 카운터 값 (고유 score로 사용)
    */
   long nextScore(Long eventId);
+
+  /**
+   * 대기열 순번 카운터 key 삭제
+   * DEL queue:seq:{eventId}
+   * 이벤트 종료 시 cleanUpEndedQueue()에서 호출한다.
+   * 삭제하지 않으면 동일 eventId로 재오픈 시 이전 카운터 값을 이어받는다.
+   *
+   * @param eventId 이벤트 ID
+   */
+  void deleteSeq(Long eventId);
 }
