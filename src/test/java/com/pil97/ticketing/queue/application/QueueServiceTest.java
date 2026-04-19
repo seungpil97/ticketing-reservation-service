@@ -195,4 +195,20 @@ class QueueServiceTest {
     assertThat(response.estimatedWaitSeconds()).isGreaterThanOrEqualTo(0L);
     assertThat(response.reEnterType()).isNull();
   }
+
+  @Test
+  @DisplayName("cleanUpEndedQueue: 종료된 이벤트 대기열 정리 시 seq 카운터 key도 함께 삭제한다")
+  void cleanUpEndedQueue_deletesAllKeys() {
+    // given
+    Long eventId = 1L;
+
+    // when
+    queueService.cleanUpEndedQueue(eventId);
+
+    // then
+    verify(queueRepository).deleteQueue(eventId);
+    verify(queueRepository).removeActiveEvent(eventId);
+    verify(queueRepository).deleteAdmittedHistory(eventId);
+    verify(queueRepository).deleteSeq(eventId);
+  }
 }

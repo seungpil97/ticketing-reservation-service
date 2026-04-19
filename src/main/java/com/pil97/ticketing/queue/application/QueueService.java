@@ -176,7 +176,7 @@ public class QueueService {
   /**
    * 종료된 이벤트 대기열 정리
    * QueueScheduler에서 호출한다.
-   * queue:event:{eventId} 삭제 + queue:active:events 제거 + 입장 허용 이력 삭제
+   * queue:event:{eventId} 삭제 + queue:active:events 제거 + 입장 허용 이력 삭제 + 순번 카운터 삭제
    *
    * @param eventId 이벤트 ID
    */
@@ -184,6 +184,7 @@ public class QueueService {
     queueRepository.deleteQueue(eventId);
     queueRepository.removeActiveEvent(eventId);
     queueRepository.deleteAdmittedHistory(eventId);
+    queueRepository.deleteSeq(eventId);
     log.info("action=QUEUE_CLEANED_UP eventId={}", eventId);
   }
 
