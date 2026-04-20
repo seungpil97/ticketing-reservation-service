@@ -76,9 +76,10 @@ public class ReservationService {
   }
 
   /**
-   * 예약 취소 처리
-   * - PENDING: 결제 전 취소 - 좌석 HELD -> AVAILABLE 복구
-   * - CONFIRMED: 결제 후 취소 - 좌석 RESERVED -> AVAILABLE 복구
+   * 예약 취소 처리 (PENDING 전용)
+   * - PENDING: 결제 전 취소 - 좌석 HELD -> AVAILABLE 복구, 예약 CANCELLED 처리
+   * - CONFIRMED: 직접 취소 불가 - 환불 API 경로 사용
+   * - HOLD 상태는 별도 변경하지 않는다
    *
    * @param reservationId 취소 대상 예약 ID
    */
@@ -88,10 +89,12 @@ public class ReservationService {
     Reservation reservation = reservationRepository.findById(reservationId)
       .orElseThrow(() -> new BusinessException(ReservationErrorCode.NOT_FOUND));
 
-    // 2) 취소 가능한 예약인지 검증 (PENDING, CONFIRMED만 허용)
+    // 2) 취소 가능한 예약인지 검증 (PENDING만 허용)
     validateCancellable(reservation);
 
     // 3) 좌석 상태를 AVAILABLE로 복구
+    // HOLD는 ACTIVE/EXPIRED/CONFIRMED만 존재하므로
+    // 사용자 취소를 별도 상태로 표현하지 않고 기존 상태를 유지한다
     reservation.getHold().getShowtimeSeat().markAvailable();
 
     // 4) 예약 상태를 CANCELLED로 변경
@@ -137,13 +140,18 @@ public class ReservationService {
   /**
    * 취소 가능한 예약인지 검증
    * - PENDING: 결제 전 취소 허용
-   * - CONFIRMED: 결제 후 취소 허용
+   * - CONFIRMED: 직접 취소 불가, 환불 API 경로로만 취소 가능
    * - FAILED, CANCELLED: 취소 불가
    */
   private void validateCancellable(Reservation reservation) {
-    if (reservation.getStatus() != ReservationStatus.PENDING
-      && reservation.getStatus() != ReservationStatus.CONFIRMED) {
-      throw new BusinessException(ReservationErrorCode.NOT_CONFIRMED);
+    ReservationStatus status = reservation.getStatus();
+
+    if (status == ReservationStatus.CONFIRMED) {
+      throw new BusinessException(ReservationErrorCode.RESERVATION_CANCEL_REQUIRES_REFUND);
+    }
+
+    if (status != ReservationStatus.PENDING) {
+      throw new BusinessException(ReservationErrorCode.RESERVATION_CANCEL_NOT_ALLOWED);
     }
   }
 }

@@ -5,18 +5,17 @@ import com.pil97.ticketing.hold.domain.Hold;
 import com.pil97.ticketing.hold.domain.HoldStatus;
 import com.pil97.ticketing.hold.error.HoldErrorCode;
 import com.pil97.ticketing.member.domain.Member;
-import com.pil97.ticketing.reservation.application.ReservationService;
+import com.pil97.ticketing.reservation.api.dto.response.ReservationResponse;
 import com.pil97.ticketing.reservation.domain.Reservation;
 import com.pil97.ticketing.reservation.domain.ReservationStatus;
 import com.pil97.ticketing.reservation.error.ReservationErrorCode;
+import com.pil97.ticketing.hold.domain.repository.HoldRepository;
+import com.pil97.ticketing.reservation.domain.repository.ReservationRepository;
 import com.pil97.ticketing.seat.domain.Seat;
 import com.pil97.ticketing.showtime.domain.Showtime;
 import com.pil97.ticketing.showtimeseat.domain.ShowtimeSeat;
 import com.pil97.ticketing.showtimeseat.domain.ShowtimeSeatStatus;
 import com.pil97.ticketing.showtimeseat.error.ShowtimeSeatErrorCode;
-import com.pil97.ticketing.reservation.api.dto.response.ReservationResponse;
-import com.pil97.ticketing.hold.domain.repository.HoldRepository;
-import com.pil97.ticketing.reservation.domain.repository.ReservationRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -187,61 +186,110 @@ class ReservationServiceTest {
     }
   }
 
-  @Test
-  @DisplayName("CONFIRMED 상태의 예약이면 취소에 성공한다")
-  void cancel_success() {
-    // given
-    Long reservationId = 1L;
+  @Nested
+  @DisplayName("cancel")
+  class Cancel {
 
-    Reservation reservation = mock(Reservation.class);
-    Hold hold = mock(Hold.class);
-    ShowtimeSeat showtimeSeat = mock(ShowtimeSeat.class);
+    @Test
+    @DisplayName("PENDING 상태의 예약이면 취소에 성공한다")
+    void cancel_success() {
+      // given
+      Long reservationId = 1L;
 
-    given(reservationRepository.findById(reservationId)).willReturn(Optional.of(reservation));
-    given(reservation.getStatus()).willReturn(ReservationStatus.CONFIRMED);
-    given(reservation.getHold()).willReturn(hold);
-    given(hold.getShowtimeSeat()).willReturn(showtimeSeat);
+      Reservation reservation = mock(Reservation.class);
+      Hold hold = mock(Hold.class);
+      ShowtimeSeat showtimeSeat = mock(ShowtimeSeat.class);
 
-    // when
-    reservationService.cancel(reservationId);
+      given(reservationRepository.findById(reservationId)).willReturn(Optional.of(reservation));
+      // PENDING 상태만 직접 취소 허용
+      given(reservation.getStatus()).willReturn(ReservationStatus.PENDING);
+      given(reservation.getHold()).willReturn(hold);
+      given(hold.getShowtimeSeat()).willReturn(showtimeSeat);
 
-    // then
-    verify(showtimeSeat).markAvailable();
-    verify(reservation).cancel();
-  }
+      // when
+      reservationService.cancel(reservationId);
 
-  @Test
-  @DisplayName("존재하지 않는 예약이면 예외가 발생한다")
-  void cancel_fail_when_reservation_not_found() {
-    // given
-    Long reservationId = 1L;
-    given(reservationRepository.findById(reservationId)).willReturn(Optional.empty());
+      // then
+      verify(showtimeSeat).markAvailable();
+      verify(reservation).cancel();
+      verify(hold, never()).confirm();
+    }
 
-    // when & then
-    assertThatThrownBy(() -> reservationService.cancel(reservationId))
-      .isInstanceOf(BusinessException.class)
-      .extracting("errorCode")
-      .isEqualTo(ReservationErrorCode.NOT_FOUND);
+    @Test
+    @DisplayName("존재하지 않는 예약이면 예외가 발생한다")
+    void cancel_fail_when_reservation_not_found() {
+      // given
+      Long reservationId = 1L;
+      given(reservationRepository.findById(reservationId)).willReturn(Optional.empty());
 
-    verify(reservationRepository).findById(reservationId);
-  }
+      // when & then
+      assertThatThrownBy(() -> reservationService.cancel(reservationId))
+        .isInstanceOf(BusinessException.class)
+        .extracting("errorCode")
+        .isEqualTo(ReservationErrorCode.NOT_FOUND);
 
-  @Test
-  @DisplayName("이미 취소된 예약이면 예외가 발생한다")
-  void cancel_fail_when_reservation_already_cancelled() {
-    // given
-    Long reservationId = 1L;
-    Reservation reservation = mock(Reservation.class);
+      verify(reservationRepository).findById(reservationId);
+    }
 
-    given(reservationRepository.findById(reservationId)).willReturn(Optional.of(reservation));
-    given(reservation.getStatus()).willReturn(ReservationStatus.CANCELLED);
+    @Test
+    @DisplayName("CONFIRMED 상태의 예약은 직접 취소 불가 - 환불 API 사용 안내")
+    void cancel_fail_when_reservation_confirmed() {
+      // given
+      Long reservationId = 1L;
+      Reservation reservation = mock(Reservation.class);
 
-    // when & then
-    assertThatThrownBy(() -> reservationService.cancel(reservationId))
-      .isInstanceOf(BusinessException.class)
-      .extracting("errorCode")
-      .isEqualTo(ReservationErrorCode.NOT_CONFIRMED);
+      given(reservationRepository.findById(reservationId)).willReturn(Optional.of(reservation));
+      given(reservation.getStatus()).willReturn(ReservationStatus.CONFIRMED);
 
-    verify(reservation, never()).cancel();
+      // when & then
+      // CONFIRMED 예약은 POST /payments/{paymentId}/refund 를 통해서만 취소 가능
+      assertThatThrownBy(() -> reservationService.cancel(reservationId))
+        .isInstanceOf(BusinessException.class)
+        .extracting("errorCode")
+        .isEqualTo(ReservationErrorCode.RESERVATION_CANCEL_REQUIRES_REFUND);
+
+      verify(reservation, never()).cancel();
+      verify(reservation, never()).getHold();
+    }
+
+    @Test
+    @DisplayName("FAILED 상태의 예약은 취소할 수 없다")
+    void cancel_fail_when_reservation_failed() {
+      // given
+      Long reservationId = 1L;
+      Reservation reservation = mock(Reservation.class);
+
+      given(reservationRepository.findById(reservationId)).willReturn(Optional.of(reservation));
+      given(reservation.getStatus()).willReturn(ReservationStatus.FAILED);
+
+      // when & then
+      assertThatThrownBy(() -> reservationService.cancel(reservationId))
+        .isInstanceOf(BusinessException.class)
+        .extracting("errorCode")
+        .isEqualTo(ReservationErrorCode.RESERVATION_CANCEL_NOT_ALLOWED);
+
+      verify(reservation, never()).cancel();
+      verify(reservation, never()).getHold();
+    }
+
+    @Test
+    @DisplayName("이미 취소된 예약은 취소할 수 없다")
+    void cancel_fail_when_reservation_already_cancelled() {
+      // given
+      Long reservationId = 1L;
+      Reservation reservation = mock(Reservation.class);
+
+      given(reservationRepository.findById(reservationId)).willReturn(Optional.of(reservation));
+      given(reservation.getStatus()).willReturn(ReservationStatus.CANCELLED);
+
+      // when & then
+      assertThatThrownBy(() -> reservationService.cancel(reservationId))
+        .isInstanceOf(BusinessException.class)
+        .extracting("errorCode")
+        .isEqualTo(ReservationErrorCode.RESERVATION_CANCEL_NOT_ALLOWED);
+
+      verify(reservation, never()).cancel();
+      verify(reservation, never()).getHold();
+    }
   }
 }
