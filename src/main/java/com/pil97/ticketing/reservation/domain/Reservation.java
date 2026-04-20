@@ -1,7 +1,9 @@
 package com.pil97.ticketing.reservation.domain;
 
+import com.pil97.ticketing.common.exception.BusinessException;
 import com.pil97.ticketing.hold.domain.Hold;
 import com.pil97.ticketing.member.domain.Member;
+import com.pil97.ticketing.reservation.error.ReservationErrorCode;
 import com.pil97.ticketing.seat.domain.Seat;
 import com.pil97.ticketing.showtime.domain.Showtime;
 import jakarta.persistence.*;
@@ -38,10 +40,12 @@ public class Reservation {
   private Member member;
 
   /**
-   * ✅ 예약 상태
+   * 예약 상태
+   * - PENDING: 결제 대기 상태
    * - CONFIRMED: 예약 확정 상태
+   * - FAILED: 결제 실패 상태
    * - CANCELLED: 취소 상태
-   * - 예약 생성 시 기본값 CONFIRMED
+   * - 예약 생성 시 기본값은 PENDING
    */
   @Enumerated(EnumType.STRING)
   @Column(nullable = false, length = 20)
@@ -76,8 +80,11 @@ public class Reservation {
     this.status = ReservationStatus.FAILED;
   }
 
-  // 예약 취소 - CONFIRMED 상태에서만 가능
+  // 예약 취소 - PENDING 상태에서만 가능
   public void cancel() {
+    if (this.status != ReservationStatus.PENDING) {
+      throw new BusinessException(ReservationErrorCode.RESERVATION_CANCEL_NOT_ALLOWED);
+    }
     this.status = ReservationStatus.CANCELLED;
   }
 }
