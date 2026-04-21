@@ -29,14 +29,8 @@ public class PaymentService {
   /**
    * 결제 처리
    * - idempotency key 누락 시 예외 발생
-   * - 동일 idempotency key로 재요청 시 Redis에서 기존 결과 반환 (DB 처리 없음)
-   * - 예약이 존재하는지 검증한다
-   * - 예약이 PENDING 상태인지 검증한다
-   * - Payment를 PENDING 상태로 저장한다
-   * - forceFailure가 true이면 결제 실패 처리한다 (Redis 저장 안 함 - 재시도 허용)
-   * - 결제 성공 시: Payment SUCCESS, 예약 CONFIRMED, 좌석 RESERVED, HOLD CONFIRMED, Redis 저장
-   * - 결제 실패 시: Payment FAIL, 예약 FAILED, HOLD EXPIRED, 좌석 AVAILABLE 복구
-   * - 실운영 시 PG 콜백 기반 비동기 처리로 전환 필요
+   * - 동일 idempotency key로 재요청 시 Redis 캐시 반환 (DB 처리 없음)
+   * - 신규 요청은 비관적 락으로 예약을 조회하여 동시 중복 결제 차단
    */
   @Transactional
   public PaymentResponse pay(String idempotencyKey, CreatePaymentRequest request) {
@@ -51,10 +45,10 @@ public class PaymentService {
   /**
    * 환불 처리
    * - paymentId로 결제를 조회한다
-   * - SUCCESS 상태인 경우만 환불 가능 - 그 외 상태는 예외 발생
-   * - 로그인한 사용자가 해당 결제의 소유자인지 검증한다
-   * 소유권 검증은 Service 레이어에서 처리 - "누가 환불할 수 있는가"는 비즈니스 규칙
-   * - Payment REFUNDED, 예약 CANCELLED, HOLD EXPIRED, 좌석 AVAILABLE 순서로 전환
+   * - 소유권 검증을 상태 검증보다 먼저 수행한다
+   * (상태 검증 먼저 시 타인의 결제 상태 정보가 노출될 수 있음)
+   * - SUCCESS 상태인 경우만 환불 가능
+   * - Payment REFUNDED, 예약 CANCELLED, HOLD REFUNDED, 좌석 AVAILABLE 순서로 전환
    */
   @Transactional
   public PaymentResponse refund(Long paymentId, Member loginMember) {
@@ -63,8 +57,6 @@ public class PaymentService {
       .orElseThrow(() -> new BusinessException(PaymentErrorCode.PAYMENT_NOT_FOUND));
 
     // 2) 소유권 검증 - 상태 검증보다 먼저 수행
-    //    소유권 검증을 먼저 해야 타인이 paymentId를 추측했을 때 결제 상태 정보가 노출되지 않는다
-    //    (상태 검증 먼저 시 409/403 응답 차이로 상태 유추 가능)
     validateOwnership(payment, loginMember);
 
     // 3) SUCCESS 상태인 경우만 환불 가능
@@ -75,12 +67,12 @@ public class PaymentService {
     // 4) Payment 상태 REFUNDED 전환
     payment.refund();
 
-    // 5) 예약 상태 CANCELLED 전환
+    // 5) 예약 상태 CANCELLED 전환 - 환불 경로 전용 메서드 사용
     Reservation reservation = payment.getReservation();
-    reservation.cancel();
+    reservation.cancelByRefund();
 
-    // 6) HOLD 상태 EXPIRED 전환 - 기존 만료 스케줄러와 동일한 상태값 사용
-    reservation.getHold().expire();
+    // 6) HOLD 상태 REFUNDED 전환 - 시간 만료(EXPIRED)와 구분
+    reservation.getHold().refund();
 
     // 7) 좌석 상태 AVAILABLE 전환
     reservation.getHold().getShowtimeSeat().markAvailable();
@@ -102,10 +94,12 @@ public class PaymentService {
 
   /**
    * 실제 결제 처리 - 최초 요청에서만 실행
-   * idempotency key 중복 확인 후 신규 요청일 때만 호출된다
+   * - 비관적 락으로 예약을 조회하여 동시 중복 결제를 DB 레벨에서 차단
+   * - 락 획득 후 PENDING 상태 재검증으로 선행 요청이 이미 처리된 경우 예외 반환
    */
   private PaymentResponse processPayment(String idempotencyKey, CreatePaymentRequest request) {
-    Reservation reservation = reservationRepository.findById(request.getReservationId())
+    // 비관적 락으로 조회 - 동시 요청 중 하나만 진입, 나머지는 락 해제 후 재검증에서 차단
+    Reservation reservation = reservationRepository.findByIdWithLock(request.getReservationId())
       .orElseThrow(() -> new BusinessException(ReservationErrorCode.NOT_FOUND));
 
     validatePayable(reservation);
@@ -135,7 +129,7 @@ public class PaymentService {
   /**
    * 결제 가능한 예약인지 검증
    * - PENDING 상태의 예약만 결제 가능
-   * - 이미 처리된 예약(CONFIRMED, FAILED, CANCELLED)은 결제 불가
+   * - 비관적 락 획득 후 재검증하여 선행 요청이 이미 처리한 경우 차단
    */
   private void validatePayable(Reservation reservation) {
     if (reservation.getStatus() != ReservationStatus.PENDING) {

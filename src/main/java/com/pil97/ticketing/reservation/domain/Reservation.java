@@ -80,9 +80,27 @@ public class Reservation {
     this.status = ReservationStatus.FAILED;
   }
 
-  // 예약 취소 - PENDING 상태에서만 가능
+  /**
+   * 사용자 직접 취소 - PENDING 상태 전용
+   * - CONFIRMED 예약은 환불 API(cancelByRefund) 경로로만 취소 가능
+   */
   public void cancel() {
+    if (this.status == ReservationStatus.CONFIRMED) {
+      throw new BusinessException(ReservationErrorCode.RESERVATION_CANCEL_REQUIRES_REFUND);
+    }
     if (this.status != ReservationStatus.PENDING) {
+      throw new BusinessException(ReservationErrorCode.RESERVATION_CANCEL_NOT_ALLOWED);
+    }
+    this.status = ReservationStatus.CANCELLED;
+  }
+
+  /**
+   * 환불 경로 취소 - CONFIRMED 상태 전용
+   * - 사용자 직접 취소(cancel)와 경로를 분리하여 선행 상태 조건을 명확히 한다
+   * - PENDING 등 CONFIRMED 외 상태에서 호출 시 예외 발생
+   */
+  public void cancelByRefund() {
+    if (this.status != ReservationStatus.CONFIRMED) {
       throw new BusinessException(ReservationErrorCode.RESERVATION_CANCEL_NOT_ALLOWED);
     }
     this.status = ReservationStatus.CANCELLED;

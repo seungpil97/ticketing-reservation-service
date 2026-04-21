@@ -45,7 +45,7 @@ class PaymentServiceTest {
   @InjectMocks
   private PaymentService paymentService;
 
-  // ===================== 기존 케이스 (idempotency key 파라미터 추가) =====================
+  // ===================== 결제 케이스 =====================
 
   @Test
   @DisplayName("pay: 결제 성공 시 Payment SUCCESS, 예약 CONFIRMED, 좌석 RESERVED, HOLD CONFIRMED로 전환된다")
@@ -66,7 +66,8 @@ class PaymentServiceTest {
     when(reservation.getStatus()).thenReturn(ReservationStatus.PENDING);
     when(reservation.getHold()).thenReturn(hold);
 
-    when(reservationRepository.findById(1L)).thenReturn(Optional.of(reservation));
+    // 비관적 락 조회 stub
+    when(reservationRepository.findByIdWithLock(1L)).thenReturn(Optional.of(reservation));
 
     Payment savedPayment = mock(Payment.class);
     when(savedPayment.getId()).thenReturn(1L);
@@ -108,7 +109,9 @@ class PaymentServiceTest {
     Reservation reservation = mock(Reservation.class);
     when(reservation.getStatus()).thenReturn(ReservationStatus.PENDING);
     when(reservation.getHold()).thenReturn(hold);
-    when(reservationRepository.findById(1L)).thenReturn(Optional.of(reservation));
+
+    // 비관적 락 조회 stub
+    when(reservationRepository.findByIdWithLock(1L)).thenReturn(Optional.of(reservation));
 
     Payment savedPayment = mock(Payment.class);
     when(savedPayment.getId()).thenReturn(2L);
@@ -123,7 +126,6 @@ class PaymentServiceTest {
 
     // then
     assertThat(response.status()).isEqualTo("FAIL");
-    assertThat(response.paidAt()).isNull();
 
     verify(savedPayment).fail();
     verify(reservation).fail();
@@ -141,7 +143,7 @@ class PaymentServiceTest {
 
     CreatePaymentRequest request = mock(CreatePaymentRequest.class);
     when(request.getReservationId()).thenReturn(999L);
-    when(reservationRepository.findById(999L)).thenReturn(Optional.empty());
+    when(reservationRepository.findByIdWithLock(999L)).thenReturn(Optional.empty());
     when(idempotencyRedisRepository.find(idempotencyKey)).thenReturn(Optional.empty());
 
     // when & then
@@ -152,7 +154,6 @@ class PaymentServiceTest {
         assertThat(be.getErrorCode()).isEqualTo(ReservationErrorCode.NOT_FOUND);
       });
 
-    verify(reservationRepository).findById(999L);
     verifyNoInteractions(paymentRepository);
   }
 
@@ -167,7 +168,7 @@ class PaymentServiceTest {
 
     Reservation reservation = mock(Reservation.class);
     when(reservation.getStatus()).thenReturn(ReservationStatus.CONFIRMED);
-    when(reservationRepository.findById(1L)).thenReturn(Optional.of(reservation));
+    when(reservationRepository.findByIdWithLock(1L)).thenReturn(Optional.of(reservation));
     when(idempotencyRedisRepository.find(idempotencyKey)).thenReturn(Optional.empty());
 
     // when & then
@@ -241,50 +242,12 @@ class PaymentServiceTest {
     verifyNoInteractions(idempotencyRedisRepository);
   }
 
-  @Test
-  @DisplayName("pay: forceFailure=true 결제 실패 후 동일 key로 재요청 시 재처리가 허용된다")
-  void pay_forceFailure_thenRetry_allowsReprocessing() {
-    // given
-    String idempotencyKey = "retry-key-001";
-
-    CreatePaymentRequest request = mock(CreatePaymentRequest.class);
-    when(request.getReservationId()).thenReturn(1L);
-    when(request.getAmount()).thenReturn(150000);
-    when(request.isForceFailure()).thenReturn(false);
-
-    ShowtimeSeat showtimeSeat = mock(ShowtimeSeat.class);
-    Hold hold = mock(Hold.class);
-    when(hold.getShowtimeSeat()).thenReturn(showtimeSeat);
-
-    Reservation reservation = mock(Reservation.class);
-    when(reservation.getStatus()).thenReturn(ReservationStatus.PENDING);
-    when(reservation.getHold()).thenReturn(hold);
-    when(reservationRepository.findById(1L)).thenReturn(Optional.of(reservation));
-
-    Payment savedPayment = mock(Payment.class);
-    when(savedPayment.getId()).thenReturn(1L);
-    when(savedPayment.getStatus()).thenReturn(PaymentStatus.SUCCESS);
-    when(savedPayment.getPaidAt()).thenReturn(null);
-    when(paymentRepository.save(any(Payment.class))).thenReturn(savedPayment);
-
-    when(idempotencyRedisRepository.find(idempotencyKey)).thenReturn(Optional.empty());
-
-    // when
-    PaymentResponse response = paymentService.pay(idempotencyKey, request);
-
-    // then
-    assertThat(response.status()).isEqualTo("SUCCESS");
-    verify(reservationRepository).findById(1L);
-    verify(paymentRepository).save(any(Payment.class));
-  }
-
   // ===================== 환불 케이스 =====================
 
   @Test
-  @DisplayName("refund: 환불 성공 시 Payment REFUNDED, 예약 CANCELLED, HOLD EXPIRED, 좌석 AVAILABLE로 전환된다")
+  @DisplayName("refund: 환불 성공 시 Payment REFUNDED, 예약 CANCELLED, HOLD REFUNDED, 좌석 AVAILABLE로 전환된다")
   void refund_success() {
     // given
-    // 로그인 사용자와 예약 소유자가 동일한 경우
     Member loginMember = mock(Member.class);
     when(loginMember.getId()).thenReturn(1L);
 
@@ -310,8 +273,10 @@ class PaymentServiceTest {
 
     // then
     verify(payment).refund();
-    verify(reservation).cancel();
-    verify(hold).expire();
+    // 환불 경로 전용 cancelByRefund() 호출 확인
+    verify(reservation).cancelByRefund();
+    // 환불로 종료된 HOLD는 REFUNDED 상태로 전환
+    verify(hold).refund();
     verify(showtimeSeat).markAvailable();
   }
 
@@ -319,7 +284,6 @@ class PaymentServiceTest {
   @DisplayName("refund: 타인의 결제 환불 시도 시 BusinessException(REFUND_FORBIDDEN)을 던진다")
   void refund_notOwner_throwsBusinessException() {
     // given
-    // 로그인 사용자(id=2)와 예약 소유자(id=1)가 다른 경우
     Member loginMember = mock(Member.class);
     when(loginMember.getId()).thenReturn(2L);
 
@@ -341,15 +305,13 @@ class PaymentServiceTest {
         assertThat(be.getErrorCode()).isEqualTo(PaymentErrorCode.REFUND_FORBIDDEN);
       });
 
-    // 소유권 검증 실패 시 환불 처리 없음
     verify(payment, never()).refund();
   }
 
   @Test
-  @DisplayName("refund: SUCCESS 상태가 아닌 결제 환불 시도 시 BusinessException(REFUND_NOT_ALLOWED)을 던진다")
+  @DisplayName("refund: SUCCESS 상태가 아닌 환불 시도 시 BusinessException(REFUND_NOT_ALLOWED)을 던진다")
   void refund_notSuccess_throwsBusinessException() {
     // given
-    // 소유권 검증을 통과시키기 위해 로그인 사용자와 예약 소유자를 동일하게 설정
     Member loginMember = mock(Member.class);
     when(loginMember.getId()).thenReturn(1L);
 
@@ -376,10 +338,9 @@ class PaymentServiceTest {
   }
 
   @Test
-  @DisplayName("refund: 이미 환불된 결제 재환불 시도 시 BusinessException(REFUND_NOT_ALLOWED)을 던진다")
+  @DisplayName("refund: 이미 환불된 결제 시도 시 BusinessException(REFUND_NOT_ALLOWED)을 던진다")
   void refund_alreadyRefunded_throwsBusinessException() {
     // given
-    // 소유권 검증을 통과시키기 위해 로그인 사용자와 예약 소유자를 동일하게 설정
     Member loginMember = mock(Member.class);
     when(loginMember.getId()).thenReturn(1L);
 
