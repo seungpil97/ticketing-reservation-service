@@ -1,6 +1,5 @@
 package com.pil97.ticketing.showtimeseat.domain;
 
-
 import com.pil97.ticketing.common.exception.BusinessException;
 import com.pil97.ticketing.seat.domain.Seat;
 import com.pil97.ticketing.showtime.domain.Showtime;
@@ -44,8 +43,11 @@ public class ShowtimeSeat {
     this.status = ShowtimeSeatStatus.HELD;
   }
 
+  /**
+   * 좌석 AVAILABLE 복구
+   * - HELD(결제 전 취소) 또는 RESERVED(환불) 상태에서만 AVAILABLE 전환 허용
+   */
   public void markAvailable() {
-    // HELD(결제 전 취소) 또는 RESERVED(환불) 상태에서만 AVAILABLE 전환 허용
     if (this.status != ShowtimeSeatStatus.HELD
       && this.status != ShowtimeSeatStatus.RESERVED) {
       throw new BusinessException(ShowtimeSeatErrorCode.INVALID_STATUS_TRANSITION);
@@ -53,7 +55,15 @@ public class ShowtimeSeat {
     this.status = ShowtimeSeatStatus.AVAILABLE;
   }
 
+  /**
+   * 좌석 예약 확정
+   * - HELD 상태에서만 RESERVED 전환 허용
+   * - AVAILABLE 또는 RESERVED 상태에서 호출 시 예외 발생
+   */
   public void markReserved() {
+    if (this.status != ShowtimeSeatStatus.HELD) {
+      throw new BusinessException(ShowtimeSeatErrorCode.INVALID_STATUS_TRANSITION);
+    }
     this.status = ShowtimeSeatStatus.RESERVED;
   }
 }
