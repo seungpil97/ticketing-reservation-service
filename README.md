@@ -50,12 +50,12 @@ sequenceDiagram
     Server->>DB: Payment SUCCESS, Reservation CONFIRMED, 좌석 RESERVED
     Server-->>Client: 결제 완료
 
-    Client->>Server: 6. DELETE /reservations/{reservationId}
+    Client->>Server: 6. DELETE /reservations/{reservationId} (PENDING only)
     Server->>DB: Reservation CANCELLED, 좌석 AVAILABLE
-    Server-->>Client: 예약 취소 완료
+    Server-->>Client: 결제 전 예약 취소 완료
 
     Client->>Server: 7. POST /payments/{paymentId}/refund
-    Server->>DB: Payment REFUNDED, HOLD EXPIRED
+    Server->>DB: Payment REFUNDED, Reservation CANCELLED, HOLD REFUNDED, 좌석 AVAILABLE
     Server-->>Client: 환불 완료
 ```
 
@@ -75,13 +75,13 @@ sequenceDiagram
 
 ## 핵심 기술 결정
 
-| 결정           | 선택                         | 대안 대비 이유                                                                 |
-|--------------|----------------------------|--------------------------------------------------------------------------|
-| 동시성 제어       | Redis 분산락 (Redisson)       | 비관적 락은 DB 커넥션을 점유해 트래픽 폭증 시 DB 부하 집중. Redis 분산락은 DB 외부에서 락을 관리해 부하 분산 가능 |
-| 대기열          | Redis Sorted Set           | score를 진입 timestamp로 사용해 O(log N)으로 순번 조회/정렬 가능. 별도 MQ 없이 단일 Redis로 처리   |
-| RefreshToken | Rotation 방식                | 토큰 탈취 시 피해자가 재사용을 시도하면 Redis 불일치로 즉시 감지 후 강제 로그아웃                        |
-| 결제 멱등성       | Idempotency Key (Redis 저장) | 네트워크 재시도로 인한 중복 결제를 방지. 동일 키 재요청 시 DB 접근 없이 기존 결과 반환                     |
-| 이벤트 캐시       | Redis Cache (TTL 10분)      | 공연 목록은 변경 빈도가 낮고 조회 빈도가 높음. 캐시로 DB 조회 부하 감소                              |
+| 결정           | 선택                      | 대안 대비 이유                                                                       |
+|--------------|-------------------------|--------------------------------------------------------------------------------|
+| 동시성 제어       | Redis 분산락 (Redisson)    | 비관적 락은 DB 커넥션을 점유해 트래픽 폭증 시 DB 부하 집중. Redis 분산락은 DB 외부에서 락을 관리해 부하 분산 가능       |
+| 대기열          | Redis Sorted Set        | score를 진입 timestamp로 사용해 O(log N)으로 순번 조회/정렬 가능. 별도 MQ 없이 단일 Redis로 처리         |
+| RefreshToken | Rotation 방식             | 토큰 탈취 시 피해자가 재사용을 시도하면 Redis 불일치로 즉시 감지 후 강제 로그아웃                              |
+| 결제 멱등성       | Idempotency Key + Redis | 동일 key 재요청은 기존 결과 반환, 동일 key+다른 payload는 차단, 처리 중 중복 요청은 in-progress lock으로 차단 |
+| 이벤트 캐시       | Redis Cache (TTL 10분)   | 공연 목록은 변경 빈도가 낮고 조회 빈도가 높음. 캐시로 DB 조회 부하 감소                                    |
 
 ---
 
@@ -102,12 +102,13 @@ sequenceDiagram
 ### 예약 플로우
 
 - `POST /showtimes/{showtimeId}/hold` — 좌석 선점 (Redis 분산락 + 5분 유효)
-- `POST /holds/{holdId}/reserve` — 예약 확정
-- `DELETE /reservations/{reservationId}` — 예약 취소 (본인 소유권 검증)
+- `POST /holds/{holdId}/reserve` — 결제 대기 상태 예약 생성(PENDING) (Idempotency-Key 헤더
+  필수)
+- `DELETE /reservations/{reservationId}` — 결제 전 예약 취소 (PENDING 전용)
 
 ### 결제
 
-- `POST /payments` — Mock 결제 (Idempotency Key 멱등성 보장)
+- `POST /payments` — Mock 결제 (Idempotency-Key 헤더 필수, 멱등성 보장)
 - `POST /payments/{paymentId}/refund` — 환불 처리 (본인 소유권 검증)
 
 ### 대기열
@@ -236,18 +237,19 @@ docker compose up -d
 
 에러 코드는 도메인별 Prefix로 구분합니다.
 
-| Prefix              | 도메인               |
-|---------------------|-------------------|
-| `COMMON-xxx`        | 공통 (검증 실패, 서버 에러) |
-| `AUTH-xxx`          | 인증/인가             |
-| `MEMBER-xxx`        | 회원                |
-| `EVENT-xxx`         | 공연                |
-| `SHOWTIME-xxx`      | 회차                |
-| `SHOWTIME-SEAT-xxx` | 회차별 좌석            |
-| `HOLD-xxx`          | 좌석 선점             |
-| `RESERVATION-xxx`   | 예약                |
-| `PAYMENT-xxx`       | 결제                |
-| `QUEUE-xxx`         | 대기열               |
+| Prefix              | 도메인                                |
+|---------------------|------------------------------------|
+| `COMMON-xxx`        | 공통 (검증 실패, 서버 에러)                  |
+| `AUTH-xxx`          | 인증/인가                              |
+| `MEMBER-xxx`        | 회원                                 |
+| `EVENT-xxx`         | 공연                                 |
+| `SHOWTIME-xxx`      | 회차                                 |
+| `SHOWTIME-SEAT-xxx` | 회차별 좌석                             |
+| `HOLD-xxx`          | 좌석 선점                              |
+| `RESERVATION-xxx`   | 예약                                 |
+| `PAYMENT-xxx`       | 결제                                 |
+| `IDEMPOTENCY-xxx`   | 멱등성 (중복 요청 / payload 불일치 / key 누락) |
+| `QUEUE-xxx`         | 대기열                                |
 
 전체 에러 코드는 각 도메인 패키지의 `XxxErrorCode.java`를 참고하세요.
 
