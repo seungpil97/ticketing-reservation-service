@@ -10,6 +10,7 @@ import com.pil97.ticketing.infra.idempotency.IdempotencyRedisRepository;
 import com.pil97.ticketing.member.domain.Member;
 import com.pil97.ticketing.member.domain.repository.MemberRepository;
 import com.pil97.ticketing.payment.api.dto.request.CreatePaymentRequest;
+import com.pil97.ticketing.payment.api.dto.response.PaymentResponse;
 import com.pil97.ticketing.payment.domain.repository.PaymentRepository;
 import com.pil97.ticketing.payment.error.PaymentErrorCode;
 import com.pil97.ticketing.reservation.domain.Reservation;
@@ -41,7 +42,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 
@@ -114,8 +117,20 @@ class PaymentConcurrencyTest {
   @DisplayName("동일 reservationId 동시 결제 10건 요청 시 1건만 SUCCESS, 나머지 9건은 PAYMENT_ALREADY_PROCESSED")
   void pay_sameReservation_concurrently_onlyOneSuccess() throws Exception {
     // given
-    when(idempotencyRedisRepository.find(anyString())).thenReturn(Optional.empty());
-    doNothing().when(idempotencyRedisRepository).save(anyString(), org.mockito.ArgumentMatchers.any());
+    when(idempotencyRedisRepository.find(
+      anyString(),
+      anyString(),
+      anyString(),
+      eq(PaymentResponse.class)
+    )).thenReturn(Optional.empty());
+
+    doNothing().when(idempotencyRedisRepository).save(
+      anyString(),
+      anyString(),
+      anyString(),
+      any(PaymentResponse.class),
+      any()
+    );
 
     Reservation reservation = createPendingReservation();
 
