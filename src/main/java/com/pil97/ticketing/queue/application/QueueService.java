@@ -49,14 +49,15 @@ public class QueueService {
   /**
    * 대기열 등록 및 재진입
    * <p>
-   * 최초 등록: ZADD NX로 순번 발급
-   * 재진입: ZREM → ZADD로 기존 순번 초기화 후 맨 뒤 재등록
+   * 최초 등록: ZADD NX(score=0)로 등록 선점 → 성공 시에만 INCR로 score 발급 후 교체
+   * 재진입: INCR로 새 score 발급 후 ZADD로 맨 뒤 재등록
    * 존재하지 않는 eventId 요청 시 QueueErrorCode.EVENT_NOT_FOUND 예외 발생
    *
    * @param eventId  이벤트 ID
    * @param memberId JWT에서 추출한 회원 ID
    * @return 순번(1 - based), 예상 대기 시간(초)
    */
+
   public QueueEnterResponse enter(Long eventId, Long memberId) {
 
     // 이벤트 존재 여부 확인
@@ -64,17 +65,29 @@ public class QueueService {
       throw new BusinessException(QueueErrorCode.EVENT_NOT_FOUND);
     }
 
-    // Redis INCR 기반 전역 카운터로 score 충돌 완전 방지
-    double score = queueRepository.nextScore(eventId);
     boolean isReEnter = queueRepository.hasAdmittedHistory(eventId, memberId);
 
     if (isReEnter) {
-      // 재진입: 기존 순번 초기화 후 맨 뒤 재등록
+      // 재진입은 기존 대기열 위치를 초기화하고 맨 뒤로 보내야 하므로 새 score를 발급한다.
+      double score = queueRepository.nextScore(eventId);
       queueRepository.addOrReplace(eventId, memberId, score);
       log.info("memberId={} action=QUEUE_REENTERED eventId={}", memberId, eventId);
     } else {
-      // 최초 등록: 이미 대기열에 있으면 기존 순번 유지
-      queueRepository.addIfAbsent(eventId, memberId, score);
+      /*
+       * 최초 등록은 이미 대기열에 있는 사용자의 기존 순번을 유지해야 한다.
+       * 따라서 먼저 ZADD NX로 등록 성공 여부를 확인하고,
+       * 실제로 새로 등록된 경우에만 INCR로 score를 발급한다.
+       *
+       * 주의:
+       * 등록 성공 여부와 무관하게 nextScore()를 먼저 호출하면
+       * 중복 등록 시도만으로 queue:seq:{eventId}가 증가해 score가 건너뛸 수 있다.
+       */
+      boolean added = queueRepository.addIfAbsent(eventId, memberId, 0);
+
+      if (added) {
+        double score = queueRepository.nextScore(eventId);
+        queueRepository.addOrReplace(eventId, memberId, score);
+      }
     }
 
     // 활성 대기열 이벤트 목록에 등록 - 스케줄러가 이 Set을 순회하며 처리

@@ -78,8 +78,8 @@ class QueueServiceTest {
     assertThat(response.rank()).isEqualTo(5L);
     assertThat(response.estimatedWaitSeconds()).isGreaterThanOrEqualTo(0L);
 
-    verify(queueRepository).addIfAbsent(eq(eventId), eq(memberId), anyDouble());
-    verify(queueRepository, never()).addOrReplace(anyLong(), anyLong(), anyDouble());
+    verify(queueRepository).addIfAbsent(eq(eventId), eq(memberId), eq(0d));
+    verify(queueRepository).addOrReplace(eq(eventId), eq(memberId), anyDouble());
   }
 
   @Test
@@ -94,7 +94,6 @@ class QueueServiceTest {
     when(queueRepository.hasAdmittedHistory(eventId, memberId)).thenReturn(false);
     when(queueRepository.addIfAbsent(eq(eventId), eq(memberId), anyDouble())).thenReturn(false);
     when(queueRepository.getRank(eventId, memberId)).thenReturn(2L);
-    when(queueRepository.nextScore(eventId)).thenReturn(1L);
 
     // when
     QueueEnterResponse response = queueService.enter(eventId, memberId);
