@@ -9,6 +9,7 @@
 - 트래픽 폭증 대응 — Redis Sorted Set 기반 대기열로 입장 순서 제어
 - 결제 중복 처리 방지 — Idempotency Key 기반 멱등성 보장
 - 인증 보안 강화 — RefreshToken Rotation + Redis 블랙리스트 로그아웃
+- 과도한 반복 요청 차단 — Redis 슬라이딩 윈도우 기반 Rate Limiting
 
 > Java 17 / Spring Boot 3.4.3 / MariaDB / Redis / Docker Compose / GitHub
 > Actions
@@ -75,13 +76,14 @@ sequenceDiagram
 
 ## 핵심 기술 결정
 
-| 결정           | 선택                      | 대안 대비 이유                                                                       |
-|--------------|-------------------------|--------------------------------------------------------------------------------|
-| 동시성 제어       | Redis 분산락 (Redisson)    | 비관적 락은 DB 커넥션을 점유해 트래픽 폭증 시 DB 부하 집중. Redis 분산락은 DB 외부에서 락을 관리해 부하 분산 가능       |
-| 대기열          | Redis Sorted Set        | score를 진입 timestamp로 사용해 O(log N)으로 순번 조회/정렬 가능. 별도 MQ 없이 단일 Redis로 처리         |
-| RefreshToken | Rotation 방식             | 토큰 탈취 시 피해자가 재사용을 시도하면 Redis 불일치로 즉시 감지 후 강제 로그아웃                              |
-| 결제 멱등성       | Idempotency Key + Redis | 동일 key 재요청은 기존 결과 반환, 동일 key+다른 payload는 차단, 처리 중 중복 요청은 in-progress lock으로 차단 |
-| 이벤트 캐시       | Redis Cache (TTL 10분)   | 공연 목록은 변경 빈도가 낮고 조회 빈도가 높음. 캐시로 DB 조회 부하 감소                                    |
+| 결정            | 선택                      | 대안 대비 이유                                                                               |
+|---------------|-------------------------|----------------------------------------------------------------------------------------|
+| 동시성 제어        | Redis 분산락 (Redisson)    | 비관적 락은 DB 커넥션을 점유해 트래픽 폭증 시 DB 부하 집중. Redis 분산락은 DB 외부에서 락을 관리해 부하 분산 가능               |
+| 대기열           | Redis Sorted Set        | score를 진입 timestamp로 사용해 O(log N)으로 순번 조회/정렬 가능. 별도 MQ 없이 단일 Redis로 처리                 |
+| RefreshToken  | Rotation 방식             | 토큰 탈취 시 피해자가 재사용을 시도하면 Redis 불일치로 즉시 감지 후 강제 로그아웃                                      |
+| 결제 멱등성        | Idempotency Key + Redis | 동일 key 재요청은 기존 결과 반환, 동일 key+다른 payload는 차단, 처리 중 중복 요청은 in-progress lock으로 차단         |
+| 이벤트 캐시        | Redis Cache (TTL 10분)   | 공연 목록은 변경 빈도가 낮고 조회 빈도가 높음. 캐시로 DB 조회 부하 감소                                            |
+| Rate Limiting | Redis 슬라이딩 윈도우          | 고정 윈도우는 경계에서 2배 허용 취약점 존재. 슬라이딩 윈도우는 Sorted Set + Lua Script로 원자적 카운트, 정확한 시간 기반 제한 가능 |
 
 ---
 
@@ -131,6 +133,7 @@ sequenceDiagram
 - HOLD 만료 해제 스케줄링 (30초 주기)
 - N+1 제거 (fetch join) + 인덱스 설계
 - GitHub Actions CI
+- Rate Limiting — Redis 슬라이딩 윈도우 (HOLD 5회/60초, 예약·결제 3회/60초, AOP 기반 적용)
 
 ---
 
@@ -250,6 +253,7 @@ docker compose up -d
 | `PAYMENT-xxx`       | 결제                                 |
 | `IDEMPOTENCY-xxx`   | 멱등성 (중복 요청 / payload 불일치 / key 누락) |
 | `QUEUE-xxx`         | 대기열                                |
+| `RATE-LIMIT-xxx`    | Rate Limiting (요청 횟수 초과)           |
 
 전체 에러 코드는 각 도메인 패키지의 `XxxErrorCode.java`를 참고하세요.
 

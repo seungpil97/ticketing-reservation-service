@@ -1,5 +1,6 @@
 package com.pil97.ticketing.queue.application;
 
+import com.pil97.ticketing.event.domain.repository.EventRepository;
 import com.pil97.ticketing.queue.application.scheduler.QueueScheduler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -15,9 +16,12 @@ import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.BDDMockito.given;
 
 /**
  * 테스트 흐름 설명
@@ -25,10 +29,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 2. Redis Sorted Set ZADD NX로 각 memberId가 중복 없이 등록되는지 검증
  * 3. 등록된 유저 수 == 100, 순번 중복 없음 검증
  * <p>
- * EventRepository mock 제거 이유:
- * - @BeforeEach의 Mockito stub은 메인 스레드 기준으로 등록되므로 워커 스레드에서 보장되지 않는다.
- * - 동시성 테스트의 목적은 Redis Sorted Set 동시 접근 안정성 검증이므로 DB는 실제 환경을 사용한다.
- * - @BeforeEach에서 jdbcTemplate으로 실제 seed 데이터의 eventId를 조회하므로 mock이 불필요하다.
+ * EventRepository mock 이유:
+ * 100개 스레드가 동시에 existsById() DB 쿼리를 실행하면 HikariCP 커넥션 풀이
+ * 고갈되어 done.await() 타임아웃이 발생할 수 있다.
+ * 이 테스트의 목적은 Redis Sorted Set 동시 접근 안정성 검증이므로
+ * DB 호출은 mock으로 처리한다.
  */
 @ActiveProfiles("test")
 @SpringBootTest
@@ -37,6 +42,10 @@ class QueueConcurrencyTest {
   // QueueScheduler가 테스트 중 실행되면 대기열에서 멤버를 제거해 순번 검증이 깨지므로 MockitoBean으로 비활성화
   @MockitoBean
   private QueueScheduler queueScheduler;
+
+  // EventRepository mock 이유: 위 클래스 주석 참조
+  @MockitoBean
+  private EventRepository eventRepository;
 
   @Autowired
   private QueueService queueService;
@@ -62,6 +71,8 @@ class QueueConcurrencyTest {
     redisTemplate.delete("queue:seq:" + eventId);
     // queue:active:events에서 해당 eventId 제거 - 테스트 간 잔여 데이터 방지
     redisTemplate.opsForSet().remove("queue:active:events", String.valueOf(eventId));
+
+    given(eventRepository.existsById(anyLong())).willReturn(true);
   }
 
   @Test
@@ -95,19 +106,29 @@ class QueueConcurrencyTest {
       });
     }
 
-    ready.await();     // 모든 스레드 준비될 때까지 대기
-    start.countDown(); // 동시 출발
-    done.await();      // 모든 스레드 완료될 때까지 대기
+    assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
+    start.countDown();
+    assertThat(done.await(10, TimeUnit.SECONDS)).isTrue();
     executor.shutdown();
+    assertThat(executor.awaitTermination(5, TimeUnit.SECONDS)).isTrue();
 
     // then - 100명 전원 성공
     assertThat(successCount.get()).isEqualTo(threadCount);
     assertThat(failCount.get()).isEqualTo(0);
 
     // Redis Sorted Set에 100개 등록 확인
-    Set<String> members = redisTemplate.opsForZSet()
-      .range("queue:event:" + eventId, 0, -1);
-    assertThat(members).hasSize(threadCount);
+    Set<org.springframework.data.redis.core.ZSetOperations.TypedTuple<String>> tuples =
+      redisTemplate.opsForZSet()
+        .rangeWithScores("queue:event:" + eventId, 0, -1);
+
+    assertThat(tuples).hasSize(threadCount);
+
+// score(순번) 중복 체크
+    Set<Double> scores = new java.util.HashSet<>();
+    for (var t : tuples) {
+      scores.add(t.getScore());
+    }
+    assertThat(scores).hasSize(threadCount);
   }
 
   @Test
@@ -135,10 +156,11 @@ class QueueConcurrencyTest {
       });
     }
 
-    ready.await();
+    assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
     start.countDown();
-    done.await();
+    assertThat(done.await(30, TimeUnit.SECONDS)).isTrue();
     executor.shutdown();
+    assertThat(executor.awaitTermination(5, TimeUnit.SECONDS)).isTrue();
 
     // then - 동일 memberId는 Sorted Set에 1개만 존재해야 함
     Long rank = redisTemplate.opsForZSet()

@@ -1,5 +1,7 @@
 package com.pil97.ticketing.hold.api;
 
+import com.pil97.ticketing.common.ratelimit.RateLimit;
+import com.pil97.ticketing.common.ratelimit.RateLimitApi;
 import com.pil97.ticketing.common.response.ApiResponse;
 import com.pil97.ticketing.hold.api.dto.request.HoldCreateRequest;
 import com.pil97.ticketing.hold.api.dto.response.HoldResponse;
@@ -20,26 +22,20 @@ public class HoldController {
 
   /**
    * POST /showtimes/{showtimeId}/hold
-   * <p>
-   * 이 API의 목적:
-   * - 특정 회차의 좌석을 일정 시간 동안 선점(HOLD)한다.
-   * <p>
-   * 상태코드 정책:
-   * - 선점 성공 시 201 Created
-   * <p>
-   * 응답 정책:
-   * - 표준 응답 포맷(ApiResponse)로 감싸서 반환
+   *
+   * <p>특정 회차의 좌석을 일정 시간 동안 선점(HOLD)한다.
+   *
+   * <p>Rate Limit 정책: 60초 윈도우 내 최대 5회
+   * HOLD는 DB Lock과 Redis 분산락이 중복 선점을 막지만
+   * 반복 요청 자체의 부하를 줄이기 위해 제한을 적용한다.
    */
+  @RateLimit(api = RateLimitApi.HOLD, limit = 5, windowSeconds = 60)
   @PostMapping("/showtimes/{showtimeId}/hold")
   public ResponseEntity<ApiResponse<HoldResponse>> hold(
     @PathVariable Long showtimeId,
     @Valid @RequestBody HoldCreateRequest request
   ) {
-
-    // 서비스 호출: 좌석 선점 처리
     HoldResponse response = holdService.hold(showtimeId, request);
-
-    // 201 Created + 표준 응답
     return ResponseEntity
       .status(HttpStatus.CREATED)
       .body(ApiResponse.success(response));
