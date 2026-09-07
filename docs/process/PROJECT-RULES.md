@@ -1,101 +1,250 @@
 # 프로젝트 교차 작업 규칙
 
-## 문서 책임
+## 1. 문서 책임
 
-이 문서는 Claude Code 작업에 공통으로 적용되는 승인, 범위, 검증, 민감정보와 Git 작업 규칙만 정의한다.
-README, API, 아키텍처, ADR, DB와 성능 문서의 내용을 재작성하지 않는다.
+이 문서는 다음 항목의 단일 기준이다.
 
-## 문서 참조 순서
+- 모든 TASK에 공통으로 적용하는 프로젝트 원칙
+- 파일·Git·외부 작업의 공통 승인 원칙
+- Issue, branch, commit, PR, prefix, Assignee, Reviewer 형식
+- 최종 전체 테스트 명령
+- 현재 저장소 근거로 확인해야 하는 기술 최소 원칙과 상세 문서 인덱스
 
-1. 현재 TASK의 GitHub Issue와 사용자가 승인한 현재 단계
-2. 현재 작업과 직접 관련된 기존 코드와 테스트
-3. 주제별 기존 저장소 문서
-4. 이 문서의 교차 작업 규칙
-5. 나머지 `docs/process/` 문서
+단계별 lifecycle과 승인 게이트 상세는 `docs/process/DEVELOPMENT-WORKFLOW.md`에서 관리한다.
+GPT 입력·Finding·Severity 계약은 `docs/process/GPT-REVIEW-CONTRACT.md`에서 관리한다.
 
-주제별 기존 기준 문서는 다음 경로에서 확인한다.
+## 2. 근거와 승인
 
-- 프로젝트 개요와 실행 정보: `README.md`
-- 아키텍처 문서: `docs/architecture/**`
-- ADR: `docs/architecture/adr/**`
-- API 문서: `docs/api/**`
-- DB 문서: `docs/db/**`
-- 성능 문서: `docs/performance/**`
+- 현재 TASK와 승인 범위 밖 파일이나 기능을 임의로 변경하지 않는다.
+- 파일 생성·수정, Git 작업, 외부 작업은 현재 Phase에서 승인된 범위 안에서만 수행한다.
+- 사용자 승인 없이 다음 주요 Phase나 다음 TASK로 자동 진행하지 않는다.
+- 과거 문서와 현재 코드·설정·주제별 문서가 충돌하면 변경 가능한 현재 사실을 먼저 재검증한다.
+- 기술 사실, 테스트 결과, 저장소 상태를 근거 없이 확정하지 않는다.
+- 범위 밖 문제는 현재 TASK 구현과 분리해 보고한다.
 
-## 프로젝트 작업 형식
+## 3. Git metadata 단일 기준
 
-이 절은 이슈, 브랜치, 커밋과 PR 메타데이터 형식의 단일 기준이다.
-다른 프로세스 문서에서는 아래 형식을 복사하지 않고 이 절을 참조한다.
+### Issue
 
-- 이슈 제목: `TASK-XXX 작업 내용 요약`
-- 이슈 본문 순서: `Goal → Background → Scope → Definition of Done → Test → Notes`
-- 브랜치: `{prefix}/TASK-XXX-english-kebab-case`
-- 커밋: `{prefix}(TASK-XXX): 변경 대상과 구체적인 결과`
-- PR 제목: `{prefix}(TASK-XXX): 작업 내용 요약`
-- prefix: `feat` / `fix` / `refactor` / `test` / `docs` / `chore` / `build`
-- Assignee: `pil97`
-- 작업·PR 계정: `pil97`
-- Reviewer: `seungpil97`
+제목:
 
-TASK 번호, 제목, 계정과 리뷰어는 사용자가 승인한 Issue와 현재 단계에서 다시 확인한다.
+```text
+TASK-XXX 작업 내용 요약
+```
 
-## 사용자 승인 게이트
+본문 섹션 순서:
 
-- 사용자가 승인한 현재 단계만 수행한다.
-- 설계 승인이 필요한 작업은 승인 전에 구현하지 않는다.
-- 파일 변경, 테스트, 브랜치, 커밋, push, PR, merge는 승인 범위에 포함된 경우에만 실행한다.
-- GPT와 프로젝트 Agent의 결과는 검토 권고이며 사용자가 최종 결정한다.
-- 다음 단계나 다음 TASK를 자동으로 시작하지 않는다.
+```text
+Goal
+Background
+Scope
+Definition of Done
+Test
+Notes
+```
 
-## TASK 범위 통제
+Assignee:
 
-- Issue와 승인 지시에서 허용한 파일과 동작만 변경한다.
-- 범위 밖 문제는 수정하지 않고 `[범위 밖 제안]`으로 보고한다.
-- 요청하지 않은 리팩터링, 의존성, 설정, 샘플 데이터와 자동화를 추가하지 않는다.
-- 확인하지 못한 코드 상태나 규칙을 추측해 문서에 반영하지 않는다.
+```text
+pil97
+```
 
-## 테스트 결과 보고
+Label은 고정 집합을 만들지 않는다.
+저장소에 실제 존재하는 label만 사용하고 신규 label 생성은 사용자 승인을 먼저 받는다.
 
-- 테스트 실행 전 필요한 DB, Redis, 환경과 프로필 조건을 확인한다.
-- 실행한 명령과 실제 성공·실패·스킵 결과만 보고한다.
-- 실행하지 않은 테스트는 통과했다고 표현하지 않는다.
-- 현재 CI 기준 전체 테스트 명령은 다음과 같다.
+### Branch
+
+형식:
+
+```text
+{prefix}/TASK-XXX-english-kebab-case
+```
+
+TASK 뒤 설명은 영어 kebab-case만 사용한다.
+
+### Commit / PR
+
+형식:
+
+```text
+{prefix}(TASK-XXX): 변경 대상과 구체적인 결과
+```
+
+설명은 기본적으로 한국어를 사용하되 기술명과 경로는 영어를 사용할 수 있다.
+
+자동 AI signature를 추가하지 않는다.
+
+```text
+Co-Authored-By
+Generated-By
+```
+
+Reviewer:
+
+```text
+seungpil97
+```
+
+### 허용 prefix
+
+정확히 다음 값만 허용한다.
+
+- `feat`
+- `fix`
+- `refactor`
+- `test`
+- `docs`
+- `chore`
+- `build`
+
+그 외 prefix는 현재 규칙에서 사용하지 않는다.
+prefix 집합 자체를 변경하려면 `PROJECT-RULES.md` 변경을 별도 승인받아야 한다.
+
+### Hotfix
+
+정상적인 Issue → branch → PR 흐름을 기본으로 한다.
+hotfix라는 이유만으로 승인 게이트나 검증을 자동 우회하지 않는다.
+
+우회가 필요하면 먼저 다음을 보고하고 사용자 승인을 받는다.
+
+- 우회 이유
+- 위험
+- 가능한 검증
+- 정상 흐름을 유지하는 대안
+
+## 4. 테스트와 문서 영향
+
+모든 TASK에서 테스트와 문서 영향을 확인한다.
+
+- 동작 변경 시 관련 자동 테스트 작성·실행을 기본으로 한다.
+- 관련 테스트가 있으면 먼저 실행한다.
+- 실제로 실행한 각 test는 실행 결과와 함께 실제로 실행한 exact full command를 기록한다.
+- 관련 테스트가 존재하지 않으면 해당 없음으로 기록할 수 있다.
+- 환경 또는 기술적 이유로 관련 테스트를 실행할 수 없으면 이유와 남은 위험을 기록한다.
+- 실행하지 못한 테스트는 실행했다고 기록하지 않는다.
+- 테스트를 실행하지 못하면 이유와 남은 위험을 기록한다.
+- 수동 검증은 자동 테스트만으로 충분하지 않을 때 조건부로 수행한다.
+- Postman을 모든 TASK의 필수 절차로 강제하지 않는다.
+- README는 TASK 승인 범위 안에서 실제 수정 필요가 있을 때만 수정한다.
+- 실행 방법, 환경, 외부 사용 방식 변경은 대표적인 README 수정 필요 사례이며 유일한 조건이 아니다.
+- README 영향이 없으면 불필요하게 수정하지 않는다.
+- README 영향이 없으면 그 판단 근거를 기록할 수 있어야 한다.
+
+### 최종 전체 테스트 명령
+
+최종 전체 테스트의 단일 명령은 다음과 같다.
 
 ```bash
 ./gradlew clean test --no-daemon --stacktrace -Dspring.profiles.active=test
 ```
 
-- 오류가 발생하면 임의의 우회 명령으로 성공처럼 만들지 않고 명령과 오류를 보고한다.
+실행 시점과 실패 처리 절차는 `docs/process/DEVELOPMENT-WORKFLOW.md`를 따른다.
 
-## 민감정보 처리
+## 5. 기술 최소 원칙
 
-- `.env`, `.envrc`, 토큰, 비밀번호, API Key와 인증 헤더의 값을 출력하거나 저장소 문서에 기록하지 않는다.
-- 민감 파일 확인이 필요하면 기본적으로 존재 여부만 확인한다.
-- 토큰이 포함될 수 있는 원격 URL 전체를 출력하지 않는다.
-- 검증 기록을 저장하기 전 인증정보, 환경변수 값, 토큰 포함 URL, 사용자 절대 경로와 세션 식별자를 제거한다.
-- 비식별화 후에도 검증에 필요한 성공·실패 상태와 파일 경로는 유지한다.
+기술 규칙은 과거 문서보다 현재 코드·설정·주제별 문서를 우선 확인한다.
+과거 값이나 구조를 현재 사실처럼 자동 복원하지 않는다.
 
-## Git 작업 승인
+### 5.1 Java / Spring Boot / Gradle
 
-- Git 상태와 이력 조회는 승인된 범위에서 읽기 전용으로 수행한다.
-- 브랜치 생성·전환, commit, push, PR과 merge는 별도 승인 없이 실행하지 않는다.
-- 작업 전후 `git status --short`로 변경 상태를 확인한다.
-- 테스트와 완료 조건이 확인되지 않으면 커밋 가능 상태로 보고하지 않는다.
-- 강제 reset, force push와 다른 작업을 손상시킬 수 있는 명령을 임의로 사용하지 않는다.
+- 현재 `build.gradle`, `settings.gradle`, Gradle wrapper 선언을 우선 확인한다.
+- 과거 버전 값을 현재 버전으로 자동 복구하지 않는다.
+- 버전이나 toolchain을 문서에 적을 때는 현재 선언 근거를 다시 확인한다.
 
-## 위험 발견 처리
+### 5.2 Package / Layer
 
-위험 검토의 심각도는 다음처럼 구분한다.
+- 현재 도메인 중심 package 구조를 기준으로 변경 영향을 확인한다.
+- Controller는 API boundary를 담당하고 use-case/service에 위임한다.
+- Controller에서 repository를 직접 호출하지 않는다.
+- `api → application → domain`을 모든 코드에 적용되는 절대 의존 규칙으로 선언하지 않는다.
 
-- `Critical`: 데이터 정합성, 동시성, 트랜잭션, 보안 또는 운영 장애로 현재 진행을 차단할 수 있는 문제
-- `Warning`: 예외 처리, 테스트, 성능, 구조 또는 유지보수 위험으로 수정 검토가 필요한 문제
-- `Info`: 현재 진행을 막지는 않지만 선택적으로 검토할 개선 사항
+상세 구조는 현재 `docs/architecture/`와 실제 package를 함께 확인한다.
 
-Critical이 확인되면 해당 위험과 근거를 먼저 보고하고 사용자의 판단을 기다린다.
-근거가 부족한 주장은 확정 문제와 분리한다.
+### 5.3 Transaction
 
-## 문서 충돌 처리
+- 트랜잭션은 service/use-case 경계를 기본 검토 지점으로 삼는다.
+- 트랜잭션 경계를 명확히 하고 변경 시 관련 service와 테스트를 함께 확인한다.
+- read-only 조회 트랜잭션은 우선 고려할 수 있지만 모든 조회에 절대 강제하지 않는다.
+- Controller를 트랜잭션 경계로 사용하지 않는다.
+- 동시성·lock 검증에서 테스트의 트랜잭션이 실제 commit/lock 동작을 가리지 않는지 확인한다.
 
-- 문서가 중복되거나 충돌하면 임의로 우선순위를 새로 만들지 않는다.
-- 충돌한 파일 경로, 관련 문구, 실제 코드와의 차이를 보고한다.
-- 사용자가 기준을 승인하기 전에는 문서를 통합하거나 한쪽 내용을 삭제하지 않는다.
+### 5.4 DTO
+
+- API Request와 Response 역할을 분리한다.
+- Entity를 API 응답으로 직접 노출하지 않는다.
+- 내부 query/use-case result DTO를 허용한다.
+- DTO 이름은 현재 도메인과 기존 코드의 역할 표현을 우선한다.
+- 단일 `{verb}{domain}Request` naming 규칙을 모든 DTO에 강제하지 않는다.
+
+### 5.5 Error / Common Response
+
+- 현재 `ErrorCode`, `BusinessException`, `ApiResponse`, `ErrorResponse` 계약을 기준으로 변경 영향을 확인한다.
+- 현재 `GlobalExceptionHandler`를 공통 오류 처리 구조의 일부로 사용한다.
+- Controller에 반복적인 예외 변환용 `try/catch`를 추가하지 않는다.
+- 오류 응답에 민감정보를 포함하지 않는다.
+- Security/JWT Filter처럼 `GlobalExceptionHandler` 밖의 framework boundary에서도 필요한 경우 동일한 응답 계약을 구성할 수 있다.
+- 모든 오류가 반드시 `GlobalExceptionHandler` 하나만 거쳐야 한다는 절대 규칙을 두지 않는다.
+
+### 5.6 Test
+
+- 변경과 가장 관련된 테스트가 있으면 먼저 실행한다.
+- 최종 검증에서는 이 문서의 전체 테스트 명령을 기준으로 한다.
+- 환경 prerequisite를 확인하고, 미실행 결과를 통과로 기록하지 않는다.
+- 테스트 실행 불가 시 이유와 남은 위험을 기록한다.
+- transaction test가 commit 또는 lock 동작을 숨기지 않는지 주의한다.
+- Testcontainers, Mockito, 고정 thread 수, Postman을 모든 TASK의 필수 기준으로 강제하지 않는다.
+
+### 5.7 Redis Key / TTL
+
+- Redis Key, TTL, cleanup 정책은 현재 implementation과 관련 문서를 먼저 확인한다.
+- 과거 Key 표나 TTL 값을 현재 사실로 추정하지 않는다.
+- Key, TTL, cleanup 변경 시 구현과 관련 문서를 함께 갱신한다.
+- 생성부터 만료·정리까지 lifecycle을 확인한다.
+- 과거 `events:list` 값을 현재 Key 표로 복원하지 않는다.
+
+### 5.8 Logging
+
+- 민감정보를 로그에 기록하지 않는다.
+- 로그 수준은 사건의 성격과 운영 필요성에 맞게 사용한다.
+- 실제로 구현되지 않은 MDC 필드를 필수 logging schema로 선언하지 않는다.
+- 관측성 구조를 새로 도입하거나 확대할 때는 별도 TASK에서 구현과 문서를 함께 변경한다.
+
+### 5.9 DB / Flyway
+
+DB와 Flyway 상세 기준은 `docs/db/README.md`를 우선한다.
+
+- 기존 migration 파일을 수정하지 않는다.
+- schema 변경은 새로운 migration으로 추가한다.
+- DB 설정과 migration 상태는 현재 저장소 근거를 다시 확인한다.
+- 과거 DB 환경값을 현재 사실처럼 복원하지 않는다.
+
+### 5.10 Profile / Environment
+
+- 실제 `application` 설정, Compose, CI, 현재 문서를 우선 확인한다.
+- `.env`, `.envrc`, `.direnv` 본문을 요청하거나 출력하지 않는다.
+- secret 값을 문서나 로그에 기록하지 않는다.
+- 과거 환경값을 현재 값으로 확정하지 않는다.
+- dev/test JWT static default는 별도 security Finding 후보로 취급하며 현재 TASK에서 임의 수정하지 않는다.
+
+- 민감 키 assignment의 false-positive 예외는 normalized 전체 RHS가 `${NAME}` 또는 `<NAME>`인 structured placeholder인 경우로만 제한한다.
+- `placeholder`, `dummy`, `example`, `changeme`, `sample`, `test`, `fake` 같은 일반 literal은 broad allowlist에 넣지 않으며 그 외 non-empty RHS는 보수적으로 민감 후보로 본다.
+
+## 6. 코드와 파일 제공
+
+- 승인된 논리 작업 단위로 변경을 제공한다.
+- 강하게 연결된 파일은 같은 승인 단위 안에서 함께 다룰 수 있다.
+- 사용자가 요청한 경우에만 한 파일씩 제공한다.
+- 승인 범위를 넘어 파일을 임의로 묶지 않는다.
+- 코드 주석은 코드 자체로 드러나지 않는 이유와 제약에 사용한다.
+- 오래되거나 코드와 불일치하는 주석은 수정하거나 제거한다.
+
+## 7. 상세 문서 인덱스
+
+- 개발 lifecycle과 단계별 승인 게이트: `docs/process/DEVELOPMENT-WORKFLOW.md`
+- TASK 상태와 순서: `docs/process/PORTFOLIO-ROADMAP.md`
+- TASK 시작 입력: `docs/process/TASK-START-CHECKLIST.md`
+- GPT 독립 검토: `docs/process/GPT-REVIEW-CONTRACT.md`
+- TASK 학습·면접 검증: `docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md`
+- DB/Flyway 상세: `docs/db/README.md`
+- 아키텍처 기준: `docs/architecture/`
+- API 문서: `docs/api/`
