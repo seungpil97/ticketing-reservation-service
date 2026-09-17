@@ -9,6 +9,7 @@
 - 공통 프로젝트 원칙, Git 형식, 전체 테스트 명령: `docs/process/PROJECT-RULES.md`
 - TASK 시작 입력과 안전한 자료 요청: `docs/process/TASK-START-CHECKLIST.md`
 - GPT 독립 검토 입력·Finding·Severity: `docs/process/GPT-REVIEW-CONTRACT.md`
+- Test-First semantics와 RED/Test Contract gate: `docs/process/TEST-FIRST-DEVELOPMENT-CONTRACT.md`
 - TASK 상태와 다음 순서: `docs/process/PORTFOLIO-ROADMAP.md`
 - 학습·면접 검증: `docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md`
 
@@ -94,7 +95,7 @@ Goal, Scope, 완료 조건과 검증 계획을 구현 전에 고정한다.
 **산출물**
 - 승인 후보 Issue
 - 구현 범위·계획
-- Test plan
+- Test plan과 `docs/process/TEST-FIRST-DEVELOPMENT-CONTRACT.md` 기준 Test Contract
 
 **승인 gate**
 - Issue와 구현 계획을 사용자가 승인해야 설계·구현으로 진행한다.
@@ -116,10 +117,12 @@ Goal, Scope, 완료 조건과 검증 계획을 구현 전에 고정한다.
 **실행**
 - 필요한 설계 대안과 트레이드오프를 정리한다.
 - TASK 범위를 넘어서는 개선은 분리한다.
+- 코드 동작 변경이면 Test Level과 Test Contract가 Requirement·scenario·Acceptance Criteria를 검증하는지 확인한다.
 
 **산출물**
 - 승인 가능한 설계
 - 위험과 검증 계획
+- 코드 동작 변경이면 승인 가능한 Test Contract와 RED policy
 
 **승인 gate**
 - 현재 TASK에서 설계 승인이 필요한 경우 사용자 승인 후 구현한다.
@@ -141,10 +144,15 @@ Goal, Scope, 완료 조건과 검증 계획을 구현 전에 고정한다.
 **실행**
 - 승인된 논리 작업 단위로 변경한다.
 - 비자명한 이유·제약에만 주석을 사용한다.
-- 관련 테스트를 함께 작성할 수 있다.
+- 코드 동작 변경은 승인된 Test Contract와 RED policy를 먼저 확인한다.
+- `RED_REQUIRED`이면 Production Implementation 전에 Valid RED를 확인한다.
+- 승인된 `RED_NOT_APPLICABLE`이면 명시적 사유·위험 평가·MASTER 승인 근거를 확인한다.
+- RED gate 충족 후 Production Implementation을 수행하고 동일 Test Contract로 GREEN을 확인한다.
+- 계약상 필요한 Integration / Acceptance test가 있으면 해당 수준의 GREEN까지 확인한다.
 
 **산출물**
 - 승인 범위의 변경
+- Test Contract와 실제 RED/GREEN evidence 또는 승인된 `RED_NOT_APPLICABLE` 근거
 - 구현 중 발견한 blocker와 범위 밖 제안
 
 **승인 gate**
@@ -214,15 +222,17 @@ GPT 독립 검토 전에 구현 범위와 명백한 결함을 자체 점검한�
 
 **입력**
 - 실제 변경
-- Test plan
+- Test plan / Test Contract
 - 검토 Finding
 
 **실행**
 - 관련 테스트가 있으면 먼저 실행한다.
 - 관련 테스트가 존재하지 않으면 해당 없음으로 기록할 수 있다.
 - 환경 또는 기술적 이유로 관련 테스트를 실행할 수 없으면 이유와 남은 위험을 기록한다.
+- 계약상 필요한 Integration / Acceptance GREEN이 있으면 동일 Test Contract 기준 결과를 확인하고 필요하면 재실행한다.
 - 동작 변경은 자동 테스트를 기본으로 한다.
 - 수동 검증은 자동 테스트로 충분하지 않을 때 조건부 수행한다.
+- 검토 후 승인된 refactor가 수행되면 관련 Test Contract의 GREEN 유지 여부를 확인한다.
 - 최종 단계에는 `docs/process/PROJECT-RULES.md`의 전체 테스트 명령을 사용한다.
 
 **산출물**

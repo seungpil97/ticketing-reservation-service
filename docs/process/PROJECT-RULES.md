@@ -241,6 +241,7 @@ DB와 Flyway 상세 기준은 `docs/db/README.md`를 우선한다.
 ## 7. 상세 문서 인덱스
 
 - 개발 lifecycle과 단계별 승인 게이트: `docs/process/DEVELOPMENT-WORKFLOW.md`
+- Test-First 개발 계약: `docs/process/TEST-FIRST-DEVELOPMENT-CONTRACT.md`
 - TASK 상태와 순서: `docs/process/PORTFOLIO-ROADMAP.md`
 - TASK 시작 입력: `docs/process/TASK-START-CHECKLIST.md`
 - GPT 독립 검토: `docs/process/GPT-REVIEW-CONTRACT.md`

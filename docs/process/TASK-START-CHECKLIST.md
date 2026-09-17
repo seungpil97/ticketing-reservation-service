@@ -44,9 +44,16 @@ GPT 리뷰의 핵심·보조 입력 분류와 누락 처리는 `docs/process/GPT
 ### 코드 동작 변경
 
 - 변경 대상 코드와 직접 호출·피호출 문맥은 무엇인가?
+- Requirement와 Happy Path / Unhappy Path / Boundary는 무엇인가?
+- Acceptance Criteria는 무엇인가?
+- Test Level은 Unit / Integration / Acceptance 중 무엇인가?
+- 신규 Production behavior에 `RED_REQUIRED`가 적용되는가?
+- `RED_NOT_APPLICABLE`이면 명시적 사유 + 위험 평가 + MASTER 승인 근거가 있는가?
+- A-5 Harness 적용 여부는 무엇인가?
 - 관련 테스트와 실패 경로는 무엇인가?
 - transaction, concurrency, state, Redis, DB 영향이 있는가?
 
+세부 Test-First semantics는 `docs/process/TEST-FIRST-DEVELOPMENT-CONTRACT.md`를 단일 기준으로 따른다.
 영향이 있는 영역의 실제 파일만 요청한다.
 
 ### 문서·프로세스 변경

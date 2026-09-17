@@ -22,6 +22,7 @@ docs/process/PORTFOLIO-ROADMAP.md
 docs/process/TASK-START-CHECKLIST.md
 docs/process/GPT-REVIEW-CONTRACT.md
 docs/process/DEVELOPMENT-WORKFLOW.md
+docs/process/TEST-FIRST-DEVELOPMENT-CONTRACT.md
 docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md
 docs/process/DOCUMENT-MIGRATION-MATRIX.md
 scripts/validate-process-docs.sh
@@ -869,7 +870,7 @@ expect_fail "N8" "Roadmap TASK-059 wrong status rejected" "$fixture"
 # N9. TASK-032 prerequisite regressed to TASK-059.
 fixture="$(make_fixture N9)"
 rewrite_with_awk "$fixture/docs/process/PORTFOLIO-ROADMAP.md" \
-  '{ gsub(/TASK-060 완료 \+ 사용자 승인/, "TASK-059 완료 + 사용자 승인"); print }'
+  '{ gsub(/TASK-061 완료 \+ 사용자 승인/, "TASK-059 완료 + 사용자 승인"); print }'
 expect_fail "N9" "Roadmap TASK-032 wrong prerequisite rejected" "$fixture"
 
 # N10. Extra Git prefix added.
@@ -972,7 +973,7 @@ expect_fail "N22" "duplicate second related reference rejected" "$fixture" 0 "Mi
 fixture="$(make_fixture N23)"
 rewrite_with_awk "$fixture/docs/process/PORTFOLIO-ROADMAP.md" \
   'BEGIN{inside=0} /^## 전체 TASK 이력$/ {inside=1; print; next} /^## CS 주차 ↔ TASK ↔ interview 연결$/ {inside=0; print; next} { if (inside && $0 ~ /^\| TASK-[0-9]+(-[0-9]+)? \|/) next; print }'
-expect_fail "N23" "zero Roadmap history rows rejected with FAIL marker" "$fixture" 0 "Roadmap full history TASK row count is not 76"
+expect_fail "N23" "zero Roadmap history rows rejected with FAIL marker" "$fixture" 0 "Roadmap full history TASK row count is not 77"
 
 # N24. Remove every final CFL mapping row.
 fixture="$(make_fixture N24)"
@@ -990,15 +991,15 @@ expect_fail "N25" "extra TASK in Roadmap direct-order fenced block rejected" "$f
 fixture="$(make_fixture N26)"
 rewrite_with_awk "$fixture/docs/process/PORTFOLIO-ROADMAP.md" \
   'BEGIN{inside=0; done=0} /^## 현재 확인 상태$/ {inside=1; print; next} /^## 다음 직접 진행 순서$/ {inside=0; print; next} inside && /^\| TASK-059 \|/ && !done {sub(/\| 완료 \|/, "| 진행중 |"); done=1} {print} END{if(!done) exit 2}'
-expect_fail "N26" "current-status TASK-059 mismatch rejected" "$fixture" 0 "Roadmap current-status TASK-059/TASK-060 state consistency failed"
+expect_fail "N26" "current-status TASK-059 mismatch rejected" "$fixture" 0 "Roadmap current-status TASK-059/TASK-060/TASK-061 state consistency failed"
 
-# N27. Change only current-status TASK-060 from 진행중 to 완료; full history stays unchanged.
+# N27. Change only current-status TASK-061 from 진행중 to 완료; full history stays unchanged.
 fixture="$(make_fixture N27)"
 rewrite_with_awk "$fixture/docs/process/PORTFOLIO-ROADMAP.md" \
   'BEGIN{inside=0;seen=0;changed=0}
    $0=="## 현재 확인 상태"{inside=1;print;next}
    inside && /^## /{inside=0}
-   inside && /^\| TASK-060 \|/{seen++;changed+=sub(/\| 진행중 \|/, "| 완료 |")}
+   inside && /^\| TASK-061 \|/{seen++;changed+=sub(/\| 진행중 \|/, "| 완료 |")}
    {print}
    END{if(seen != 1 || changed != 1) exit 2}'
 
@@ -1007,7 +1008,7 @@ if ! awk -F'|' '
   BEGIN{inside=0;seen=0;complete=0;original=0}
   $0=="## 현재 확인 상태"{inside=1;next}
   inside && /^## /{inside=0}
-  inside && /^\| TASK-060 \|/{
+  inside && /^\| TASK-061 \|/{
     seen++
     status=t($4)
     if(status=="완료") complete++
@@ -1016,9 +1017,9 @@ if ! awk -F'|' '
   END{if(seen != 1 || complete != 1 || original != 0) exit 1}
 ' "$fixture/docs/process/PORTFOLIO-ROADMAP.md"
 then
-  record_fail "N27 current-status TASK-060 mutation postcondition failed"
+  record_fail "N27 current-status TASK-061 mutation postcondition failed"
 else
-  expect_fail "N27" "current-status TASK-060 mismatch rejected" "$fixture" 0 "Roadmap current-status TASK-059/TASK-060 state consistency failed"
+  expect_fail "N27" "current-status TASK-061 mismatch rejected" "$fixture" 0 "Roadmap current-status TASK-059/TASK-060/TASK-061 state consistency failed"
 fi
 
 # N28. Keep the approved full-test command and add a conflicting clean-test command.
@@ -2629,7 +2630,7 @@ else
     "Roadmap history fenced-row decoy rejected" \
     "$fixture" \
     0 \
-    "Roadmap full history TASK row count is not 76"
+    "Roadmap full history TASK row count is not 77"
 fi
 
 # N99. Current-status row survives only as a fenced decoy.
@@ -2678,7 +2679,7 @@ else
     "Roadmap current-status fenced-row decoy rejected" \
     "$fixture" \
     0 \
-    "Roadmap current-status TASK-059/TASK-060 state consistency failed"
+    "Roadmap current-status TASK-059/TASK-060/TASK-061 state consistency failed"
 fi
 
 # N100. History row survives only as a visible off-table decoy.
@@ -2725,7 +2726,7 @@ else
     "Roadmap history visible off-table decoy rejected" \
     "$fixture" \
     0 \
-    "Roadmap full history TASK row count is not 76"
+    "Roadmap full history TASK row count is not 77"
 fi
 
 # N101. Current-status row survives only as a visible off-table decoy.
@@ -2772,7 +2773,7 @@ else
     "Roadmap current-status visible off-table decoy rejected" \
     "$fixture" \
     0 \
-    "Roadmap current-status TASK-059/TASK-060 state consistency failed"
+    "Roadmap current-status TASK-059/TASK-060/TASK-061 state consistency failed"
 fi
 
 # N102. Generic non-empty literal RHS remains a conservative candidate.
@@ -3382,7 +3383,7 @@ else
   fi
 fi
 
-# N111. Current-status row count remains three but TASK-031 membership changes.
+# N111. Current-status row count remains four but TASK-031 membership changes.
 fixture="$(make_fixture N111)"
 if grep -Fq \
   '| TASK-9999 |' \
@@ -3442,8 +3443,8 @@ N112_SECTION='## 다음 직접 진행 순서'
 N112_HEADER='| TASK | 내용 | 상태 | 선행 조건 |'
 N112_SEPARATOR='| --- | --- | --- | --- |'
 
-N112_ROW='| TASK-032 | 이벤트 기반 예약 처리 (Spring Events) | 계획 | TASK-060 완료 + 사용자 승인 |'
-N112_MUTATED_ROW='| TASK-032 | 이벤트 기반 예약 처리 (Spring Events) | 계획 | TASK-060 완료 + fixture 승인 |'
+N112_ROW='| TASK-032 | 이벤트 기반 예약 처리 (Spring Events) | 계획 | TASK-061 완료 + 사용자 승인 |'
+N112_MUTATED_ROW='| TASK-032 | 이벤트 기반 예약 처리 (Spring Events) | 계획 | TASK-061 완료 + fixture 승인 |'
 
 N112_DIRECT_ORDER_EXPECTED='```text
 TASK-032
@@ -6180,13 +6181,13 @@ else
   record_fail "N163 fixture construction failed"
 fi
 
-# N164. Current-status TASK-060 uses spaced non-approved enum.
+# N164. Current-status TASK-061 uses spaced non-approved enum.
 if fixture="$(make_fixture N164)"; then
   N164_FILE="$fixture/docs/process/PORTFOLIO-ROADMAP.md"
 
-  N164_OLD='| TASK-060 | 프로젝트 프로세스 문서 정합성 복구 및 학습 계약 추가 | 진행중 | Issue #100, branch `chore/TASK-060-process-doc-consistency-recovery` |'
+  N164_OLD='| TASK-061 | Test-First AI 개발 Workflow 도입 및 RED/Test Contract Gate 공식화 | 진행중 | Issue #102, branch `chore/TASK-061-test-first-workflow` |'
 
-  N164_NEW='| TASK-060 | 프로젝트 프로세스 문서 정합성 복구 및 학습 계약 추가 | 진행 중 | Issue #100, branch `chore/TASK-060-process-doc-consistency-recovery` |'
+  N164_NEW='| TASK-061 | Test-First AI 개발 Workflow 도입 및 RED/Test Contract Gate 공식화 | 진행 중 | Issue #102, branch `chore/TASK-061-test-first-workflow` |'
 
   if ! x2a_replace_exact_line \
     "$N164_FILE" \
@@ -6993,6 +6994,220 @@ EOF
 else
   record_fail "N197 fixture construction failed"
 fi
+
+# N198. Required Test-First Contract file missing.
+fixture="$(make_fixture N198)"
+rm -f "$fixture/docs/process/TEST-FIRST-DEVELOPMENT-CONTRACT.md"
+expect_fail \
+  "N198" \
+  "missing Test-First Contract required file rejected" \
+  "$fixture" \
+  0 \
+  "required file missing: docs/process/TEST-FIRST-DEVELOPMENT-CONTRACT.md"
+
+# N199. RED_REQUIRED default policy removed.
+fixture="$(make_fixture N199)"
+rewrite_with_awk \
+  "$fixture/docs/process/TEST-FIRST-DEVELOPMENT-CONTRACT.md" \
+  '{if($0!="신규 Production behavior의 기본값은 `RED_REQUIRED`다.") print}'
+expect_fail \
+  "N199" \
+  "missing RED_REQUIRED default policy rejected" \
+  "$fixture" \
+  0 \
+  "TEST-FIRST RED_REQUIRED default policy missing or duplicated"
+
+# N200. RED_NOT_APPLICABLE reason condition removed.
+fixture="$(make_fixture N200)"
+rewrite_with_awk \
+  "$fixture/docs/process/TEST-FIRST-DEVELOPMENT-CONTRACT.md" \
+  '{if($0!="- 명시적 사유") print}'
+expect_fail \
+  "N200" \
+  "missing RED_NOT_APPLICABLE reason rejected" \
+  "$fixture" \
+  0 \
+  "TEST-FIRST RED_NOT_APPLICABLE reason condition missing or duplicated"
+
+# N201. RED_NOT_APPLICABLE risk condition removed.
+fixture="$(make_fixture N201)"
+rewrite_with_awk \
+  "$fixture/docs/process/TEST-FIRST-DEVELOPMENT-CONTRACT.md" \
+  '{if($0!="- 위험 평가") print}'
+expect_fail \
+  "N201" \
+  "missing RED_NOT_APPLICABLE risk rejected" \
+  "$fixture" \
+  0 \
+  "TEST-FIRST RED_NOT_APPLICABLE risk condition missing or duplicated"
+
+# N202. RED_NOT_APPLICABLE MASTER approval condition removed.
+fixture="$(make_fixture N202)"
+rewrite_with_awk \
+  "$fixture/docs/process/TEST-FIRST-DEVELOPMENT-CONTRACT.md" \
+  '{if($0!="- MASTER 승인") print}'
+expect_fail \
+  "N202" \
+  "missing RED_NOT_APPLICABLE MASTER approval rejected" \
+  "$fixture" \
+  0 \
+  "TEST-FIRST RED_NOT_APPLICABLE MASTER approval condition missing or duplicated"
+
+# N203. Valid RED distinction removed.
+fixture="$(make_fixture N203)"
+rewrite_with_awk \
+  "$fixture/docs/process/TEST-FIRST-DEVELOPMENT-CONTRACT.md" \
+  '{if($0!="RED != 아무 실패") print}'
+expect_fail \
+  "N203" \
+  "missing Valid RED distinction rejected" \
+  "$fixture" \
+  0 \
+  "TEST-FIRST Valid RED distinction missing or duplicated"
+
+# N204. Mock/Infrastructure evidence distinction removed.
+fixture="$(make_fixture N204)"
+rewrite_with_awk \
+  "$fixture/docs/process/TEST-FIRST-DEVELOPMENT-CONTRACT.md" \
+  '{if($0!="Mock PASS != 실제 Infrastructure Evidence") print}'
+expect_fail \
+  "N204" \
+  "missing Mock/Infrastructure distinction rejected" \
+  "$fixture" \
+  0 \
+  "TEST-FIRST Mock/Infrastructure distinction missing or duplicated"
+
+# N205. Frozen Contract anti-weakening rule removed.
+fixture="$(make_fixture N205)"
+rewrite_with_awk \
+  "$fixture/docs/process/TEST-FIRST-DEVELOPMENT-CONTRACT.md" \
+  '{if($0!="Production 구현에 맞추기 위해 테스트를 임의로 약화하지 않는다.") print}'
+expect_fail \
+  "N205" \
+  "missing frozen-contract anti-weakening rule rejected" \
+  "$fixture" \
+  0 \
+  "TEST-FIRST frozen-contract anti-weakening rule missing or duplicated"
+
+# N206. A-5 SELECTIVE policy removed.
+fixture="$(make_fixture N206)"
+rewrite_with_awk \
+  "$fixture/docs/process/TEST-FIRST-DEVELOPMENT-CONTRACT.md" \
+  '{if($0!="A-5 Harness 적용은 SELECTIVE다.") print}'
+expect_fail \
+  "N206" \
+  "missing A-5 SELECTIVE policy rejected" \
+  "$fixture" \
+  0 \
+  "TEST-FIRST A-5 SELECTIVE policy missing or duplicated"
+
+# N207. A-5 vs Repository evidence distinction removed.
+fixture="$(make_fixture N207)"
+rewrite_with_awk \
+  "$fixture/docs/process/TEST-FIRST-DEVELOPMENT-CONTRACT.md" \
+  '{if($0!="A-5 Harness PASS != Repository RED/GREEN Evidence") print}'
+expect_fail \
+  "N207" \
+  "missing A-5/Repository evidence distinction rejected" \
+  "$fixture" \
+  0 \
+  "TEST-FIRST A-5/Repository evidence distinction missing or duplicated"
+
+# N208. Workflow authoritative Test-First reference removed.
+fixture="$(make_fixture N208)"
+rewrite_with_awk \
+  "$fixture/docs/process/DEVELOPMENT-WORKFLOW.md" \
+  '{if($0!="- Test-First semantics와 RED/Test Contract gate: `docs/process/TEST-FIRST-DEVELOPMENT-CONTRACT.md`") print}'
+expect_fail \
+  "N208" \
+  "missing Workflow Test-First reference rejected" \
+  "$fixture" \
+  0 \
+  "DEVELOPMENT-WORKFLOW Test-First authoritative reference missing or duplicated"
+
+# N209. TASK-START authoritative Test-First reference removed.
+fixture="$(make_fixture N209)"
+rewrite_with_awk \
+  "$fixture/docs/process/TASK-START-CHECKLIST.md" \
+  '{if($0!="세부 Test-First semantics는 `docs/process/TEST-FIRST-DEVELOPMENT-CONTRACT.md`를 단일 기준으로 따른다.") print}'
+expect_fail \
+  "N209" \
+  "missing TASK-START Test-First reference rejected" \
+  "$fixture" \
+  0 \
+  "TASK-START-CHECKLIST Test-First authoritative reference missing or duplicated"
+
+# N210. GPT authoritative Test-First reference removed.
+fixture="$(make_fixture N210)"
+rewrite_with_awk \
+  "$fixture/docs/process/GPT-REVIEW-CONTRACT.md" \
+  '{if($0!="Test Contract와 RED/GREEN evidence semantics는 `docs/process/TEST-FIRST-DEVELOPMENT-CONTRACT.md`를 단일 기준으로 따른다.") print}'
+expect_fail \
+  "N210" \
+  "missing GPT Test-First reference rejected" \
+  "$fixture" \
+  0 \
+  "GPT Test-First authoritative reference missing or duplicated"
+
+# N211. PROJECT-RULES Test-First index reference removed.
+fixture="$(make_fixture N211)"
+rewrite_with_awk \
+  "$fixture/docs/process/PROJECT-RULES.md" \
+  '{if($0!="- Test-First 개발 계약: `docs/process/TEST-FIRST-DEVELOPMENT-CONTRACT.md`") print}'
+expect_fail \
+  "N211" \
+  "missing PROJECT-RULES Test-First reference rejected" \
+  "$fixture" \
+  0 \
+  "PROJECT-RULES Test-First authoritative reference missing or duplicated"
+
+# N212. CLAUDE Test-First reference removed.
+fixture="$(make_fixture N212)"
+rewrite_with_awk \
+  "$fixture/CLAUDE.md" \
+  '{if($0!="- Test-First 개발 계약: `docs/process/TEST-FIRST-DEVELOPMENT-CONTRACT.md`") print}'
+expect_fail \
+  "N212" \
+  "missing CLAUDE Test-First reference rejected" \
+  "$fixture" \
+  0 \
+  "CLAUDE Test-First authoritative reference missing or duplicated"
+
+# N213. Validator semantic-boundary canonical rule removed.
+fixture="$(make_fixture N213)"
+rewrite_with_awk \
+  "$fixture/docs/process/TEST-FIRST-DEVELOPMENT-CONTRACT.md" \
+  '{if($0!="Validator는 failure semantics를 실행 결과 수준에서 추론하지 않는다.") print}'
+expect_fail \
+  "N213" \
+  "missing validator semantic-boundary rule rejected" \
+  "$fixture" \
+  0 \
+  "TEST-FIRST validator semantic-boundary rule missing or duplicated"
+
+# N214. Before / After Contract distinction canonical rule removed.
+fixture="$(make_fixture N214)"
+rewrite_with_awk \
+  "$fixture/docs/process/TEST-FIRST-DEVELOPMENT-CONTRACT.md" \
+  '{if($0!="변경 전 Contract와 변경 후 Contract를 구분하지 않은 채 기존 실패를 삭제하거나 기대값을 완화하지 않는다.") print}'
+expect_fail \
+  "N214" \
+  "missing Before / After Contract distinction rejected" \
+  "$fixture" \
+  0 \
+  "TEST-FIRST contract-change distinction missing or duplicated"
+
+# N215. Evidence responsibility canonical item removed.
+fixture="$(make_fixture N215)"
+rewrite_with_awk \
+  "$fixture/docs/process/TEST-FIRST-DEVELOPMENT-CONTRACT.md" \
+  '{if($0!="- PRODUCTION_CHANGE_EVIDENCE") print}'
+expect_fail \
+  "N215" \
+  "missing Evidence responsibility item rejected" \
+  "$fixture" \
+  0 \
+  "TEST-FIRST evidence responsibility missing or duplicated: - PRODUCTION_CHANGE_EVIDENCE"
 
 if [ "$SELF_ERRORS" -ne 0 ]; then
   printf '%s\n' "VALIDATOR_SELF_TEST=FAIL"

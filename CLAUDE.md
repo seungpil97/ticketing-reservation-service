@@ -32,6 +32,7 @@ Critical Finding이 확인되면 영향받는 Phase를 중단한다.
 - TASK 시작 입력과 안전한 자료 요청: `docs/process/TASK-START-CHECKLIST.md`
 - GPT 독립 검토 계약: `docs/process/GPT-REVIEW-CONTRACT.md`
 - 개발 lifecycle과 단계별 승인 게이트: `docs/process/DEVELOPMENT-WORKFLOW.md`
+- Test-First 개발 계약: `docs/process/TEST-FIRST-DEVELOPMENT-CONTRACT.md`
 - TASK 학습·면접 검증 계약: `docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md`
 
 상세 기술 규칙, 리뷰 schema, 단계별 workflow와 학습 절차 전문은 위 기준 문서에서 관리한다.
