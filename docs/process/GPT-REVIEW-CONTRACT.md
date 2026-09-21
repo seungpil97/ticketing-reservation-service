@@ -27,6 +27,7 @@ GPT는 다음을 직접 수행하지 않는다.
 - 현재 review stage와 관련 없는 대량 자료를 일괄 요구하지 않는다.
 
 TASK 시작 자료 요청 원칙은 `docs/process/TASK-START-CHECKLIST.md`를 함께 따른다.
+Test Contract와 RED/GREEN evidence semantics는 `docs/process/TEST-FIRST-DEVELOPMENT-CONTRACT.md`를 단일 기준으로 따른다.
 
 ## 3. Review stage별 핵심 입력
 
@@ -37,10 +38,11 @@ TASK 시작 자료 요청 원칙은 `docs/process/TASK-START-CHECKLIST.md`를 �
 - TASK 목적
 - Scope
 - Definition of Done
-- Test plan
+- Test Contract: Requirement / Happy Path / Unhappy Path / Boundary / Acceptance Criteria / Test Level / RED policy
 - 승인된 결정
 
 검토 목적은 구현 전 범위, 완료 기준, 검증 가능성과 승인 결정의 일관성을 확인하는 것이다.
+코드 동작 변경이면 Requirement·scenario·Acceptance Criteria·Test Level·RED policy가 Test Contract에 연결됐는지도 확인한다.
 
 ### Implementation
 
@@ -49,7 +51,7 @@ TASK 시작 자료 요청 원칙은 `docs/process/TASK-START-CHECKLIST.md`를 �
 - 승인된 Issue와 구현 계획
 - 실제 변경 code 또는 diff
 - 판단에 필요한 관련 code context
-- test 결과 또는 미실행 사유와 위험
+- Test Contract와 실제 RED/GREEN Evidence 또는 승인된 RED_NOT_APPLICABLE 근거
 
 제공되지 않은 변경이나 테스트 결과를 추정하지 않는다.
 

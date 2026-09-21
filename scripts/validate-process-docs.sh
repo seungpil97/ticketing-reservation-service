@@ -40,6 +40,7 @@ docs/process/PORTFOLIO-ROADMAP.md
 docs/process/TASK-START-CHECKLIST.md
 docs/process/GPT-REVIEW-CONTRACT.md
 docs/process/DEVELOPMENT-WORKFLOW.md
+docs/process/TEST-FIRST-DEVELOPMENT-CONTRACT.md
 docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md
 docs/process/DOCUMENT-MIGRATION-MATRIX.md
 scripts/validate-process-docs.sh
@@ -2722,6 +2723,7 @@ ROADMAP="$ROOT/docs/process/PORTFOLIO-ROADMAP.md"
 CHECKLIST="$ROOT/docs/process/TASK-START-CHECKLIST.md"
 GPT="$ROOT/docs/process/GPT-REVIEW-CONTRACT.md"
 WORKFLOW="$ROOT/docs/process/DEVELOPMENT-WORKFLOW.md"
+TEST_FIRST="$ROOT/docs/process/TEST-FIRST-DEVELOPMENT-CONTRACT.md"
 LEARNING="$ROOT/docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md"
 MATRIX="$ROOT/docs/process/DOCUMENT-MIGRATION-MATRIX.md"
 AGENT="$ROOT/.claude/agents/ticketing-risk-reviewer.md"
@@ -2745,6 +2747,7 @@ docs/process/PORTFOLIO-ROADMAP.md
 docs/process/TASK-START-CHECKLIST.md
 docs/process/GPT-REVIEW-CONTRACT.md
 docs/process/DEVELOPMENT-WORKFLOW.md
+docs/process/TEST-FIRST-DEVELOPMENT-CONTRACT.md
 docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md
 docs/process/DOCUMENT-MIGRATION-MATRIX.md
 EOF
@@ -3349,22 +3352,23 @@ if [ -f "$ROADMAP" ] && [ ! -L "$ROADMAP" ]; then
   ROADMAP_CURRENT_SEPARATOR='| --- | --- | --- | --- |'
   ROADMAP_CURRENT_TABLE_COUNT=1
 
-  ROADMAP_HISTORY_ID_SHA256='a3265b7dfa868d1b83081e6db14dac3eca1f6bc5cfcaa287f90a598454f7b4e2'
+  ROADMAP_HISTORY_ID_SHA256='b5dbeb98b3f78a7bee43786a685b5802d09d15f9a3921201a2fcfb5159675943'
 
   ROADMAP_CURRENT_EXPECTED_IDS="$(cat <<'EOF_ROADMAP_CURRENT_EXPECTED_IDS'
 TASK-031
 TASK-059
 TASK-060
+TASK-061
 EOF_ROADMAP_CURRENT_EXPECTED_IDS
 )"
 
   ROADMAP_PREREQUISITE_SECTION='## 다음 직접 진행 순서'
   ROADMAP_PREREQUISITE_HEADER='| TASK | 내용 | 상태 | 선행 조건 |'
   ROADMAP_PREREQUISITE_SEPARATOR='| --- | --- | --- | --- |'
-  ROADMAP_TASK_032_ROW='| TASK-032 | 이벤트 기반 예약 처리 (Spring Events) | 계획 | TASK-060 완료 + 사용자 승인 |'
+  ROADMAP_TASK_032_ROW='| TASK-032 | 이벤트 기반 예약 처리 (Spring Events) | 계획 | TASK-061 완료 + 사용자 승인 |'
 
   ROADMAP_PREREQUISITE_EXPECTED_ROWS="$(cat <<'EOF_ROADMAP_PREREQUISITE_EXPECTED_ROWS'
-| TASK-032 | 이벤트 기반 예약 처리 (Spring Events) | 계획 | TASK-060 완료 + 사용자 승인 |
+| TASK-032 | 이벤트 기반 예약 처리 (Spring Events) | 계획 | TASK-061 완료 + 사용자 승인 |
 | TASK-033 | Outbox Pattern 구현 | 계획 | TASK-032 완료 + 사용자 승인 |
 | TASK-033-1 | Outbox 재처리 실패 시나리오 | 계획 | TASK-033 완료 + 사용자 승인 |
 | TASK-028 | Redis/DB 장애 시나리오 구현 및 문서화 | 계획 | TASK-033-1 완료 + 사용자 승인 |
@@ -3406,8 +3410,8 @@ EOF_ROADMAP_PREREQUISITE_EXPECTED_ROWS
     ' "$ROADMAP_HISTORY_FILE"
   )"
 
-  if [ "$roadmap_history_count" -ne 76 ]; then
-    add_failure "Roadmap full history TASK row count is not 76"
+  if [ "$roadmap_history_count" -ne 77 ]; then
+    add_failure "Roadmap full history TASK row count is not 77"
   fi
 
   if ! awk -F'|' '
@@ -3507,8 +3511,8 @@ EOF_ROADMAP_PREREQUISITE_EXPECTED_ROWS
       "Roadmap history contains unapproved status enum"
   fi
 
-  [ "$(roadmap_status_count 완료)" -eq 2 ] ||
-    add_failure "Roadmap 완료 count is not 2"
+  [ "$(roadmap_status_count 완료)" -eq 3 ] ||
+    add_failure "Roadmap 완료 count is not 3"
 
   [ "$(roadmap_status_count '진행중')" -eq 1 ] ||
     add_failure "Roadmap 진행중 count is not 1"
@@ -3549,7 +3553,10 @@ EOF_ROADMAP_PREREQUISITE_EXPECTED_ROWS
     }
 
     /^\| TASK-060 \|/ {
-      if (t($4) == "진행중") {
+      if (t($4) == "완료" &&
+          index($0, "Issue #100") > 0 &&
+          index($0, "PR #101") > 0 &&
+          index($0, "607474972a9d853567ac818f68b7a3e16cf7a03e") > 0) {
         ok=1
       }
     }
@@ -3561,7 +3568,31 @@ EOF_ROADMAP_PREREQUISITE_EXPECTED_ROWS
     }
   ' "$ROADMAP_HISTORY_FILE"
   then
-    add_failure "Roadmap TASK-060 is not 진행중 in full history"
+    add_failure "Roadmap TASK-060 completion status or merge SHA mismatch"
+  fi
+
+  if ! awk -F'|' '
+    function t(s) {
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", s)
+      return s
+    }
+
+    /^\| TASK-061 \|/ {
+      if (t($4) == "진행중" &&
+          index($0, "Issue #102") > 0 &&
+          index($0, "chore/TASK-061-test-first-workflow") > 0) {
+        ok=1
+      }
+    }
+
+    END {
+      if (!ok) {
+        exit 1
+      }
+    }
+  ' "$ROADMAP_HISTORY_FILE"
+  then
+    add_failure "Roadmap TASK-061 is not 진행중 with Issue #102/branch evidence in full history"
   fi
 
   if roadmap_prerequisite_rows="$(
@@ -3695,7 +3726,7 @@ EOF_ROADMAP_PREREQUISITE_EXPECTED_ROWS
       LC_ALL=C sort
   )"
 
-  if [ "$roadmap_current_row_count" -ne 3 ] ||
+  if [ "$roadmap_current_row_count" -ne 4 ] ||
      [ "$roadmap_current_actual_ids" != "$ROADMAP_CURRENT_EXPECTED_IDS" ]; then
     add_failure       "Roadmap current-status TASK ID membership mismatch"
   fi
@@ -3748,8 +3779,20 @@ EOF_ROADMAP_PREREQUISITE_EXPECTED_ROWS
       /^\| TASK-060 \|/ {
         count060++
 
-        if (t($4) == "진행중") {
+        if (t($4) == "완료" &&
+            index($0, "PR #101") > 0 &&
+            index($0, "607474972a9d853567ac818f68b7a3e16cf7a03e") > 0) {
           ok060++
+        }
+      }
+
+      /^\| TASK-061 \|/ {
+        count061++
+
+        if (t($4) == "진행중" &&
+            index($0, "Issue #102") > 0 &&
+            index($0, "chore/TASK-061-test-first-workflow") > 0) {
+          ok061++
         }
       }
 
@@ -3757,14 +3800,16 @@ EOF_ROADMAP_PREREQUISITE_EXPECTED_ROWS
         if (count059 != 1 ||
             ok059 != 1 ||
             count060 != 1 ||
-            ok060 != 1) {
+            ok060 != 1 ||
+            count061 != 1 ||
+            ok061 != 1) {
           exit 1
         }
       }
     '
   then
     add_failure \
-      "Roadmap current-status TASK-059/TASK-060 state consistency failed"
+      "Roadmap current-status TASK-059/TASK-060/TASK-061 state consistency failed"
   fi
 
   ROADMAP_COVERAGE_SECTION='## TASK coverage 기준'
@@ -3787,8 +3832,24 @@ EOF_ROADMAP_PREREQUISITE_EXPECTED_ROWS
     LINE \
     "$ROADMAP_COVERAGE_SECTION" \
     '' '' '' '' '' \
-    '- 이 후보의 전체 TASK 이력 고유 TASK: 76' \
-    "Roadmap final coverage value 76 authoritative context mismatch"
+    '- 이 후보의 전체 TASK 이력 고유 TASK: 77' \
+    "Roadmap final coverage value 77 authoritative context mismatch"
+
+  check_context_fixed \
+    "$ROADMAP" \
+    LINE \
+    "$ROADMAP_COVERAGE_SECTION" \
+    '' '' '' '' '' \
+    '- B current roadmap 고유 TASK: 8' \
+    "Roadmap B-current coverage value 8 authoritative context mismatch"
+
+  check_context_fixed \
+    "$ROADMAP" \
+    LINE \
+    "$ROADMAP_COVERAGE_SECTION" \
+    '' '' '' '' '' \
+    '- A 기준 신규 TASK: TASK-059, TASK-060, TASK-061' \
+    "Roadmap A-new TASK coverage authoritative context mismatch"
 
   check_context_fixed \
     "$ROADMAP" \
@@ -4039,6 +4100,181 @@ if [ -f "$WORKFLOW" ] && [ ! -L "$WORKFLOW" ]; then
   validate_workflow_lifecycle_schema "$WORKFLOW"
 
 fi
+
+# ---------------------------------------------------------------------------
+# I-3. Test-First Development Contract structural bindings.
+# Structural drift only; RED failure semantics remain MASTER/Review-owned.
+# ---------------------------------------------------------------------------
+
+if [ -f "$TEST_FIRST" ] && [ ! -L "$TEST_FIRST" ]; then
+  check_visible_heading_once \
+    "$TEST_FIRST" \
+    '## 3. Test Contract' \
+    "TEST-FIRST Test Contract heading count is not exactly 1"
+
+  check_visible_heading_once \
+    "$TEST_FIRST" \
+    '### RED_REQUIRED' \
+    "TEST-FIRST RED_REQUIRED heading count is not exactly 1"
+
+  check_visible_heading_once \
+    "$TEST_FIRST" \
+    '### RED_NOT_APPLICABLE' \
+    "TEST-FIRST RED_NOT_APPLICABLE heading count is not exactly 1"
+
+  check_visible_heading_once \
+    "$TEST_FIRST" \
+    '## 5. Valid RED' \
+    "TEST-FIRST Valid RED heading count is not exactly 1"
+
+  check_visible_heading_once \
+    "$TEST_FIRST" \
+    '### Mock Boundary' \
+    "TEST-FIRST Mock Boundary heading count is not exactly 1"
+
+  check_visible_heading_once \
+    "$TEST_FIRST" \
+    '## 8. Frozen Acceptance Contract' \
+    "TEST-FIRST Frozen Acceptance Contract heading count is not exactly 1"
+
+  check_visible_heading_once \
+    "$TEST_FIRST" \
+    '## 9. Evidence 책임' \
+    "TEST-FIRST Evidence heading count is not exactly 1"
+
+  check_visible_heading_once \
+    "$TEST_FIRST" \
+    '## 10. A-5 Harness' \
+    "TEST-FIRST A-5 heading count is not exactly 1"
+
+  check_authoritative_reference_line_in_section \
+    "$TEST_FIRST" \
+    '### RED_REQUIRED' \
+    '신규 Production behavior의 기본값은 `RED_REQUIRED`다.' \
+    "TEST-FIRST RED_REQUIRED default policy missing or duplicated"
+
+  check_authoritative_reference_line_in_section \
+    "$TEST_FIRST" \
+    '### RED_NOT_APPLICABLE' \
+    '- 명시적 사유' \
+    "TEST-FIRST RED_NOT_APPLICABLE reason condition missing or duplicated"
+
+  check_authoritative_reference_line_in_section \
+    "$TEST_FIRST" \
+    '### RED_NOT_APPLICABLE' \
+    '- 위험 평가' \
+    "TEST-FIRST RED_NOT_APPLICABLE risk condition missing or duplicated"
+
+  check_authoritative_reference_line_in_section \
+    "$TEST_FIRST" \
+    '### RED_NOT_APPLICABLE' \
+    '- MASTER 승인' \
+    "TEST-FIRST RED_NOT_APPLICABLE MASTER approval condition missing or duplicated"
+
+  check_authoritative_reference_line_in_section \
+    "$TEST_FIRST" \
+    '## 5. Valid RED' \
+    'RED != 아무 실패' \
+    "TEST-FIRST Valid RED distinction missing or duplicated"
+
+  check_authoritative_reference_line_in_section \
+    "$TEST_FIRST" \
+    '## 5. Valid RED' \
+    'Validator는 failure semantics를 실행 결과 수준에서 추론하지 않는다.' \
+    "TEST-FIRST validator semantic-boundary rule missing or duplicated"
+
+  check_authoritative_reference_line_in_section \
+    "$TEST_FIRST" \
+    '### Mock Boundary' \
+    'Mock PASS != 실제 Infrastructure Evidence' \
+    "TEST-FIRST Mock/Infrastructure distinction missing or duplicated"
+
+  check_authoritative_reference_line_in_section \
+    "$TEST_FIRST" \
+    '## 8. Frozen Acceptance Contract' \
+    'Production 구현에 맞추기 위해 테스트를 임의로 약화하지 않는다.' \
+    "TEST-FIRST frozen-contract anti-weakening rule missing or duplicated"
+
+  check_authoritative_reference_line_in_section \
+    "$TEST_FIRST" \
+    '## 8. Frozen Acceptance Contract' \
+    '변경 전 Contract와 변경 후 Contract를 구분하지 않은 채 기존 실패를 삭제하거나 기대값을 완화하지 않는다.' \
+    "TEST-FIRST contract-change distinction missing or duplicated"
+
+  for evidence_line in \
+    '- TEST_CONTRACT_EVIDENCE' \
+    '- RED_EVIDENCE' \
+    '- PRODUCTION_CHANGE_EVIDENCE' \
+    '- GREEN_EVIDENCE' \
+    '- REGRESSION_EVIDENCE'
+  do
+    check_authoritative_reference_line_in_section \
+      "$TEST_FIRST" \
+      '## 9. Evidence 책임' \
+      "$evidence_line" \
+      "TEST-FIRST evidence responsibility missing or duplicated: $evidence_line"
+  done
+
+  check_authoritative_reference_line_in_section \
+    "$TEST_FIRST" \
+    '## 10. A-5 Harness' \
+    'A-5 Harness 적용은 SELECTIVE다.' \
+    "TEST-FIRST A-5 SELECTIVE policy missing or duplicated"
+
+  check_authoritative_reference_line_in_section \
+    "$TEST_FIRST" \
+    '## 10. A-5 Harness' \
+    'A-5 Harness PASS != Repository RED/GREEN Evidence' \
+    "TEST-FIRST A-5/Repository evidence distinction missing or duplicated"
+fi
+
+check_authoritative_reference_line_in_section \
+  "$WORKFLOW" \
+  '## 1. 문서 책임' \
+  '- Test-First semantics와 RED/Test Contract gate: `docs/process/TEST-FIRST-DEVELOPMENT-CONTRACT.md`' \
+  "DEVELOPMENT-WORKFLOW Test-First authoritative reference missing or duplicated"
+
+check_authoritative_reference_line_in_section \
+  "$WORKFLOW" \
+  '### 3. Issue / 계획' \
+  '- Test plan과 `docs/process/TEST-FIRST-DEVELOPMENT-CONTRACT.md` 기준 Test Contract' \
+  "DEVELOPMENT-WORKFLOW Stage 3 Test Contract linkage missing or duplicated"
+
+check_authoritative_reference_line_in_section \
+  "$WORKFLOW" \
+  '### 5. 구현' \
+  '- `RED_REQUIRED`이면 Production Implementation 전에 Valid RED를 확인한다.' \
+  "DEVELOPMENT-WORKFLOW Stage 5 RED_REQUIRED gate missing or duplicated"
+
+check_authoritative_reference_line_in_section \
+  "$WORKFLOW" \
+  '### 5. 구현' \
+  '- 승인된 `RED_NOT_APPLICABLE`이면 명시적 사유·위험 평가·MASTER 승인 근거를 확인한다.' \
+  "DEVELOPMENT-WORKFLOW Stage 5 RED_NOT_APPLICABLE gate missing or duplicated"
+
+check_authoritative_reference_line_in_section \
+  "$CHECKLIST" \
+  '### 코드 동작 변경' \
+  '세부 Test-First semantics는 `docs/process/TEST-FIRST-DEVELOPMENT-CONTRACT.md`를 단일 기준으로 따른다.' \
+  "TASK-START-CHECKLIST Test-First authoritative reference missing or duplicated"
+
+check_authoritative_reference_line_in_section \
+  "$GPT" \
+  '## 2. 입력 자료 원칙' \
+  'Test Contract와 RED/GREEN evidence semantics는 `docs/process/TEST-FIRST-DEVELOPMENT-CONTRACT.md`를 단일 기준으로 따른다.' \
+  "GPT Test-First authoritative reference missing or duplicated"
+
+check_authoritative_reference_line_in_section \
+  "$PROJECT" \
+  '## 7. 상세 문서 인덱스' \
+  '- Test-First 개발 계약: `docs/process/TEST-FIRST-DEVELOPMENT-CONTRACT.md`' \
+  "PROJECT-RULES Test-First authoritative reference missing or duplicated"
+
+check_authoritative_reference_line_in_section \
+  "$ROOT/CLAUDE.md" \
+  '## 기준 문서' \
+  '- Test-First 개발 계약: `docs/process/TEST-FIRST-DEVELOPMENT-CONTRACT.md`' \
+  "CLAUDE Test-First authoritative reference missing or duplicated"
 
 # J. Learning Contract deterministic minimum semantics.
 # ---------------------------------------------------------------------------
@@ -4434,7 +4670,7 @@ if [ -f "$GPT" ] && [ ! -L "$GPT" ]; then
     "- TASK 목적" \
     "- Scope" \
     "- Definition of Done" \
-    "- Test plan" \
+    "- Test Contract: Requirement / Happy Path / Unhappy Path / Boundary / Acceptance Criteria / Test Level / RED policy" \
     "- 승인된 결정"
 
   check_gpt_stage_list \
@@ -4444,7 +4680,7 @@ if [ -f "$GPT" ] && [ ! -L "$GPT" ]; then
     "- 승인된 Issue와 구현 계획" \
     "- 실제 변경 code 또는 diff" \
     "- 판단에 필요한 관련 code context" \
-    "- test 결과 또는 미실행 사유와 위험"
+    "- Test Contract와 실제 RED/GREEN Evidence 또는 승인된 RED_NOT_APPLICABLE 근거"
 
   check_gpt_stage_list \
     "Git / PR" \

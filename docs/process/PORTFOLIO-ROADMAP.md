@@ -29,7 +29,8 @@
 | --- | --- | --- | --- |
 | TASK-031 | Redis Sliding Window 기반 Rate Limiting 구현 | 완료 | Issue #96, PR #97, commit `f0aabf8` |
 | TASK-059 | Claude Code 최소 구성 적용 및 위험 리뷰 Agent 검증 | 완료 | merge SHA `122816d91533befcc7a63c06cf83a7150e1fd05d` |
-| TASK-060 | 프로젝트 프로세스 문서 정합성 복구 및 학습 계약 추가 | 진행중 | Issue #100, branch `chore/TASK-060-process-doc-consistency-recovery` |
+| TASK-060 | 프로젝트 프로세스 문서 정합성 복구 및 학습 계약 추가 | 완료 | Issue #100, PR #101, merge SHA `607474972a9d853567ac818f68b7a3e16cf7a03e` |
+| TASK-061 | Test-First AI 개발 Workflow 도입 및 RED/Test Contract Gate 공식화 | 진행중 | Issue #102, branch `chore/TASK-061-test-first-workflow` |
 
 ## 다음 직접 진행 순서
 
@@ -45,7 +46,7 @@ TASK-032
 
 | TASK | 내용 | 상태 | 선행 조건 |
 | --- | --- | --- | --- |
-| TASK-032 | 이벤트 기반 예약 처리 (Spring Events) | 계획 | TASK-060 완료 + 사용자 승인 |
+| TASK-032 | 이벤트 기반 예약 처리 (Spring Events) | 계획 | TASK-061 완료 + 사용자 승인 |
 | TASK-033 | Outbox Pattern 구현 | 계획 | TASK-032 완료 + 사용자 승인 |
 | TASK-033-1 | Outbox 재처리 실패 시나리오 | 계획 | TASK-033 완료 + 사용자 승인 |
 | TASK-028 | Redis/DB 장애 시나리오 구현 및 문서화 | 계획 | TASK-033-1 완료 + 사용자 승인 |
@@ -55,7 +56,7 @@ TASK-032
 
 A old roadmap의 고유 TASK 74개를 모두 보존한다.
 A에서 과거에 `완료` 또는 `남은 로드맵`으로 분류됐더라도 현재 근거가 확인되지 않으면 이 문서에서는 `재확인필요`로 기록한다.
-현재 근거가 확인된 TASK-031과 MASTER에서 완료가 확정된 TASK-059는 `완료`, 현재 수행 중인 TASK-060은 `진행중`, 승인된 직접 후속 5개는 `계획`으로 기록한다.
+현재 근거가 확인된 TASK-031과 MASTER에서 완료가 확정된 TASK-059, TASK-060은 `완료`, 현재 수행 중인 TASK-061은 `진행중`, 승인된 직접 후속 5개는 `계획`으로 기록한다.
 
 ### Phase 1. 기반 구축
 
@@ -143,7 +144,7 @@ A에서 과거에 `완료` 또는 `남은 로드맵`으로 분류됐더라도 �
 
 | TASK | 내용 | 상태 | 현재 근거 / 조건 | CS 연관 개념 |
 | --- | --- | --- | --- | --- |
-| TASK-032 | 이벤트 기반 예약 처리 (Spring Events) | 계획 | MASTER 승인 직접 순서; TASK-060 완료 + 사용자 승인 | 이벤트 기반 설계/Kafka 비교 (Week 15) |
+| TASK-032 | 이벤트 기반 예약 처리 (Spring Events) | 계획 | MASTER 승인 직접 순서; TASK-061 완료 + 사용자 승인 | 이벤트 기반 설계/Kafka 비교 (Week 15) |
 | TASK-033 | Outbox Pattern 구현 | 계획 | MASTER 승인 직접 순서; TASK-032 완료 + 사용자 승인 | Kafka/트랜잭션 (Week 15, 5) |
 | TASK-033-1 | Outbox 재처리 실패 시나리오 | 계획 | MASTER 승인 직접 순서; TASK-033 완료 + 사용자 승인 | 트랜잭션/재시도 (Week 5) |
 | TASK-028 | Redis/DB 장애 시나리오 구현 및 문서화 | 계획 | MASTER 승인 직접 순서; TASK-033-1 완료 + 사용자 승인 | 커넥션 풀/Redis (Week 5, 8) |
@@ -196,7 +197,8 @@ A에서 과거에 `완료` 또는 `남은 로드맵`으로 분류됐더라도 �
 | TASK | 내용 | 상태 | 현재 근거 / 조건 | CS 연관 개념 |
 | --- | --- | --- | --- | --- |
 | TASK-059 | Claude Code 최소 구성 적용 및 위험 리뷰 Agent 검증 | 완료 | merge SHA `122816d91533befcc7a63c06cf83a7150e1fd05d` | — |
-| TASK-060 | 프로젝트 프로세스 문서 정합성 복구 및 학습 계약 추가 | 진행중 | Issue #100, branch `chore/TASK-060-process-doc-consistency-recovery` | 프로세스 / AI 협업 / 검증 |
+| TASK-060 | 프로젝트 프로세스 문서 정합성 복구 및 학습 계약 추가 | 완료 | Issue #100, PR #101, merge SHA `607474972a9d853567ac818f68b7a3e16cf7a03e` | 프로세스 / AI 협업 / 검증 |
+| TASK-061 | Test-First AI 개발 Workflow 도입 및 RED/Test Contract Gate 공식화 | 진행중 | Issue #102, branch `chore/TASK-061-test-first-workflow` | 테스트 / AI 협업 / 검증 |
 
 ## CS 주차 ↔ TASK ↔ interview 연결
 
@@ -222,7 +224,7 @@ TASK별 학습·면접 검증의 상세 기준은 `docs/process/TASK-LEARNING-IN
 ## TASK coverage 기준
 
 - A old roadmap 고유 TASK: 74
-- B current roadmap 고유 TASK: 7
-- 이 후보의 전체 TASK 이력 고유 TASK: 76
+- B current roadmap 고유 TASK: 8
+- 이 후보의 전체 TASK 이력 고유 TASK: 77
 - A old roadmap에서 누락된 TASK: 없음
-- A 기준 신규 TASK: TASK-059, TASK-060
+- A 기준 신규 TASK: TASK-059, TASK-060, TASK-061
