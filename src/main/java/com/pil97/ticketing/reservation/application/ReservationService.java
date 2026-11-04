@@ -6,6 +6,7 @@ import com.pil97.ticketing.common.error.IdempotencyErrorCode;
 import com.pil97.ticketing.common.exception.BusinessException;
 import com.pil97.ticketing.hold.domain.Hold;
 import com.pil97.ticketing.hold.domain.HoldStatus;
+import com.pil97.ticketing.hold.domain.LockedSeatHolds;
 import com.pil97.ticketing.hold.domain.repository.HoldRepository;
 import com.pil97.ticketing.hold.error.HoldErrorCode;
 import com.pil97.ticketing.infra.idempotency.IdempotencyFingerprintUtil;
@@ -18,6 +19,7 @@ import com.pil97.ticketing.reservation.domain.repository.ReservationRepository;
 import com.pil97.ticketing.reservation.error.ReservationErrorCode;
 import com.pil97.ticketing.showtimeseat.domain.ShowtimeSeat;
 import com.pil97.ticketing.showtimeseat.domain.ShowtimeSeatStatus;
+import com.pil97.ticketing.showtimeseat.domain.repository.ShowtimeSeatRepository;
 import com.pil97.ticketing.showtimeseat.error.ShowtimeSeatErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +44,7 @@ public class ReservationService {
 
   private final HoldRepository holdRepository;
   private final ReservationRepository reservationRepository;
+  private final ShowtimeSeatRepository showtimeSeatRepository;
   private final IdempotencyRedisRepository idempotencyRedisRepository;
   private final ObjectMapper objectMapper;
 
@@ -78,20 +81,43 @@ public class ReservationService {
 
   /**
    * 예약 취소 처리 (PENDING 전용)
-   * - PENDING: 결제 전 취소 - 좌석 HELD -> AVAILABLE 복구, 예약 CANCELLED 처리
    * - CONFIRMED: 직접 취소 불가 - 환불 API 경로 사용
-   * - HOLD 상태는 별도 변경하지 않는다
+   * - FAILED, CANCELLED: 취소 불가
+   * - PENDING: 결제 전 취소 (TASK-062)
+   *   - 잠금 순서: 예약 → 좌석(예약 FK의 showtimeId·seatId unique key) → 대상 및 같은 좌석의 live HOLD (id 오름차순)
+   *   - 예약 상태 거절은 좌석·HOLD 잠금 전에 판정한다
+   *   - 좌석 해제 권한은 HOLD 종료 전에 계산한다 (대상 ACTIVE + 좌석 HELD + 다른 live HOLD 없음)
+   *   - 대상 HOLD가 ACTIVE면 CANCELLED, 이미 종료된 HOLD는 바꾸지 않는다
+   *   - 해제 권한이 있을 때만 좌석 AVAILABLE (재선점·결제 완료 좌석과 타인 HOLD 보존)
    *
    * @param reservationId 취소 대상 예약 ID
    */
   @Transactional
   public void cancel(Long reservationId) {
-    Reservation reservation = reservationRepository.findById(reservationId)
+    Reservation reservation = reservationRepository.findByIdWithLock(reservationId)
       .orElseThrow(() -> new BusinessException(ReservationErrorCode.NOT_FOUND));
 
     validateCancellable(reservation);
 
-    reservation.getHold().getShowtimeSeat().markAvailable();
+    // 좌석 ID를 찾기 위해 HOLD를 일관 읽기로 먼저 조회하지 않는다 (예약 FK의 LAZY proxy ID 사용)
+    ShowtimeSeat showtimeSeat = showtimeSeatRepository
+      .findByShowtimeIdAndSeatIdWithLock(reservation.getShowtime().getId(), reservation.getSeat().getId())
+      .orElseThrow(() -> new BusinessException(ShowtimeSeatErrorCode.NOT_FOUND));
+    LockedSeatHolds holds = LockedSeatHolds.require(
+      holdRepository.findTargetAndLiveHoldsForUpdate(
+        showtimeSeat.getId(), reservation.getHold().getId(), LockedSeatHolds.LIVE_STATUSES),
+      reservation.getHold().getId());
+
+    // HOLD 종료 전 해제 권한 계산
+    boolean releaseSeat = holds.ownsSeat(showtimeSeat);
+
+    Hold hold = holds.target();
+    if (hold.getStatus() == HoldStatus.ACTIVE) {
+      hold.cancel();
+    }
+    if (releaseSeat) {
+      showtimeSeat.markAvailable();
+    }
     reservation.cancel();
   }
 

@@ -5,7 +5,7 @@
 티켓팅 서비스는 특정 시간에 트래픽이 폭증하고, 동일 좌석에 수백 명이 동시에 선점을 시도합니다.
 이 프로젝트는 그 문제를 직접 구현하고 검증한 백엔드 포트폴리오입니다.
 
-- 좌석 중복 선점 방지 — Redis 분산락으로 동시 요청 직렬화
+- 좌석 중복 선점 방지 — Redis 분산락으로 동시 요청 직렬화 + DB 좌석 행 잠금으로 트랜잭션 종료까지 정합성 유지
 - 트래픽 폭증 대응 — Redis Sorted Set 기반 대기열로 입장 순서 제어
 - 결제 중복 처리 방지 — Idempotency Key 기반 멱등성 보장
 - 인증 보안 강화 — RefreshToken Rotation + Redis 블랙리스트 로그아웃
@@ -39,7 +39,7 @@ sequenceDiagram
 
     Client->>Server: 3. POST /showtimes/{showtimeId}/hold
     Server->>Redis: 분산락 획득 (hold:seat:{showtimeId}:{seatId})
-    Server->>DB: Hold 생성, 좌석 HELD
+    Server->>DB: 좌석 행 잠금 (트랜잭션 종료까지 유지), Hold 생성, 좌석 HELD
     Server-->>Client: holdId 반환
 
     Client->>Server: 4. POST /holds/{holdId}/reserve
@@ -48,11 +48,11 @@ sequenceDiagram
 
     Client->>Server: 5. POST /payments (idempotencyKey)
     Server->>Redis: 멱등성 키 중복 확인
-    Server->>DB: Payment SUCCESS, Reservation CONFIRMED, 좌석 RESERVED
+    Server->>DB: 예약 → 좌석 → 관련 HOLD 잠금, Payment SUCCESS, Reservation CONFIRMED, 좌석 RESERVED
     Server-->>Client: 결제 완료
 
     Client->>Server: 6. DELETE /reservations/{reservationId} (PENDING only)
-    Server->>DB: Reservation CANCELLED, 좌석 AVAILABLE
+    Server->>DB: 예약 → 좌석 → 관련 HOLD 잠금, 대상 ACTIVE HOLD만 CANCELLED, Reservation CANCELLED, 해제 권한이 있을 때만 좌석 AVAILABLE
     Server-->>Client: 결제 전 예약 취소 완료
 
     Client->>Server: 7. POST /payments/{paymentId}/refund
@@ -64,8 +64,9 @@ sequenceDiagram
 |------|-------------------------------------------------------|
 | 로그인  | JWT + Redis RefreshToken 저장 (Rotation 방식으로 탈취 감지)     |
 | 대기열  | Redis Sorted Set + Scheduler 기반 비동기 입장 허용             |
-| HOLD | Redisson 분산락으로 동일 회차·좌석 동시 선점 요청 직렬화                  |
-| 결제   | idempotencyKey 기반 중복 결제 방지 (Redis 캐싱)                 |
+| HOLD | Redisson 분산락으로 동일 회차·좌석 동시 선점 요청 직렬화, DB 좌석 행 잠금을 트랜잭션 종료까지 유지 |
+| 결제   | idempotencyKey 기반 중복 결제 방지 (Redis 캐싱), 예약 → 좌석 → 관련 HOLD 순서로 잠금 |
+| 예약 취소 | 예약 → 좌석 → 관련 HOLD 순서로 잠금, 대상 ACTIVE HOLD는 CANCELLED, HOLD 종료 전에 판단한 해제 권한이 있을 때만 좌석 AVAILABLE |
 | 환불   | 소유권 검증 선행 후 상태 전이 (Payment → Reservation → HOLD → 좌석) |
 
 예약 취소와 결제 환불은 분리된 API로 처리하며
@@ -78,7 +79,7 @@ sequenceDiagram
 
 | 결정            | 선택                      | 대안 대비 이유                                                                               |
 |---------------|-------------------------|----------------------------------------------------------------------------------------|
-| 동시성 제어        | Redis 분산락 (Redisson)    | 비관적 락은 DB 커넥션을 점유해 트래픽 폭증 시 DB 부하 집중. Redis 분산락은 DB 외부에서 락을 관리해 부하 분산 가능               |
+| 동시성 제어        | Redis 분산락 (Redisson) + DB 좌석 행 잠금 | Redis 분산락은 같은 좌석 HOLD 요청을 DB 진입 전에 직렬화. 분산락은 DB commit 전에 해제될 수 있으므로 좌석 행 잠금(`SELECT ... FOR UPDATE`)을 트랜잭션 종료까지 유지해 정합성 보장. 취소·결제는 예약 → 좌석 → 관련 HOLD 순서로 잠금 |
 | 대기열           | Redis Sorted Set        | score를 진입 timestamp로 사용해 O(log N)으로 순번 조회/정렬 가능. 별도 MQ 없이 단일 Redis로 처리                 |
 | RefreshToken  | Rotation 방식             | 토큰 탈취 시 피해자가 재사용을 시도하면 Redis 불일치로 즉시 감지 후 강제 로그아웃                                      |
 | 결제 멱등성        | Idempotency Key + Redis | 동일 key 재요청은 기존 결과 반환, 동일 key+다른 payload는 차단, 처리 중 중복 요청은 in-progress lock으로 차단         |
@@ -103,10 +104,12 @@ sequenceDiagram
 
 ### 예약 플로우
 
-- `POST /showtimes/{showtimeId}/hold` — 좌석 선점 (Redis 분산락 + 5분 유효)
+- `POST /showtimes/{showtimeId}/hold` — 좌석 선점 (Redis 분산락 + DB 좌석 행 잠금 + 5분 유효)
 - `POST /holds/{holdId}/reserve` — 결제 대기 상태 예약 생성(PENDING) (Idempotency-Key 헤더
   필수)
 - `DELETE /reservations/{reservationId}` — 결제 전 예약 취소 (PENDING 전용)
+  - 대상 ACTIVE HOLD는 CANCELLED, 대상 HOLD 종료 전에 좌석 해제 권한을 판단해 권한이 있을 때만 좌석 AVAILABLE
+  - 같은 좌석의 다른 ACTIVE/CONFIRMED HOLD와 결제 완료(RESERVED) 좌석은 보존
 
 ### 결제
 
@@ -131,7 +134,9 @@ sequenceDiagram
 ### 인프라
 
 - HOLD 만료 해제 스케줄링 (30초 주기)
-- N+1 제거 (fetch join) + 인덱스 설계
+  - 만료 후보 조회 후 항목별 독립 트랜잭션에서 좌석 → HOLD 순서로 잠그고 상태·만료 시각을 재확인
+  - 항목 실패는 해당 항목만 rollback하고 다음 후보를 계속 처리
+- 인덱스 설계
 - GitHub Actions CI
 - Rate Limiting — Redis 슬라이딩 윈도우 (HOLD 5회/60초, 예약·결제 3회/60초, AOP 기반 적용)
 
@@ -254,6 +259,9 @@ docker compose up -d
 | `IDEMPOTENCY-xxx`   | 멱등성 (중복 요청 / payload 불일치 / key 누락) |
 | `QUEUE-xxx`         | 대기열                                |
 | `RATE-LIMIT-xxx`    | Rate Limiting (요청 횟수 초과)           |
+
+MariaDB ER_CHECKREAD(1020)가 JPA 예외 변환 경로에서 `ConcurrentUpdateConflictException`으로 변환된 경우
+HTTP 409 / `COMMON-008`로 응답합니다 (자동 재시도 없음).
 
 전체 에러 코드는 각 도메인 패키지의 `XxxErrorCode.java`를 참고하세요.
 

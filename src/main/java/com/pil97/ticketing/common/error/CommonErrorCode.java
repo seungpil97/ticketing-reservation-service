@@ -7,7 +7,7 @@ import org.springframework.http.HttpStatus;
 /**
  * 공통 에러코드
  * <p>
- * 새 항목 추가 시 다음 순번으로 추가할 것 (현재 마지막: COMMON-007)
+ * 새 항목 추가 시 다음 순번으로 추가할 것 (현재 마지막: COMMON-008)
  * 이 파일은 특정 도메인에 속하지 않는 공통 에러(입력값 검증, 404, 500 등)를 정의하는 enum입니다.
  * ErrorCode 인터페이스를 구현해 GlobalExceptionHandler가 동일하게 처리할 수 있습니다.
  */
@@ -34,7 +34,10 @@ public enum CommonErrorCode implements ErrorCode {
   CONFLICT(HttpStatus.CONFLICT, "COMMON-006", "Data integrity violation"),
 
   // 예상하지 못한 서버 오류 (공통 500)
-  INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "COMMON-007", "Internal server error");
+  INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "COMMON-007", "Internal server error"),
+
+  // 동시 갱신 충돌 - MariaDB snapshot isolation 충돌(ER_CHECKREAD 1020)로 트랜잭션이 rollback된 경우 (TASK-062)
+  CONCURRENT_UPDATE_CONFLICT(HttpStatus.CONFLICT, "COMMON-008", "Concurrent update conflict");
 
   private final HttpStatus status;
   private final String code;
