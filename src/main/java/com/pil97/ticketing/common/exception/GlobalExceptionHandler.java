@@ -2,6 +2,7 @@ package com.pil97.ticketing.common.exception;
 
 import com.pil97.ticketing.common.error.CommonErrorCode;
 import com.pil97.ticketing.common.error.ErrorCode;
+import com.pil97.ticketing.common.persistence.ConcurrentUpdateConflictException;
 import com.pil97.ticketing.common.response.ApiResponse;
 import com.pil97.ticketing.common.response.ErrorResponse;
 import com.pil97.ticketing.common.response.FieldErrorDetail;
@@ -120,6 +121,33 @@ public class GlobalExceptionHandler {
   ) {
 
     CommonErrorCode errorCode = CommonErrorCode.CONFLICT;
+
+    ErrorResponse errorResponse = ErrorResponse.of(
+      errorCode.getCode(),
+      errorCode.getMessage(),
+      request.getRequestURI()
+    );
+
+    return ResponseEntity
+      .status(errorCode.getStatus())
+      .body(ApiResponse.error(errorResponse));
+  }
+
+  /**
+   * 3-2) 동시 갱신 충돌 처리 (409) (TASK-062)
+   * - MariaDB snapshot isolation 충돌(ER_CHECKREAD 1020)을 변환한 ConcurrentUpdateConflictException만 처리한다
+   * - DB가 트랜잭션 전체를 rollback한 상태이며 자동 재시도하지 않는다
+   * - 다른 동시성 오류(ConcurrencyFailureException 하위 1205·1213 등)는 기존 처리(500)를 유지한다
+   * - 응답에는 SQL 등 내부 정보를 담지 않는다
+   */
+  @ExceptionHandler(ConcurrentUpdateConflictException.class)
+  public ResponseEntity<ApiResponse<Void>> handleConcurrentUpdateConflict(
+    ConcurrentUpdateConflictException e,
+    HttpServletRequest request
+  ) {
+    log.warn("Concurrent update conflict: path={}", request.getRequestURI());
+
+    CommonErrorCode errorCode = CommonErrorCode.CONCURRENT_UPDATE_CONFLICT;
 
     ErrorResponse errorResponse = ErrorResponse.of(
       errorCode.getCode(),

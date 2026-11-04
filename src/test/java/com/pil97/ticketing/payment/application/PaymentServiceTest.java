@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pil97.ticketing.common.error.IdempotencyErrorCode;
 import com.pil97.ticketing.common.exception.BusinessException;
 import com.pil97.ticketing.hold.domain.Hold;
+import com.pil97.ticketing.hold.domain.HoldStatus;
+import com.pil97.ticketing.hold.domain.repository.HoldRepository;
 import com.pil97.ticketing.infra.idempotency.IdempotencyRedisRepository;
 import com.pil97.ticketing.infra.idempotency.IdempotencyResult;
 import com.pil97.ticketing.member.domain.Member;
@@ -17,18 +19,24 @@ import com.pil97.ticketing.reservation.domain.Reservation;
 import com.pil97.ticketing.reservation.domain.ReservationStatus;
 import com.pil97.ticketing.reservation.domain.repository.ReservationRepository;
 import com.pil97.ticketing.reservation.error.ReservationErrorCode;
+import com.pil97.ticketing.seat.domain.Seat;
+import com.pil97.ticketing.showtime.domain.Showtime;
 import com.pil97.ticketing.showtimeseat.domain.ShowtimeSeat;
+import com.pil97.ticketing.showtimeseat.domain.ShowtimeSeatStatus;
+import com.pil97.ticketing.showtimeseat.domain.repository.ShowtimeSeatRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -50,6 +58,13 @@ class PaymentServiceTest {
 
   @Mock
   private ObjectMapper objectMapper;
+
+  // TASK-062: 결제가 좌석 → 관련 HOLD 잠금에 참여하기 위한 의존성 (현행 구현에서는 미사용)
+  @Mock
+  private HoldRepository holdRepository;
+
+  @Mock
+  private ShowtimeSeatRepository showtimeSeatRepository;
 
   @InjectMocks
   private PaymentService paymentService;
@@ -78,6 +93,43 @@ class PaymentServiceTest {
       });
   }
 
+  /**
+   * TASK-062 잠금 경로 stub (showtimeId=1000, seatId=2000, holdId=10, showtimeSeatId=100, 대상 HOLD가 유일한 활성 HOLD)
+   * - 현행 구현은 이 경로를 호출하지 않으므로 lenient: 현행(RED)과 개선 후(GREEN) 모두에서 같은 테스트가 유효하도록 한다
+   * - 잠금 우선 읽기 (WORK-4B): 좌석은 잠근 예약 행의 FK(showtime_id, seat_id)로 unique key 잠금 조회한다.
+   *   HOLD에서 좌석 ID를 찾는 일관 읽기(findShowtimeSeatIdById)는 쓰지 않는다
+   */
+  private void stubSeatAndHoldLocks(Reservation reservation, Hold hold, ShowtimeSeat showtimeSeat) {
+    Showtime showtime = mock(Showtime.class);
+    Seat seat = mock(Seat.class);
+    lenient().when(showtime.getId()).thenReturn(1000L);
+    lenient().when(seat.getId()).thenReturn(2000L);
+    lenient().when(reservation.getShowtime()).thenReturn(showtime);
+    lenient().when(reservation.getSeat()).thenReturn(seat);
+    lenient().when(hold.getId()).thenReturn(10L);
+    lenient().when(hold.getStatus()).thenReturn(HoldStatus.ACTIVE);
+    lenient().when(showtimeSeat.getId()).thenReturn(100L);
+    lenient().when(showtimeSeat.getStatus()).thenReturn(ShowtimeSeatStatus.HELD);
+    lenient().when(showtimeSeatRepository.findByShowtimeIdAndSeatIdWithLock(1000L, 2000L))
+      .thenReturn(Optional.of(showtimeSeat));
+    lenient().when(holdRepository.findTargetAndLiveHoldsForUpdate(eq(100L), eq(10L), anyCollection()))
+      .thenReturn(List.of(hold));
+  }
+
+  /**
+   * TASK-062 잠금 순서 계약: 예약 → 좌석 → 관련 HOLD, Payment 저장은 잠금·검증 이후
+   * - 좌석 ID를 찾기 위한 HOLD 일관 읽기를 하지 않는다 (잠금 우선 읽기)
+   */
+  private void verifyLockOrderBeforeSave(Long reservationId) {
+    InOrder inOrder = inOrder(reservationRepository, showtimeSeatRepository, holdRepository, paymentRepository);
+    inOrder.verify(reservationRepository).findByIdWithLock(reservationId);
+    inOrder.verify(showtimeSeatRepository).findByShowtimeIdAndSeatIdWithLock(1000L, 2000L);
+    inOrder.verify(holdRepository).findTargetAndLiveHoldsForUpdate(
+      eq(100L), eq(10L), argThat(statuses -> statuses.containsAll(List.of(HoldStatus.ACTIVE, HoldStatus.CONFIRMED))));
+    inOrder.verify(paymentRepository).save(any(Payment.class));
+    verify(holdRepository, never()).findShowtimeSeatIdById(any());
+  }
+
   // ===================== 결제 케이스 =====================
 
   @Test
@@ -94,11 +146,13 @@ class PaymentServiceTest {
 
     ShowtimeSeat showtimeSeat = mock(ShowtimeSeat.class);
     Hold hold = mock(Hold.class);
-    when(hold.getShowtimeSeat()).thenReturn(showtimeSeat);
+    // 현행 경로(HOLD → 좌석 탐색) stub - 개선 후에는 잠금 조회로 대체될 수 있어 lenient
+    lenient().when(hold.getShowtimeSeat()).thenReturn(showtimeSeat);
 
     Reservation reservation = mock(Reservation.class);
     when(reservation.getStatus()).thenReturn(ReservationStatus.PENDING);
     when(reservation.getHold()).thenReturn(hold);
+    stubSeatAndHoldLocks(reservation, hold, showtimeSeat);
 
     when(reservationRepository.findByIdWithLock(1L)).thenReturn(Optional.of(reservation));
 
@@ -130,6 +184,8 @@ class PaymentServiceTest {
     verify(savedPayment).success();
     // 커밋 후 Redis 저장 확인
     verify(idempotencyRedisRepository).save(anyString(), eq(idempotencyKey), anyString(), any(PaymentResponse.class), any());
+    // TASK-062: 예약 → 좌석 → 관련 HOLD 잠금 후 Payment 저장 (mock 호출 계약, 실제 잠금 증거 아님)
+    verifyLockOrderBeforeSave(1L);
   }
 
   @Test
@@ -146,11 +202,13 @@ class PaymentServiceTest {
 
     ShowtimeSeat showtimeSeat = mock(ShowtimeSeat.class);
     Hold hold = mock(Hold.class);
-    when(hold.getShowtimeSeat()).thenReturn(showtimeSeat);
+    // 현행 경로(HOLD → 좌석 탐색) stub - 개선 후에는 잠금 조회로 대체될 수 있어 lenient
+    lenient().when(hold.getShowtimeSeat()).thenReturn(showtimeSeat);
 
     Reservation reservation = mock(Reservation.class);
     when(reservation.getStatus()).thenReturn(ReservationStatus.PENDING);
     when(reservation.getHold()).thenReturn(hold);
+    stubSeatAndHoldLocks(reservation, hold, showtimeSeat);
 
     when(reservationRepository.findByIdWithLock(1L)).thenReturn(Optional.of(reservation));
 
@@ -179,6 +237,8 @@ class PaymentServiceTest {
     verify(idempotencyRedisRepository, never()).save(anyString(), anyString(), anyString(), any(), any());
     // 결제 실패 시 lock 즉시 해제 - 재시도 허용
     verify(idempotencyRedisRepository).releaseLock(anyString(), eq(idempotencyKey));
+    // TASK-062: forceFailure도 예약 → 좌석 → 관련 HOLD 잠금 후 Payment 저장 (mock 호출 계약)
+    verifyLockOrderBeforeSave(1L);
   }
 
   @Test
@@ -202,6 +262,8 @@ class PaymentServiceTest {
         .isEqualTo(ReservationErrorCode.NOT_FOUND));
 
     verifyNoInteractions(paymentRepository);
+    // TASK-062: 예약 검증 실패 시 좌석·HOLD 잠금을 시도하지 않는다
+    verifyNoInteractions(holdRepository, showtimeSeatRepository);
     // 예외 발생 시 finally에서 lock 해제 확인
     verify(idempotencyRedisRepository).releaseLock(anyString(), eq(idempotencyKey));
   }
@@ -229,6 +291,8 @@ class PaymentServiceTest {
         .isEqualTo(PaymentErrorCode.PAYMENT_ALREADY_PROCESSED));
 
     verifyNoInteractions(paymentRepository);
+    // TASK-062: PENDING 검증 실패 시 좌석·HOLD 잠금을 시도하지 않는다
+    verifyNoInteractions(holdRepository, showtimeSeatRepository);
     // 예외 발생 시 finally에서 lock 해제 확인
     verify(idempotencyRedisRepository).releaseLock(anyString(), eq(idempotencyKey));
   }

@@ -6,9 +6,7 @@ import com.pil97.ticketing.hold.domain.Hold;
 import com.pil97.ticketing.member.domain.Member;
 import com.pil97.ticketing.member.domain.repository.MemberRepository;
 import com.pil97.ticketing.queue.application.QueueService;
-import com.pil97.ticketing.seat.domain.Seat;
 import com.pil97.ticketing.seat.error.SeatErrorCode;
-import com.pil97.ticketing.showtime.domain.Showtime;
 import com.pil97.ticketing.showtime.error.ShowtimeErrorCode;
 import com.pil97.ticketing.showtimeseat.domain.ShowtimeSeat;
 import com.pil97.ticketing.showtimeseat.domain.ShowtimeSeatStatus;
@@ -80,7 +78,10 @@ public class HoldService {
    * - AVAILABLE 상태의 좌석만 HOLD 가능
    * - 성공 시 HOLD를 생성하고 좌석 상태를 HELD로 변경
    * - HOLD 만료 시간은 현재 시각 기준 5분 뒤로 저장
-   * - 비관적 락 없이 분산락 범위 안에서만 실행되므로 동시성 안전
+   * - 좌석 행 비관적 락 (TASK-062): Redis 분산락은 DB commit 전에 풀릴 수 있으므로
+   *   트랜잭션의 첫 DB 접근으로 회차별 좌석 unique key(showtime_id, seat_id)를 잠그고 commit/rollback까지 유지한다
+   *   - 잠금 읽기로 최신 좌석 상태를 확인한다 (일관 읽기로 read view를 먼저 만들지 않음)
+   *   - 회차·좌석 존재 확인은 좌석 잠금 조회가 비었을 때만 수행해 기존 오류 우선순위(회차 → 좌석 → 회차별 좌석)를 유지한다
    *
    * @param showtimeId 공연 회차 ID
    * @param request    선점 요청 정보(seatId, memberId)
@@ -89,19 +90,10 @@ public class HoldService {
   @Transactional
   public HoldResponse processHold(Long showtimeId, HoldCreateRequest request) {
 
-    // 1) 회차 존재 여부 확인
-    Showtime showtime = showtimeRepository.findById(showtimeId)
-      .orElseThrow(() -> new BusinessException(ShowtimeErrorCode.NOT_FOUND));
-
-    // 2) 좌석 존재 여부 확인
-    Seat seat = seatRepository.findById(request.getSeatId())
-      .orElseThrow(() -> new BusinessException(SeatErrorCode.NOT_FOUND));
-
-    // 3) 해당 회차에 속한 좌석인지 확인
-    //    비관적 락 제거: Redis 분산락이 동시성을 보장하므로 DB 락 불필요
+    // 1) 회차별 좌석 잠금 조회 - 2)·3)의 회차·좌석 존재 확인은 연결 정보가 없을 때만 오류 구분용으로 수행
     ShowtimeSeat showtimeSeat = showtimeSeatRepository
-      .findByShowtimeIdAndSeatId(showtime.getId(), seat.getId())
-      .orElseThrow(() -> new BusinessException(ShowtimeSeatErrorCode.NOT_FOUND));
+      .findByShowtimeIdAndSeatIdWithLock(showtimeId, request.getSeatId())
+      .orElseThrow(() -> showtimeSeatNotFound(showtimeId, request.getSeatId()));
 
     // 4) 회원 존재 여부 확인
     Member member = memberRepository.findById(request.getMemberId())
@@ -124,11 +116,25 @@ public class HoldService {
     // 9) 응답 반환
     return new HoldResponse(
       savedHold.getId(),
-      showtime.getId(),
-      seat.getId(),
+      showtimeId,
+      request.getSeatId(),
       showtimeSeat.getStatus().name(),
       savedHold.getExpiresAt()
     );
+  }
+
+  /**
+   * 회차별 좌석이 없을 때 기존 우선순위로 오류 구분
+   * - 2) 회차 없음 → 3) 좌석 없음 → 회차에 속하지 않는 좌석
+   */
+  private BusinessException showtimeSeatNotFound(Long showtimeId, Long seatId) {
+    if (!showtimeRepository.existsById(showtimeId)) {
+      return new BusinessException(ShowtimeErrorCode.NOT_FOUND);
+    }
+    if (!seatRepository.existsById(seatId)) {
+      return new BusinessException(SeatErrorCode.NOT_FOUND);
+    }
+    return new BusinessException(ShowtimeSeatErrorCode.NOT_FOUND);
   }
 
   /**

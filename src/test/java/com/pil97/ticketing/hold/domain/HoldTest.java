@@ -9,6 +9,9 @@ import com.pil97.ticketing.showtimeseat.domain.ShowtimeSeat;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 
@@ -154,5 +157,33 @@ class HoldTest {
         BusinessException be = (BusinessException) ex;
         assertThat(be.getErrorCode()).isEqualTo(HoldErrorCode.INVALID_STATUS_TRANSITION);
       });
+  }
+
+  // ===================== cancel() (TASK-062) =====================
+
+  @Test
+  @DisplayName("cancel: ACTIVE 상태에서 CANCELLED 전환 성공")
+  void cancel_active_success() {
+    // when
+    hold.cancel();
+
+    // then
+    assertThat(hold.getStatus()).isEqualTo(HoldStatus.CANCELLED);
+  }
+
+  @ParameterizedTest(name = "cancel: {0} 상태에서 호출 시 INVALID_STATUS_TRANSITION 예외를 던지고 상태를 유지한다")
+  @EnumSource(value = HoldStatus.class, names = {"EXPIRED", "CONFIRMED", "REFUNDED", "CANCELLED"})
+  void cancel_nonActive_throwsException(HoldStatus status) {
+    // given
+    ReflectionTestUtils.setField(hold, "status", status);
+
+    // when & then
+    assertThatThrownBy(() -> hold.cancel())
+      .isInstanceOf(BusinessException.class)
+      .satisfies(ex -> {
+        BusinessException be = (BusinessException) ex;
+        assertThat(be.getErrorCode()).isEqualTo(HoldErrorCode.INVALID_STATUS_TRANSITION);
+      });
+    assertThat(hold.getStatus()).isEqualTo(status);
   }
 }

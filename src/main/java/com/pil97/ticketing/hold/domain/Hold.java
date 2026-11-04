@@ -54,7 +54,7 @@ public class Hold {
   }
 
   /**
-   * HOLD 만료 처리 - 시간 초과 또는 결제 실패/사용자 직접 취소 경로
+   * HOLD 만료 처리 - 시간 초과 또는 결제 실패 경로 (사용자 직접 취소는 cancel())
    * - ACTIVE 상태에서만 EXPIRED 전환 허용
    */
   public void expire() {
@@ -85,5 +85,17 @@ public class Hold {
       throw new BusinessException(HoldErrorCode.INVALID_STATUS_TRANSITION);
     }
     this.status = HoldStatus.REFUNDED;
+  }
+
+  /**
+   * HOLD 취소 처리 - 결제 전 예약 직접 취소 경로 (TASK-062)
+   * - ACTIVE 상태에서만 CANCELLED 전환 허용
+   * - 시간 만료(EXPIRED)와 구분하여 사용자 취소로 종료된 선점임을 명시
+   */
+  public void cancel() {
+    if (this.status != HoldStatus.ACTIVE) {
+      throw new BusinessException(HoldErrorCode.INVALID_STATUS_TRANSITION);
+    }
+    this.status = HoldStatus.CANCELLED;
   }
 }
