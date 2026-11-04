@@ -15,6 +15,9 @@ import com.pil97.ticketing.infra.idempotency.IdempotencyResult;
 import com.pil97.ticketing.member.domain.Member;
 import com.pil97.ticketing.payment.api.dto.request.CreatePaymentRequest;
 import com.pil97.ticketing.payment.api.dto.response.PaymentResponse;
+import com.pil97.ticketing.payment.application.event.PaymentFailedEvent;
+import com.pil97.ticketing.payment.application.event.PaymentRefundedEvent;
+import com.pil97.ticketing.payment.application.event.PaymentSucceededEvent;
 import com.pil97.ticketing.payment.domain.Payment;
 import com.pil97.ticketing.payment.domain.PaymentStatus;
 import com.pil97.ticketing.payment.domain.repository.PaymentRepository;
@@ -29,6 +32,7 @@ import com.pil97.ticketing.showtimeseat.domain.repository.ShowtimeSeatRepository
 import com.pil97.ticketing.showtimeseat.error.ShowtimeSeatErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -53,6 +57,7 @@ public class PaymentService {
   private final HoldRepository holdRepository;
   private final IdempotencyRedisRepository idempotencyRedisRepository;
   private final ObjectMapper objectMapper;
+  private final ApplicationEventPublisher eventPublisher;
 
   /**
    * 결제 처리
@@ -83,7 +88,8 @@ public class PaymentService {
    * - 소유권 검증을 상태 검증보다 먼저 수행한다
    * (상태 검증 먼저 시 타인의 결제 상태 정보가 노출될 수 있음)
    * - SUCCESS 상태인 경우만 환불 가능
-   * - Payment REFUNDED, 예약 CANCELLED, HOLD REFUNDED, 좌석 AVAILABLE 전환
+   * - Payment REFUNDED 전환 후 PaymentRefundedEvent 발행
+   *   (예약 CANCELLED, HOLD REFUNDED, 좌석 AVAILABLE은 같은 트랜잭션의 리스너가 전환, 리스너 예외는 전파되어 롤백)
    */
   @Transactional
   public PaymentResponse refund(Long paymentId, Member loginMember) {
@@ -98,11 +104,7 @@ public class PaymentService {
     }
 
     payment.refund();
-
-    Reservation reservation = payment.getReservation();
-    reservation.cancelByRefund();
-    reservation.getHold().refund();
-    reservation.getHold().getShowtimeSeat().markAvailable();
+    eventPublisher.publishEvent(new PaymentRefundedEvent(payment.getId(), payment.getReservation().getId()));
 
     return PaymentResponse.of(payment);
   }
@@ -127,6 +129,8 @@ public class PaymentService {
    *   - 대상 HOLD ACTIVE 검증(HOLD-002)이 좌석 검증보다 먼저다 (성공·forceFailure 공통)
    *   - 성공 경로만: 좌석 HELD, 같은 좌석에 다른 ACTIVE/CONFIRMED HOLD 없음 (아니면 SHOWTIME-SEAT-002)
    *   - Payment 저장은 위 검증 이후 (거절 시 부분 변경 없음)
+   * - 예약·HOLD·좌석 상태 전환은 Payment 상태 전환 후 발행한 이벤트의 동기 리스너가 같은 트랜잭션에서 수행 (TASK-032)
+   *   - 리스너 예외는 전파되어 트랜잭션 롤백, 성공 경로는 afterCommit 등록 전이므로 Redis 결과도 저장되지 않는다
    * - 처리 성공 시 트랜잭션 커밋 후 Redis에 결과 저장 (커밋 전 저장 시 DB/Redis 불일치 위험)
    * - 처리 실패 또는 예외 발생 시 lock 해제하여 재시도 허용 (예외는 삼키지 않고 그대로 전파)
    * - forceFailure 경로: 결제 실패 응답 반환 후 캐시 저장 안 함 - 동일 key 재시도 시 재처리
@@ -158,11 +162,8 @@ public class PaymentService {
         boolean releaseSeat = holds.ownsSeat(showtimeSeat);
         Payment savedPayment = paymentRepository.save(Payment.create(reservation, request.getAmount()));
         savedPayment.fail();
-        reservation.fail();
-        hold.expire();
-        if (releaseSeat) {
-          showtimeSeat.markAvailable();
-        }
+        eventPublisher.publishEvent(new PaymentFailedEvent(
+          savedPayment.getId(), reservation.getId(), hold.getId(), showtimeSeat.getId(), releaseSeat));
         // 결제 실패 - lock 해제하여 재시도 허용 (캐시 저장 안 함)
         return PaymentResponse.of(savedPayment);
       }
@@ -171,9 +172,8 @@ public class PaymentService {
 
       Payment savedPayment = paymentRepository.save(Payment.create(reservation, request.getAmount()));
       savedPayment.success();
-      reservation.confirm();
-      showtimeSeat.markReserved();
-      hold.confirm();
+      eventPublisher.publishEvent(new PaymentSucceededEvent(
+        savedPayment.getId(), reservation.getId(), hold.getId(), showtimeSeat.getId()));
 
       PaymentResponse response = PaymentResponse.of(savedPayment);
 

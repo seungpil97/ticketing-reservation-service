@@ -11,6 +11,9 @@ import com.pil97.ticketing.infra.idempotency.IdempotencyResult;
 import com.pil97.ticketing.member.domain.Member;
 import com.pil97.ticketing.payment.api.dto.request.CreatePaymentRequest;
 import com.pil97.ticketing.payment.api.dto.response.PaymentResponse;
+import com.pil97.ticketing.payment.application.event.PaymentFailedEvent;
+import com.pil97.ticketing.payment.application.event.PaymentRefundedEvent;
+import com.pil97.ticketing.payment.application.event.PaymentSucceededEvent;
 import com.pil97.ticketing.payment.domain.Payment;
 import com.pil97.ticketing.payment.domain.PaymentStatus;
 import com.pil97.ticketing.payment.domain.repository.PaymentRepository;
@@ -33,6 +36,7 @@ import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
@@ -65,6 +69,10 @@ class PaymentServiceTest {
 
   @Mock
   private ShowtimeSeatRepository showtimeSeatRepository;
+
+  // TASK-032: 예약·HOLD·좌석 후속 상태 변경은 이벤트 리스너 책임 (리스너 동작은 PaymentEventIntegrationTest가 검증)
+  @Mock
+  private ApplicationEventPublisher eventPublisher;
 
   @InjectMocks
   private PaymentService paymentService;
@@ -133,7 +141,7 @@ class PaymentServiceTest {
   // ===================== 결제 케이스 =====================
 
   @Test
-  @DisplayName("pay: 결제 성공 시 트랜잭션 커밋 후 Redis에 결과가 저장된다")
+  @DisplayName("pay: 결제 성공 시 Payment SUCCESS 후 PaymentSucceededEvent 1회 발행, 트랜잭션 커밋 후 Redis에 결과가 저장된다")
   void pay_success_savesAfterCommit() throws Exception {
     // given
     String idempotencyKey = "test-key-001";
@@ -150,8 +158,10 @@ class PaymentServiceTest {
     lenient().when(hold.getShowtimeSeat()).thenReturn(showtimeSeat);
 
     Reservation reservation = mock(Reservation.class);
+    when(reservation.getId()).thenReturn(1L);
     when(reservation.getStatus()).thenReturn(ReservationStatus.PENDING);
     when(reservation.getHold()).thenReturn(hold);
+    // holdId=10, showtimeSeatId=100 (stubSeatAndHoldLocks)
     stubSeatAndHoldLocks(reservation, hold, showtimeSeat);
 
     when(reservationRepository.findByIdWithLock(1L)).thenReturn(Optional.of(reservation));
@@ -178,10 +188,15 @@ class PaymentServiceTest {
     assertThat(result.isReplayed()).isFalse();
     assertThat(result.getResponse().status()).isEqualTo("SUCCESS");
 
-    verify(reservation).confirm();
-    verify(showtimeSeat).markReserved();
-    verify(hold).confirm();
-    verify(savedPayment).success();
+    // 결제 자체 상태 변경 후 이벤트 1회 발행 (paymentId=1, reservationId=1, holdId=10, showtimeSeatId=100)
+    InOrder eventOrder = inOrder(savedPayment, eventPublisher);
+    eventOrder.verify(savedPayment).success();
+    eventOrder.verify(eventPublisher).publishEvent(new PaymentSucceededEvent(1L, 1L, 10L, 100L));
+    verifyNoMoreInteractions(eventPublisher);
+    // 예약·좌석·HOLD 상태 변경은 서비스가 직접 하지 않는다 (리스너 책임)
+    verify(reservation, never()).confirm();
+    verify(showtimeSeat, never()).markReserved();
+    verify(hold, never()).confirm();
     // 커밋 후 Redis 저장 확인
     verify(idempotencyRedisRepository).save(anyString(), eq(idempotencyKey), anyString(), any(PaymentResponse.class), any());
     // TASK-062: 예약 → 좌석 → 관련 HOLD 잠금 후 Payment 저장 (mock 호출 계약, 실제 잠금 증거 아님)
@@ -189,7 +204,7 @@ class PaymentServiceTest {
   }
 
   @Test
-  @DisplayName("pay: forceFailure=true이면 Payment FAIL, 예약 FAILED, HOLD EXPIRED, 좌석 AVAILABLE로 복구되고 lock이 해제된다")
+  @DisplayName("pay: forceFailure=true이면 Payment FAIL 후 PaymentFailedEvent(releaseSeat=true) 1회 발행, 캐시 없이 lock이 해제된다")
   void pay_forceFailure_releasesLock() throws Exception {
     // given
     String idempotencyKey = "test-key-002";
@@ -206,8 +221,10 @@ class PaymentServiceTest {
     lenient().when(hold.getShowtimeSeat()).thenReturn(showtimeSeat);
 
     Reservation reservation = mock(Reservation.class);
+    when(reservation.getId()).thenReturn(1L);
     when(reservation.getStatus()).thenReturn(ReservationStatus.PENDING);
     when(reservation.getHold()).thenReturn(hold);
+    // holdId=10, showtimeSeatId=100, 대상 HOLD ACTIVE·좌석 HELD·다른 활성 HOLD 없음 → 좌석 해제 권한 있음
     stubSeatAndHoldLocks(reservation, hold, showtimeSeat);
 
     when(reservationRepository.findByIdWithLock(1L)).thenReturn(Optional.of(reservation));
@@ -228,11 +245,16 @@ class PaymentServiceTest {
     assertThat(result.isReplayed()).isFalse();
     assertThat(result.getResponse().status()).isEqualTo("FAIL");
 
-    verify(savedPayment).fail();
-    verify(reservation).fail();
+    // 결제 자체 상태 변경 후 이벤트 1회 발행 (paymentId=2, reservationId=1, holdId=10, showtimeSeatId=100, releaseSeat=true)
+    InOrder eventOrder = inOrder(savedPayment, eventPublisher);
+    eventOrder.verify(savedPayment).fail();
+    eventOrder.verify(eventPublisher).publishEvent(new PaymentFailedEvent(2L, 1L, 10L, 100L, true));
+    verifyNoMoreInteractions(eventPublisher);
+    // 예약·HOLD·좌석 상태 변경은 서비스가 직접 하지 않는다 (리스너 책임)
+    verify(reservation, never()).fail();
     verify(reservation, never()).confirm();
-    verify(hold).expire();
-    verify(showtimeSeat).markAvailable();
+    verify(hold, never()).expire();
+    verify(showtimeSeat, never()).markAvailable();
     // 결제 실패 시 캐시 저장 안 함
     verify(idempotencyRedisRepository, never()).save(anyString(), anyString(), anyString(), any(), any());
     // 결제 실패 시 lock 즉시 해제 - 재시도 허용
@@ -401,7 +423,7 @@ class PaymentServiceTest {
   // ===================== 환불 케이스 =====================
 
   @Test
-  @DisplayName("refund: 환불 성공 시 Payment REFUNDED, 예약 CANCELLED, HOLD REFUNDED, 좌석 AVAILABLE로 전환된다")
+  @DisplayName("refund: 환불 성공 시 Payment REFUNDED 후 PaymentRefundedEvent 1회 발행")
   void refund_success() {
     Member loginMember = mock(Member.class);
     when(loginMember.getId()).thenReturn(1L);
@@ -409,12 +431,8 @@ class PaymentServiceTest {
     Member owner = mock(Member.class);
     when(owner.getId()).thenReturn(1L);
 
-    ShowtimeSeat showtimeSeat = mock(ShowtimeSeat.class);
-    Hold hold = mock(Hold.class);
-    when(hold.getShowtimeSeat()).thenReturn(showtimeSeat);
-
     Reservation reservation = mock(Reservation.class);
-    when(reservation.getHold()).thenReturn(hold);
+    when(reservation.getId()).thenReturn(5L);
     when(reservation.getMember()).thenReturn(owner);
 
     Payment payment = mock(Payment.class);
@@ -425,10 +443,14 @@ class PaymentServiceTest {
 
     paymentService.refund(1L, loginMember);
 
-    verify(payment).refund();
-    verify(reservation).cancelByRefund();
-    verify(hold).refund();
-    verify(showtimeSeat).markAvailable();
+    // 결제 자체 상태 변경 후 이벤트 1회 발행 (paymentId=1, reservationId=5)
+    InOrder eventOrder = inOrder(payment, eventPublisher);
+    eventOrder.verify(payment).refund();
+    eventOrder.verify(eventPublisher).publishEvent(new PaymentRefundedEvent(1L, 5L));
+    verifyNoMoreInteractions(eventPublisher);
+    // 예약·HOLD·좌석 상태 변경은 서비스가 직접 하지 않는다 (리스너 책임)
+    verify(reservation, never()).cancelByRefund();
+    verify(reservation, never()).getHold();
   }
 
   @Test
