@@ -160,5 +160,6 @@ flowchart TD
 |------------------------------------------|-----------------------------------------------|---------|
 | [ADR-001](adr/ADR-001-no-kafka.md)       | Kafka 미도입 — 단일 트랜잭션 직접 상태 전환 유지               | Decided |
 | [ADR-002](adr/ADR-002-mock-payment.md)   | Mock 결제 — PG 연동 없이 forceFailure 플래그로 성공/실패 재현 | Decided |
-| [ADR-003](adr/ADR-003-no-outbox.md)      | Outbox Pattern 미적용 — 단일 트랜잭션으로 상태 일관성 유지      | Decided |
+| [ADR-003](adr/ADR-003-no-outbox.md)      | Outbox Pattern 미적용 — 단일 트랜잭션으로 상태 일관성 유지      | Superseded (ADR-005) |
 | [ADR-004](adr/ADR-004-no-soft-delete.md) | Soft Delete 미적용 — 상태값으로 비활성 데이터 처리            | Decided |
+| [ADR-005](adr/ADR-005-payment-outbox-notification.md) | 결제 성공 Outbox와 폴링 기반 내부 알림 | Decided |

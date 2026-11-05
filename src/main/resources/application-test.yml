@@ -35,6 +35,11 @@ queue:
     batch-size: 5
     fixed-delay-ms: 10000
 
+# relay 스케줄러 미등록 - 테스트가 OutboxRelayService.relay()를 직접 호출한다
+outbox:
+  relay:
+    enabled: false
+
 
 # test에서는 로그 소음 줄이기
 logging:

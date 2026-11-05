@@ -196,6 +196,8 @@ docker compose up -d
 ./gradlew test -Dspring.profiles.active=test
 ```
 
+> Outbox relay 테스트는 Testcontainers(Docker 필요)를 사용합니다. 환경 준비는 [`docs/db/README.md`](docs/db/README.md)를 참고하세요.
+
 ---
 
 ## Health Check
