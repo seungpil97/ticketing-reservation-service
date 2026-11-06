@@ -2,6 +2,12 @@ spring:
   cache:
     type: redis
 
+  task:
+    scheduling:
+      pool:
+        # HOLD 만료·대기열·Outbox relay 스케줄 작업이 서로의 실행 스레드를 기다리지 않도록 작업 수만큼 (TASK-033)
+        size: 3
+
   jpa:
     open-in-view: false
     hibernate:
@@ -11,6 +17,12 @@ spring:
         format_sql: true
         jdbc:
           time_zone: Asia/Seoul
+
+# 결제 성공 Outbox relay (TASK-033) - 스케줄러는 outbox.relay.enabled=false인 profile에서만 미등록
+outbox:
+  relay:
+    fixed-delay-ms: 5000
+    batch-size: 100
 
 logging:
   level:

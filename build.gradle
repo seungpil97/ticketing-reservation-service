@@ -28,6 +28,9 @@ repositories {
   mavenCentral()
 }
 
+// Testcontainers만 Boot BOM 관리 버전(1.20.5) 대신 고정 - Docker Engine 29 (최소 API 1.44) 호환
+ext['testcontainers.version'] = '1.21.4'
+
 dependencies {
   implementation 'org.springframework.boot:spring-boot-starter-web'
   implementation 'org.springframework.boot:spring-boot-starter-validation'
@@ -58,6 +61,9 @@ dependencies {
   runtimeOnly 'org.mariadb.jdbc:mariadb-java-client'
 
   testImplementation 'org.springframework.boot:spring-boot-starter-test'
+  // TASK-033 Outbox relay 테스트 전용 격리 MariaDB (버전은 위 testcontainers.version)
+  testImplementation 'org.testcontainers:mariadb'
+  testImplementation 'org.testcontainers:junit-jupiter'
 }
 
 tasks.withType(Test).configureEach {
