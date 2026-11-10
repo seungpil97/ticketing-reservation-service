@@ -2,7 +2,10 @@
 
 ## Status
 
+Superseded by [ADR-005](ADR-005-payment-outbox-notification.md) (2026-11, TASK-033)
+
 Decided (2026-04) — 현재는 단일 트랜잭션 유지, TASK-033에서 Outbox Pattern 도입 검토 예정
+(결제 완료 내부 알림이 새 요구사항으로 승인되어 아래 결정의 전제였던 "이벤트 발행 요건 없음"이 바뀌었다)
 
 ## Context
 

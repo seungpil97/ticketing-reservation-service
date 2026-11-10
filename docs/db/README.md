@@ -24,6 +24,11 @@
 
 > 로컬에서 `./gradlew test` 실행 전 반드시 `docker-compose up -d` 로 두 컨테이너가 모두 올라와 있어야
 > 합니다.
+>
+> Outbox relay 테스트(TASK-033)는 Testcontainers로 `mariadb:11.6` 컨테이너를 별도로 띄웁니다.
+> 테스트를 실행하는 환경에서 Docker 데몬에 접근할 수 있어야 하고, 첫 실행 때 `mariadb:11.6`과 Testcontainers 보조 이미지를 내려받습니다.
+> Docker Desktop이 아닌 런타임(예: Colima)에서는 소켓 위치를 지정해야 할 수 있습니다.
+> 예: `DOCKER_HOST=unix://$HOME/.colima/default/docker.sock TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock ./gradlew test -Dspring.profiles.active=test`
 
 ---
 
@@ -307,6 +312,7 @@ colima status
 | V12 | `V12__add_end_time_to_event.sql`                  | event 종료 시각 컬럼 추가               | 대기열 TTL 관리 및 이벤트 종료 시 대기열 정리 기준                                         |
 | V13 | `V13__create_payments_table.sql`                  | payment 테이블 생성                  | 결제와 예약을 분리 — PENDING / SUCCESS / FAIL / REFUNDED 생명주기 관리                |
 | V14 | `V14__add_refunded_at_to_payment.sql`             | payment 환불 시각 컬럼 추가             | 환불 완료 시각 기록으로 환불 처리 이력 추적                                               |
+| V15 | `V15__create_outbox_event_and_notification.sql`   | outbox_event / notification 테이블 생성 | 결제 성공 Outbox를 결제와 같은 트랜잭션에 저장하고 폴링으로 결제 건당 내부 알림 1건 생성 — Outbox는 FK 없음, 알림은 결제·회원 RESTRICT FK ([ADR-005](../architecture/adr/ADR-005-payment-outbox-notification.md)) |
 
 ### 주의사항
 
