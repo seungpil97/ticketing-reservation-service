@@ -3352,25 +3352,27 @@ if [ -f "$ROADMAP" ] && [ ! -L "$ROADMAP" ]; then
   ROADMAP_CURRENT_SEPARATOR='| --- | --- | --- | --- |'
   ROADMAP_CURRENT_TABLE_COUNT=1
 
-  ROADMAP_HISTORY_ID_SHA256='b5dbeb98b3f78a7bee43786a685b5802d09d15f9a3921201a2fcfb5159675943'
+  ROADMAP_HISTORY_ID_SHA256='f982dce4be4080d8120a49f527c85d8a8af8a411597307fa003794be69644f32'
 
   ROADMAP_CURRENT_EXPECTED_IDS="$(cat <<'EOF_ROADMAP_CURRENT_EXPECTED_IDS'
 TASK-031
+TASK-032
+TASK-033
 TASK-059
 TASK-060
 TASK-061
+TASK-062
+TASK-063
 EOF_ROADMAP_CURRENT_EXPECTED_IDS
 )"
 
   ROADMAP_PREREQUISITE_SECTION='## 다음 직접 진행 순서'
   ROADMAP_PREREQUISITE_HEADER='| TASK | 내용 | 상태 | 선행 조건 |'
   ROADMAP_PREREQUISITE_SEPARATOR='| --- | --- | --- | --- |'
-  ROADMAP_TASK_032_ROW='| TASK-032 | 이벤트 기반 예약 처리 (Spring Events) | 계획 | TASK-061 완료 + 사용자 승인 |'
+  ROADMAP_TASK_033_1_ROW='| TASK-033-1 | Outbox 재처리 실패 시나리오 | 계획 | TASK-033 최종 완료(필요한 학습 의무 해소 포함) + 사용자 승인 |'
 
   ROADMAP_PREREQUISITE_EXPECTED_ROWS="$(cat <<'EOF_ROADMAP_PREREQUISITE_EXPECTED_ROWS'
-| TASK-032 | 이벤트 기반 예약 처리 (Spring Events) | 계획 | TASK-061 완료 + 사용자 승인 |
-| TASK-033 | Outbox Pattern 구현 | 계획 | TASK-032 완료 + 사용자 승인 |
-| TASK-033-1 | Outbox 재처리 실패 시나리오 | 계획 | TASK-033 완료 + 사용자 승인 |
+| TASK-033-1 | Outbox 재처리 실패 시나리오 | 계획 | TASK-033 최종 완료(필요한 학습 의무 해소 포함) + 사용자 승인 |
 | TASK-028 | Redis/DB 장애 시나리오 구현 및 문서화 | 계획 | TASK-033-1 완료 + 사용자 승인 |
 | TASK-043 | 장애 복구 전략 설계 + 코드 구현 | 계획 | TASK-028 완료 + 사용자 승인 |
 EOF_ROADMAP_PREREQUISITE_EXPECTED_ROWS
@@ -3410,8 +3412,8 @@ EOF_ROADMAP_PREREQUISITE_EXPECTED_ROWS
     ' "$ROADMAP_HISTORY_FILE"
   )"
 
-  if [ "$roadmap_history_count" -ne 77 ]; then
-    add_failure "Roadmap full history TASK row count is not 77"
+  if [ "$roadmap_history_count" -ne 79 ]; then
+    add_failure "Roadmap full history TASK row count is not 79"
   fi
 
   if ! awk -F'|' '
@@ -3511,17 +3513,17 @@ EOF_ROADMAP_PREREQUISITE_EXPECTED_ROWS
       "Roadmap history contains unapproved status enum"
   fi
 
-  [ "$(roadmap_status_count 완료)" -eq 3 ] ||
-    add_failure "Roadmap 완료 count is not 3"
+  [ "$(roadmap_status_count 완료)" -eq 4 ] ||
+    add_failure "Roadmap 완료 count is not 4"
 
   [ "$(roadmap_status_count '진행중')" -eq 1 ] ||
     add_failure "Roadmap 진행중 count is not 1"
 
-  [ "$(roadmap_status_count 계획)" -eq 5 ] ||
-    add_failure "Roadmap 계획 count is not 5"
+  [ "$(roadmap_status_count 계획)" -eq 3 ] ||
+    add_failure "Roadmap 계획 count is not 3"
 
-  [ "$(roadmap_status_count '재확인필요')" -eq 68 ] ||
-    add_failure "Roadmap 재확인필요 count is not 68"
+  [ "$(roadmap_status_count '재확인필요')" -eq 71 ] ||
+    add_failure "Roadmap 재확인필요 count is not 71"
 
   if ! awk -F'|' '
     function t(s) {
@@ -3578,9 +3580,10 @@ EOF_ROADMAP_PREREQUISITE_EXPECTED_ROWS
     }
 
     /^\| TASK-061 \|/ {
-      if (t($4) == "진행중" &&
+      if (t($4) == "완료" &&
           index($0, "Issue #102") > 0 &&
-          index($0, "chore/TASK-061-test-first-workflow") > 0) {
+          index($0, "PR #103") > 0 &&
+          index($0, "8c9f097855ddf7250d4dacfb778e19362b6c1b4a") > 0) {
         ok=1
       }
     }
@@ -3592,7 +3595,31 @@ EOF_ROADMAP_PREREQUISITE_EXPECTED_ROWS
     }
   ' "$ROADMAP_HISTORY_FILE"
   then
-    add_failure "Roadmap TASK-061 is not 진행중 with Issue #102/branch evidence in full history"
+    add_failure "Roadmap TASK-061 completion status or merge SHA mismatch"
+  fi
+
+  if ! awk -F'|' '
+    function t(s) {
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", s)
+      return s
+    }
+
+    /^\| TASK-063 \|/ {
+      if (t($4) == "진행중" &&
+          index($0, "Issue #110") > 0 &&
+          index($0, "chore/TASK-063-learning-policy-roadmap") > 0) {
+        ok=1
+      }
+    }
+
+    END {
+      if (!ok) {
+        exit 1
+      }
+    }
+  ' "$ROADMAP_HISTORY_FILE"
+  then
+    add_failure "Roadmap TASK-063 is not 진행중 with Issue #110/branch evidence in full history"
   fi
 
   if roadmap_prerequisite_rows="$(
@@ -3617,16 +3644,16 @@ EOF_ROADMAP_PREREQUISITE_EXPECTED_ROWS
         '
     )"
 
-    if [ "$roadmap_prerequisite_row_count" -ne 5 ] ||
+    if [ "$roadmap_prerequisite_row_count" -ne 3 ] ||
        [ "$roadmap_prerequisite_rows" != "$ROADMAP_PREREQUISITE_EXPECTED_ROWS" ]; then
       add_failure \
         "Roadmap next-task prerequisite contract mismatch"
     fi
 
-    roadmap_task_032_exact_count="$(
+    roadmap_task_033_1_exact_count="$(
       printf '%s\n' "$roadmap_prerequisite_rows" |
         awk \
-          -v expected="$ROADMAP_TASK_032_ROW" '
+          -v expected="$ROADMAP_TASK_033_1_ROW" '
           $0 == expected {
             count++
           }
@@ -3637,15 +3664,15 @@ EOF_ROADMAP_PREREQUISITE_EXPECTED_ROWS
         '
     )"
 
-    if [ "$roadmap_task_032_exact_count" -ne 1 ]; then
+    if [ "$roadmap_task_033_1_exact_count" -ne 1 ]; then
       add_failure \
-        "Roadmap TASK-032 prerequisite mismatch"
+        "Roadmap TASK-033-1 prerequisite mismatch"
     fi
   else
     add_failure \
       "Roadmap next-task prerequisite contract mismatch"
     add_failure \
-      "Roadmap TASK-032 prerequisite mismatch"
+      "Roadmap TASK-033-1 prerequisite mismatch"
   fi
 
   roadmap_direct_context_ready=1
@@ -3674,9 +3701,7 @@ EOF_ROADMAP_PREREQUISITE_EXPECTED_ROWS
         1
     )"
     then
-      expected_order='TASK-032
-→ TASK-033
-→ TASK-033-1
+      expected_order='TASK-033-1
 → TASK-028
 → TASK-043'
 
@@ -3726,7 +3751,7 @@ EOF_ROADMAP_PREREQUISITE_EXPECTED_ROWS
       LC_ALL=C sort
   )"
 
-  if [ "$roadmap_current_row_count" -ne 4 ] ||
+  if [ "$roadmap_current_row_count" -ne 8 ] ||
      [ "$roadmap_current_actual_ids" != "$ROADMAP_CURRENT_EXPECTED_IDS" ]; then
     add_failure       "Roadmap current-status TASK ID membership mismatch"
   fi
@@ -3789,10 +3814,20 @@ EOF_ROADMAP_PREREQUISITE_EXPECTED_ROWS
       /^\| TASK-061 \|/ {
         count061++
 
-        if (t($4) == "진행중" &&
-            index($0, "Issue #102") > 0 &&
-            index($0, "chore/TASK-061-test-first-workflow") > 0) {
+        if (t($4) == "완료" &&
+            index($0, "PR #103") > 0 &&
+            index($0, "8c9f097855ddf7250d4dacfb778e19362b6c1b4a") > 0) {
           ok061++
+        }
+      }
+
+      /^\| TASK-063 \|/ {
+        count063++
+
+        if (t($4) == "진행중" &&
+            index($0, "Issue #110") > 0 &&
+            index($0, "chore/TASK-063-learning-policy-roadmap") > 0) {
+          ok063++
         }
       }
 
@@ -3802,14 +3837,16 @@ EOF_ROADMAP_PREREQUISITE_EXPECTED_ROWS
             count060 != 1 ||
             ok060 != 1 ||
             count061 != 1 ||
-            ok061 != 1) {
+            ok061 != 1 ||
+            count063 != 1 ||
+            ok063 != 1) {
           exit 1
         }
       }
     '
   then
     add_failure \
-      "Roadmap current-status TASK-059/TASK-060/TASK-061 state consistency failed"
+      "Roadmap current-status TASK-059/TASK-060/TASK-061/TASK-063 state consistency failed"
   fi
 
   ROADMAP_COVERAGE_SECTION='## TASK coverage 기준'
@@ -3832,8 +3869,8 @@ EOF_ROADMAP_PREREQUISITE_EXPECTED_ROWS
     LINE \
     "$ROADMAP_COVERAGE_SECTION" \
     '' '' '' '' '' \
-    '- 이 후보의 전체 TASK 이력 고유 TASK: 77' \
-    "Roadmap final coverage value 77 authoritative context mismatch"
+    '- 이 후보의 전체 TASK 이력 고유 TASK: 79' \
+    "Roadmap final coverage value 79 authoritative context mismatch"
 
   check_context_fixed \
     "$ROADMAP" \
@@ -3848,7 +3885,7 @@ EOF_ROADMAP_PREREQUISITE_EXPECTED_ROWS
     LINE \
     "$ROADMAP_COVERAGE_SECTION" \
     '' '' '' '' '' \
-    '- A 기준 신규 TASK: TASK-059, TASK-060, TASK-061' \
+    '- A 기준 신규 TASK: TASK-059, TASK-060, TASK-061, TASK-062, TASK-063' \
     "Roadmap A-new TASK coverage authoritative context mismatch"
 
   check_context_fixed \
@@ -3858,6 +3895,686 @@ EOF_ROADMAP_PREREQUISITE_EXPECTED_ROWS
     '' '' '' '' '' \
     '- A old roadmap에서 누락된 TASK: 없음' \
     "Roadmap A-to-final no-missing coverage authoritative context mismatch"
+fi
+
+# ---------------------------------------------------------------------------
+# G-2. Explanation-first learning policy structure (TASK-063).
+#
+# These checks validate document structure only: table shape, approved cell
+# values, cross-table consistency, canonical policy lines and prompt payloads.
+# They do not verify user understanding or the authenticity of recorded
+# approvals or evidence.
+# ---------------------------------------------------------------------------
+
+LEARNING_TRACKER_SECTION='## TASK 학습·완료 추적'
+LEARNING_TRACKER_HEADER='| TASK | 구현·머지 | 설명 제공 | 독립 이해도 검증 | 적용 계약·예외 | 최종 완료 판정 | 근거 출처 |'
+LEARNING_TRACKER_SEPARATOR='| --- | --- | --- | --- | --- | --- | --- |'
+
+if [ -f "$ROADMAP" ] && [ ! -L "$ROADMAP" ]; then
+  # B1-a. Tracker heading and table topology. B1-b..B5 run only when it holds.
+  learning_tracker_ready=1
+  learning_tracker_rows=''
+
+  if learning_tracker_heading_count="$(
+    visible_exact_line_count \
+      "$ROADMAP" \
+      "$LEARNING_TRACKER_SECTION"
+  )" &&
+     [ "$learning_tracker_heading_count" -eq 1 ]
+  then
+    if learning_tracker_rows="$(
+      markdown_table_rows_in_section \
+        "$ROADMAP" \
+        "$LEARNING_TRACKER_SECTION" \
+        "$LEARNING_TRACKER_HEADER" \
+        "$LEARNING_TRACKER_SEPARATOR" \
+        '^\\| TASK-[0-9]+(-[0-9]+)? \\|' \
+        1
+    )"
+    then
+      :
+    else
+      learning_tracker_ready=0
+    fi
+  else
+    learning_tracker_ready=0
+  fi
+
+  if [ "$learning_tracker_ready" -ne 1 ]; then
+    add_failure "Roadmap learning tracker topology mismatch"
+  else
+    # B1-b, B1-c, B2, B3, B4, B5. One message per finding, printed by awk.
+    # Leading value: cell text before the first approved separator " (", ";"
+    # or ",", trimmed. Rows are judged by B3-B5 only on valid leading values.
+    learning_tracker_findings="$(
+      printf '%s\n' "$learning_tracker_rows" |
+        awk -F'|' \
+          -v history_file="$ROADMAP_HISTORY_FILE" '
+          function trim(s) {
+            gsub(/^[[:space:]]+|[[:space:]]+$/, "", s)
+            return s
+          }
+
+          function leading_value(s,    cut, pos) {
+            s=trim(s)
+            cut=0
+
+            pos=index(s, " (")
+            if (pos > 0) {
+              cut=pos
+            }
+
+            pos=index(s, ";")
+            if (pos > 0 && (cut == 0 || pos < cut)) {
+              cut=pos
+            }
+
+            pos=index(s, ",")
+            if (pos > 0 && (cut == 0 || pos < cut)) {
+              cut=pos
+            }
+
+            if (cut > 0) {
+              s=substr(s, 1, cut - 1)
+            }
+
+            return trim(s)
+          }
+
+          # B12. Evidence value grammar, scanned left to right so that commas
+          # inside backtick or parenthesised references stay inside them.
+          #   value     := item { ", " item }
+          #   item      := source { " " reference }
+          #   source    := GitHub | 저장소 | MASTER 보고 | 근거 미확보
+          #   reference := `text` | PR #digits | Issue #digits | (text without parens)
+          # Returns -1 for a grammar violation, 1 when a source other than
+          # 근거 미확보 is present, 0 otherwise.
+          function evidence_status(v,    total, pos, real, i, src, rest, first, close_at, inner) {
+            total=length(v)
+
+            if (total == 0) {
+              return -1
+            }
+
+            pos=1
+            real=0
+
+            while (1) {
+              src=""
+
+              for (i=1; i<=source_count; i++) {
+                if (substr(v, pos, length(source_name[i])) == source_name[i]) {
+                  src=source_name[i]
+                  break
+                }
+              }
+
+              if (src == "") {
+                return -1
+              }
+
+              if (src != "근거 미확보") {
+                real=1
+              }
+
+              pos+=length(src)
+
+              while (substr(v, pos, 1) == " ") {
+                rest=substr(v, pos + 1)
+                first=substr(rest, 1, 1)
+
+                if (first == "`") {
+                  close_at=index(substr(rest, 2), "`")
+
+                  if (close_at < 2) {
+                    return -1
+                  }
+
+                  pos+=2 + close_at
+                } else if (first == "(") {
+                  close_at=index(substr(rest, 2), ")")
+
+                  if (close_at < 2) {
+                    return -1
+                  }
+
+                  inner=substr(rest, 2, close_at - 1)
+
+                  if (index(inner, "(") > 0) {
+                    return -1
+                  }
+
+                  pos+=2 + close_at
+                } else if (match(rest, /^PR #[0-9]+/) ||
+                           match(rest, /^Issue #[0-9]+/)) {
+                  pos+=1 + RLENGTH
+                } else {
+                  return -1
+                }
+              }
+
+              if (pos > total) {
+                return real
+              }
+
+              if (substr(v, pos, 2) != ", ") {
+                return -1
+              }
+
+              pos+=2
+            }
+          }
+
+          BEGIN {
+            while ((getline line < history_file) > 0) {
+              split(line, h, "|")
+              history_status[trim(h[2])]=trim(h[4])
+            }
+
+            allowed["구현·머지", "머지됨"]=1
+            allowed["구현·머지", "미머지"]=1
+            allowed["구현·머지", "해당없음"]=1
+
+            allowed["설명 제공", "완료"]=1
+            allowed["설명 제공", "미실시"]=1
+            allowed["설명 제공", "미확인"]=1
+            allowed["설명 제공", "해당없음"]=1
+
+            allowed["독립 이해도 검증", "PASS"]=1
+            allowed["독립 이해도 검증", "미통과"]=1
+            allowed["독립 이해도 검증", "미실시"]=1
+            allowed["독립 이해도 검증", "미확인"]=1
+            allowed["독립 이해도 검증", "해당없음"]=1
+
+            allowed["적용 계약·예외", "시행 이전 계약"]=1
+            allowed["적용 계약·예외", "개정 계약"]=1
+            allowed["적용 계약·예외", "TASK 한정 결정"]=1
+
+            allowed["최종 완료 판정", "완료"]=1
+            allowed["최종 완료 판정", "미확정"]=1
+            allowed["최종 완료 판정", "미확인"]=1
+
+            column_name[3]="구현·머지"
+            column_name[4]="설명 제공"
+            column_name[5]="독립 이해도 검증"
+            column_name[6]="적용 계약·예외"
+            column_name[7]="최종 완료 판정"
+
+            source_count=4
+            source_name[1]="GitHub"
+            source_name[2]="저장소"
+            source_name[3]="MASTER 보고"
+            source_name[4]="근거 미확보"
+
+            evidence_label["머지"]=1
+            evidence_label["학습"]=1
+            evidence_label["최종 완료"]=1
+            evidence_label["학습·최종 완료"]=1
+          }
+
+          NF {
+            id=trim($2)
+
+            if (!(id in history_status)) {
+              print "Roadmap learning tracker TASK not in full history: " id
+            }
+
+            seen[id]++
+
+            if (seen[id] > 1) {
+              print "Roadmap learning tracker duplicate TASK row: " id
+            }
+
+            for (c=3; c<=7; c++) {
+              cell_head[c]=leading_value($c)
+              valid[c]=((column_name[c], cell_head[c]) in allowed)
+
+              if (!valid[c]) {
+                print "Roadmap learning tracker enum mismatch: " id " " column_name[c]
+              }
+            }
+
+            explanation=cell_head[4]
+            independent=cell_head[5]
+            contract=cell_head[6]
+            final=cell_head[7]
+
+            # B12 and B4 evidence. Merge segments are format-checked but never
+            # count as learning or final-completion evidence. Unlabelled and
+            # unapproved-label segments are outside B12.
+            final_evidence=0
+            learning_evidence=0
+            segment_count=split($8, segment_part, ";")
+
+            for (s=1; s<=segment_count; s++) {
+              segment=trim(segment_part[s])
+              sep=index(segment, ": ")
+
+              if (sep == 0) {
+                continue
+              }
+
+              label=trim(substr(segment, 1, sep - 1))
+
+              if (!(label in evidence_label)) {
+                continue
+              }
+
+              status=evidence_status(trim(substr(segment, sep + 2)))
+
+              if (status < 0) {
+                print "Roadmap learning tracker evidence source format invalid: " id " " label
+                continue
+              }
+
+              if (status == 1 &&
+                  (label == "최종 완료" || label == "학습·최종 완료")) {
+                final_evidence=1
+              }
+
+              if (status == 1 &&
+                  (label == "학습" || label == "학습·최종 완료")) {
+                learning_evidence=1
+              }
+            }
+
+            if (valid[7] &&
+                (id in history_status)) {
+              if ((final == "완료") != (history_status[id] == "완료")) {
+                print "Roadmap learning tracker final-completion/status inconsistency: " id
+              }
+            }
+
+            if (valid[7] &&
+                final == "완료" &&
+                !final_evidence) {
+              print "Roadmap learning tracker final-completion evidence missing: " id
+            }
+
+            if (valid[5] &&
+                independent == "PASS" &&
+                !learning_evidence) {
+              print "Roadmap learning tracker independent-verification evidence missing: " id
+            }
+
+            if (valid[4] &&
+                valid[6] &&
+                valid[7] &&
+                contract == "개정 계약" &&
+                final == "완료" &&
+                explanation != "완료") {
+              print "Roadmap learning tracker revised-contract explanation requirement failed: " id
+            }
+          }
+        '
+    )" || learning_tracker_findings='Roadmap learning tracker parser failed'
+
+    if [ -n "$learning_tracker_findings" ]; then
+      while IFS= read -r learning_tracker_finding
+      do
+        add_failure "$learning_tracker_finding"
+      done <<EOF_LEARNING_TRACKER_FINDINGS
+$learning_tracker_findings
+EOF_LEARNING_TRACKER_FINDINGS
+    fi
+
+    # B11. Required minimum rows inside the approved table, and TASK-shaped
+    # rows left in the visible tracker section outside that table. Each
+    # approved table row consumes one identical section line; fenced text is
+    # not visible and therefore never counted.
+    learning_tracker_rows_file="$(mktemp "${TMPDIR:-/tmp}/process-docs-validation-tracker-rows.XXXXXX")" ||
+      learning_tracker_rows_file=''
+
+    if [ -n "$learning_tracker_rows_file" ] &&
+       printf '%s\n' "$learning_tracker_rows" > "$learning_tracker_rows_file" &&
+       learning_tracker_coverage="$(
+         markdown_section_lines \
+           "$ROADMAP" \
+           "$LEARNING_TRACKER_SECTION" |
+           awk \
+             -F'|' \
+             -v rows_file="$learning_tracker_rows_file" '
+             function trim(s) {
+               gsub(/^[[:space:]]+|[[:space:]]+$/, "", s)
+               return s
+             }
+
+             BEGIN {
+               while ((getline line < rows_file) > 0) {
+                 if (line == "") {
+                   continue
+                 }
+
+                 table_line[line]++
+                 split(line, cell, "|")
+                 present[trim(cell[2])]=1
+               }
+
+               required[1]="TASK-061"
+               required[2]="TASK-062"
+               required[3]="TASK-032"
+               required[4]="TASK-033"
+               required[5]="TASK-063"
+
+               for (r=1; r<=5; r++) {
+                 if (!(required[r] in present)) {
+                   print "Roadmap learning tracker required TASK row missing: " required[r]
+                 }
+               }
+             }
+
+             {
+               candidate=$0
+               sub(/^[[:space:]]+/, "", candidate)
+
+               if (substr(candidate, 1, 1) != "|") {
+                 next
+               }
+
+               first_cell=trim($2)
+
+               if (index(first_cell, "TASK-") != 1) {
+                 next
+               }
+
+               if (table_line[$0] > 0) {
+                 table_line[$0]--
+                 next
+               }
+
+               print "Roadmap learning tracker TASK row outside approved table: " first_cell
+             }
+           '
+       )"
+    then
+      if [ -n "$learning_tracker_coverage" ]; then
+        while IFS= read -r learning_tracker_finding
+        do
+          add_failure "$learning_tracker_finding"
+        done <<EOF_LEARNING_TRACKER_COVERAGE
+$learning_tracker_coverage
+EOF_LEARNING_TRACKER_COVERAGE
+      fi
+    else
+      add_failure "Roadmap learning tracker parser failed"
+    fi
+
+    if [ -n "$learning_tracker_rows_file" ]; then
+      rm -f "$learning_tracker_rows_file"
+    fi
+  fi
+
+  # B6. Tracker value definitions and the 재확인필요 rule.
+  check_context_fixed "$ROADMAP" LINE "$LEARNING_TRACKER_SECTION" '' '' '' '' '' '- `미확인`: 기록이나 근거를 확보하지 못했다. 실시 여부를 알 수 없으며, 미실시나 미통과를 뜻하지 않는다.' 'Roadmap learning tracker value definition missing or duplicated: 미확인'
+  check_context_fixed "$ROADMAP" LINE "$LEARNING_TRACKER_SECTION" '' '' '' '' '' '- `미실시`: 실시하지 않았다는 기록이 있다.' 'Roadmap learning tracker value definition missing or duplicated: 미실시'
+  check_context_fixed "$ROADMAP" LINE "$LEARNING_TRACKER_SECTION" '' '' '' '' '' '- `해당없음`: 적용 계약이 요구하지 않았거나 별도로 추적하지 않았다.' 'Roadmap learning tracker value definition missing or duplicated: 해당없음'
+  check_context_fixed "$ROADMAP" LINE "$LEARNING_TRACKER_SECTION" '' '' '' '' '' '- `미확정`: 판정 절차가 진행 중이거나 사용자 결정을 기다린다.' 'Roadmap learning tracker value definition missing or duplicated: 미확정'
+  check_context_fixed "$ROADMAP" LINE "$LEARNING_TRACKER_SECTION" '' '' '' '' '' '- 근거 출처: `GitHub`(Issue·PR 기록), `저장소`(저장소 파일), `MASTER 보고`(MASTER 보고 기준, 원문 대조 미완료), `근거 미확보`' 'Roadmap learning tracker value definition missing or duplicated: 근거 출처'
+  check_context_fixed "$ROADMAP" LINE "$LEARNING_TRACKER_SECTION" '' '' '' '' '' '이 표의 `미확인`만으로 기존 상태나 최종 완료 판정을 바꾸지 않는다. 값 변경은 사용자 또는 MASTER의 명시적 결정 기록이 있을 때만 한다.' 'Roadmap learning tracker value definition missing or duplicated: 자동 무효화 금지'
+  check_context_fixed "$ROADMAP" LINE "$LEARNING_TRACKER_SECTION" '' '' '' '' '' '설명 제공 `완료`는 독립 이해도 검증 PASS나 Level 달성을 뜻하지 않는다.' 'Roadmap learning tracker value definition missing or duplicated: 설명 완료 비PASS'
+  check_context_fixed "$ROADMAP" LINE '## 상태 기준' '' '' '' '' '' '`재확인필요`는 미구현이나 학습 미실시를 뜻하지 않으며, 미구현 건수로 집계하지 않는다.' 'Roadmap 재확인필요 non-unimplemented rule missing or duplicated'
+fi
+
+if [ -f "$LEARNING" ] && [ ! -L "$LEARNING" ]; then
+  # B7. Learning contract canonical explanation-first policy lines.
+  check_context_fixed "$LEARNING" LINE '## 1. 기본 원칙' '' '' '' '' '' '11. 학습은 설명 중심을 기본으로 한다. 면접 모드는 사용자가 요청한 경우에만 시작한다.' 'Learning explanation-first canonical line missing or duplicated: §1-11'
+  check_context_fixed "$LEARNING" LINE '## 1. 기본 원칙' '' '' '' '' '' '12. 설명 제공 완료를 사용자의 독립 이해도 검증 PASS나 Level 달성으로 표현하지 않는다.' 'Learning explanation-first canonical line missing or duplicated: §1-12'
+  check_context_fixed "$LEARNING" LINE '## 2. 적용 시점' '' '' '' '' '' '- 학습 gate 충족과 학습 의무 완료는 독립 이해도 검증 PASS를 뜻하지 않는다.' 'Learning explanation-first canonical line missing or duplicated: §2-gate-not-pass'
+  check_context_fixed "$LEARNING" LINE '## 6. 3단계 — 이해도 확인' '' '' '' '' '' '이 단계는 면접 모드다. 사용자가 요청한 경우에만 진행하며, 요청이 없으면 독립 이해도 검증을 미실시로 기록한다.' 'Learning explanation-first canonical line missing or duplicated: §6-interview-only'
+  check_context_fixed "$LEARNING" LINE '## 9. 면접 대비 단계' '' '' '' '' '' '모의 면접은 사용자가 요청한 경우에만 진행하며, §6 이해도 질문을 통과한 뒤 진행한다.' 'Learning explanation-first canonical line missing or duplicated: §9-interview-only'
+  check_context_fixed "$LEARNING" LINE '## 11. 통과 기준' '' '' '' '' '' '면접 모드에서는 다음을 모두 만족해야 독립 이해도 검증 PASS로 판정한다.' 'Learning explanation-first canonical line missing or duplicated: §11-intro'
+  check_context_fixed "$LEARNING" LINE '## 11. 통과 기준' '' '' '' '' '' '이 기준은 설명 완료 판정에 사용하지 않는다. 설명 완료 기준은 §15를 따른다.' 'Learning explanation-first canonical line missing or duplicated: §11-not-explanation'
+  check_context_fixed "$LEARNING" LINE '## 13. 금지 사항' '' '' '' '' '' '- 사용자 요청 없이 면접 모드(이해도 질문·모의 면접·30초·90초 과제)를 시작하지 않는다.' 'Learning explanation-first canonical line missing or duplicated: §13-no-auto-interview'
+  check_context_fixed "$LEARNING" LINE '## 13. 금지 사항' '' '' '' '' '' '- 설명 제공 완료를 독립 이해도 검증 PASS나 Level 달성으로 표현하지 않는다.' 'Learning explanation-first canonical line missing or duplicated: §13-no-explanation-pass'
+  check_context_fixed "$LEARNING" LINE '## 13. 금지 사항' '' '' '' '' '' '- 이 계약을 근거로 시행 이전 TASK의 학습 PASS, Level 달성, FINAL COMPLETE를 소급 부여하거나 기존 판정을 자동 취소하지 않는다.' 'Learning explanation-first canonical line missing or duplicated: §13-no-retroactive'
+  check_context_fixed "$LEARNING" LINE '## 15. 설명 완료와 학습 gate' '### 15.1 설명 완료 요건' '' '' '' '' '1. 필수 설명: §4.1~§4.7 전 항목과 §5의 관점·분류를 설명한다. 대표·고위험 TASK는 §8의 해당 등급 항목을 포함한다. 최종 반영·미반영 Finding과 근거, AI 수행과 사용자 판단의 구분을 포함한다.' 'Learning explanation-first canonical line missing or duplicated: §15.1-1'
+  check_context_fixed "$LEARNING" LINE '## 15. 설명 완료와 학습 gate' '### 15.1 설명 완료 요건' '' '' '' '' '2. 기록: §10 기준으로 기록한다. 설명 대상 기준 SHA, 학습 패킷 출처, 설명 중 드러난 오해와 교정 내용, 독립 재확인 여부를 남긴다.' 'Learning explanation-first canonical line missing or duplicated: §15.1-2'
+  check_context_fixed "$LEARNING" LINE '## 15. 설명 완료와 학습 gate' '### 15.1 설명 완료 요건' '' '' '' '' '3. 사용자 설명 수령 확인: 사용자가 설명을 받았음을 확인한 기록을 남긴다. 이 확인은 이해도 판정이 아니다.' 'Learning explanation-first canonical line missing or duplicated: §15.1-3'
+  check_context_fixed "$LEARNING" LINE '## 15. 설명 완료와 학습 gate' '### 15.1 설명 완료 요건' '' '' '' '' '4. MASTER 정확성 검토: MASTER가 기록을 학습 패킷의 최종 코드·리뷰·테스트 증거와 대조해 사실 오류, 과장, 누락이 없는지 검토하고 결과를 기록한다. 이 검토는 기록 내용의 정확성 검토이며 사용자 이해도 판정이 아니다.' 'Learning explanation-first canonical line missing or duplicated: §15.1-4'
+  check_context_fixed "$LEARNING" LINE '## 15. 설명 완료와 학습 gate' '### 15.2 독립 이해도 검증 미실시 표시' '' '' '' '' '- 면접 모드를 진행하지 않았으면 독립 이해도 검증은 `미실시`, Level은 `미평가`로 기록한다.' 'Learning explanation-first canonical line missing or duplicated: §15.2-not-run'
+  check_context_fixed "$LEARNING" LINE '## 15. 설명 완료와 학습 gate' '### 15.3 merge 전 학습 gate' '' '' '' '' '- 계획에서 merge 전 learning gate가 승인된 TASK는 §15.1의 네 요건을 모두 충족해야 한다. 사용자가 면접 모드 결과를 gate 조건에 포함하기로 결정한 경우에는 그 승인된 추가 조건도 충족해야 gate 조건을 충족한다.' 'Learning explanation-first canonical line missing or duplicated: §15.3-gate'
+  check_context_fixed "$LEARNING" LINE '## 15. 설명 완료와 학습 gate' '### 15.3 merge 전 학습 gate' '' '' '' '' '- 면접 모드 결과를 gate 조건에 포함할지는 사용자가 명시적으로 결정하고 그 결정을 기록한다. 포함 결정이 기록되지 않았으면 면접 모드 결과는 별도로 기록하며 gate 조건에 포함하지 않는다.' 'Learning explanation-first canonical line missing or duplicated: §15.3-gate-inclusion'
+  check_context_fixed "$LEARNING" LINE '## 16. 시행 범위와 과거 TASK' '' '' '' '' '' '- 이 개정은 TASK-063 merge 이후 계획이 승인된 TASK부터 적용한다.' 'Learning explanation-first canonical line missing or duplicated: §16-effective'
+  check_context_fixed "$LEARNING" LINE '## 16. 시행 범위와 과거 TASK' '' '' '' '' '' '- 이미 승인된 계획은 이 개정으로 자동 전환하지 않는다.' 'Learning explanation-first canonical line missing or duplicated: §16-no-auto-convert'
+  check_context_fixed "$LEARNING" LINE '## 16. 시행 범위와 과거 TASK' '' '' '' '' '' '- TASK-063은 Issue #110에 기록된 TASK 한정 결정을 따른다.' 'Learning explanation-first canonical line missing or duplicated: §16-task063'
+  check_context_fixed "$LEARNING" LINE '## 16. 시행 범위와 과거 TASK' '' '' '' '' '' '- 시행 이전 TASK는 당시 적용 계약과 기록된 승인·예외로 판단한다.' 'Learning explanation-first canonical line missing or duplicated: §16-past-by-then-contract'
+  check_context_fixed "$LEARNING" LINE '## 16. 시행 범위와 과거 TASK' '' '' '' '' '' '- 이 개정을 근거로 시행 이전 TASK의 학습 PASS, Level 달성, FINAL COMPLETE를 소급 부여하거나 기존 판정을 자동 취소하지 않는다.' 'Learning explanation-first canonical line missing or duplicated: §16-no-retroactive'
+  check_context_fixed "$LEARNING" LINE '## 16. 시행 범위와 과거 TASK' '' '' '' '' '' '- 개발·리뷰·회귀·Git·사용자 최종 승인 gate는 이 개정으로 바뀌지 않는다.' 'Learning explanation-first canonical line missing or duplicated: §16-gates-unchanged'
+fi
+
+# B8. Forbidden explanation-as-PASS phrases (whole file, fenced text included).
+for explanation_pass_rel in \
+  docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md \
+  docs/process/DEVELOPMENT-WORKFLOW.md \
+  docs/process/PORTFOLIO-ROADMAP.md
+do
+  explanation_pass_file="$ROOT/$explanation_pass_rel"
+
+  if [ -f "$explanation_pass_file" ] && [ ! -L "$explanation_pass_file" ]; then
+    if grep -Fq \
+      -e '설명 완료는 학습 PASS로 본다' \
+      -e '설명 완료는 독립 이해도 검증 PASS로 본다' \
+      -e '설명 완료를 Level 달성으로 본다' \
+      -e '설명 제공 완료는 독립 이해도 검증 PASS다' \
+      "$explanation_pass_file" 2>/dev/null
+    then
+      add_failure "Explanation completion treated as independent PASS in $explanation_pass_rel"
+    fi
+  fi
+done
+
+# B9. Prompt payload separation in learning contract §12.
+#
+# Prints the payload of the single exact ```text fence placed directly in the
+# given h2/h3 subsection. Headings must be visible and unique. Any other
+# fence marker in that subsection, or a fence that does not close with the
+# exact closer, rejects the payload.
+learning_subsection_text_payload() {
+  payload_file="$1"
+  payload_parent="$2"
+  payload_child="$3"
+
+  for payload_heading in "$payload_parent" "$payload_child"
+  do
+    payload_visible_count="$(
+      visible_exact_line_count \
+        "$payload_file" \
+        "$payload_heading"
+    )" ||
+      return 1
+
+    payload_raw_count="$(
+      awk \
+        -v expected="$payload_heading" '
+        $0 == expected {
+          count++
+        }
+
+        END {
+          print count + 0
+        }
+      ' "$payload_file"
+    )"
+
+    [ "$payload_visible_count" -eq 1 ] &&
+      [ "$payload_raw_count" -eq 1 ] ||
+      return 1
+  done
+
+  awk \
+    -v parent="$payload_parent" \
+    -v child="$payload_child" '
+    function is_fence_marker(line) {
+      return line ~ /^ ? ? ?(```|~~~)/
+    }
+
+    BEGIN {
+      in_parent=0
+      in_child=0
+      capture=0
+      openers=0
+      closed=0
+      bad=0
+    }
+
+    capture {
+      if ($0 == "```") {
+        capture=0
+        closed++
+        next
+      }
+
+      if (is_fence_marker($0)) {
+        bad=1
+      }
+
+      print
+      next
+    }
+
+    $0 == parent {
+      in_parent=1
+      in_child=0
+      next
+    }
+
+    in_parent && /^## / {
+      in_parent=0
+      in_child=0
+      next
+    }
+
+    !in_parent {
+      next
+    }
+
+    $0 == child {
+      in_child=1
+      next
+    }
+
+    in_child && /^#+ / {
+      in_child=0
+      next
+    }
+
+    !in_child {
+      next
+    }
+
+    $0 == "```text" {
+      openers++
+      capture=1
+      next
+    }
+
+    is_fence_marker($0) {
+      bad=1
+    }
+
+    END {
+      if (capture ||
+          openers != 1 ||
+          closed != 1 ||
+          bad) {
+        exit 1
+      }
+    }
+  ' "$payload_file"
+}
+
+payload_has_line() {
+  printf '%s\n' "$1" |
+    awk \
+      -v expected="$2" '
+      $0 == expected {
+        found=1
+      }
+
+      END {
+        exit found ? 0 : 1
+      }
+    '
+}
+
+LEARNING_PROMPT_SECTION='## 12. 새 GPT 학습 채팅 시작 프롬프트'
+LEARNING_DEFAULT_PROMPT_SECTION='### 12.1 기본 프롬프트 (설명 모드)'
+LEARNING_INTERVIEW_PROMPT_SECTION='### 12.2 면접 모드 추가 프롬프트 (사용자가 요청한 경우에만)'
+
+if [ -f "$LEARNING" ] && [ ! -L "$LEARNING" ]; then
+  if learning_default_payload="$(
+    learning_subsection_text_payload \
+      "$LEARNING" \
+      "$LEARNING_PROMPT_SECTION" \
+      "$LEARNING_DEFAULT_PROMPT_SECTION"
+  )"
+  then
+    learning_default_starts_interview=0
+
+    while IFS= read -r learning_interview_line
+    do
+      if payload_has_line "$learning_default_payload" "$learning_interview_line"; then
+        learning_default_starts_interview=1
+      fi
+    done <<'EOF_LEARNING_INTERVIEW_START_LINES'
+지금부터 면접 모드로 진행해라.
+질문은 한 번에 하나씩 해라.
+내가 답하기 전에는 모범 답안을 공개하지 마라.
+틀린 부분과 빠진 부분만 설명한 뒤 같은 질문에 다시 답하게 해라.
+치명적인 오개념이 없고 핵심 질문의 80% 이상을 통과할 때까지 진행해라.
+마지막에는 내가 직접 작성한 30초 답변, 90초 답변,
+EOF_LEARNING_INTERVIEW_START_LINES
+
+    if [ "$learning_default_starts_interview" -eq 1 ]; then
+      add_failure "Learning default prompt starts interview mode"
+    fi
+
+    if ! payload_has_line \
+      "$learning_default_payload" \
+      '내가 요청하기 전에는 이해도 질문, 모의 면접, 30초·90초 답변 과제를 시작하지 마라.'
+    then
+      add_failure "Learning default prompt explanation-only guard missing"
+    fi
+  else
+    add_failure "Learning default prompt explanation-only guard missing"
+  fi
+
+  if learning_interview_payload="$(
+    learning_subsection_text_payload \
+      "$LEARNING" \
+      "$LEARNING_PROMPT_SECTION" \
+      "$LEARNING_INTERVIEW_PROMPT_SECTION"
+  )"
+  then
+    learning_interview_complete=1
+
+    while IFS= read -r learning_interview_line
+    do
+      if ! payload_has_line "$learning_interview_payload" "$learning_interview_line"; then
+        learning_interview_complete=0
+      fi
+    done <<'EOF_LEARNING_INTERVIEW_REQUIRED_LINES'
+지금부터 면접 모드로 진행해라.
+질문은 한 번에 하나씩 해라.
+내가 답하기 전에는 모범 답안을 공개하지 마라.
+치명적인 오개념이 없고 핵심 질문의 80% 이상을 통과할 때까지 진행해라.
+EOF_LEARNING_INTERVIEW_REQUIRED_LINES
+
+    if [ "$learning_interview_complete" -ne 1 ]; then
+      add_failure "Learning interview-mode prompt missing or incomplete"
+    fi
+  else
+    add_failure "Learning interview-mode prompt missing or incomplete"
+  fi
+fi
+
+if [ -f "$WORKFLOW" ] && [ ! -L "$WORKFLOW" ]; then
+  # B10. Workflow canonical explanation-first learning lines.
+  check_context_fixed "$WORKFLOW" LINE '## 3. 단계별 lifecycle' '### 11. merge' '' '' '' '**실행**' '- 이 단계의 learning gate 통과는 `docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md` §15의 gate 조건 충족을 뜻하며, 독립 이해도 검증 PASS와 구분한다.' 'DEVELOPMENT-WORKFLOW explanation-first learning rule missing or duplicated: s11-gate-definition'
+  check_context_fixed "$WORKFLOW" LINE '## 3. 단계별 lifecycle' '### 13. Learning / interview' '' '' '' '**실행**' '- 학습은 설명 중심으로 진행하며, 면접 모드는 사용자가 요청한 경우에만 진행한다.' 'DEVELOPMENT-WORKFLOW explanation-first learning rule missing or duplicated: s13-explanation-first'
+  check_context_fixed "$WORKFLOW" LINE '## 3. 단계별 lifecycle' '### 13. Learning / interview' '' '' '' '**실행**' '- 설명 완료를 독립 이해도 검증 PASS나 Level 달성으로 기록하지 않는다.' 'DEVELOPMENT-WORKFLOW explanation-first learning rule missing or duplicated: s13-no-explanation-pass'
+  check_context_fixed "$WORKFLOW" LINE '## 3. 단계별 lifecycle' '### 13. Learning / interview' '' '' '' '**승인 gate**' '- 면접 모드 결과를 학습 gate 조건에 포함할지는 사용자가 명시적으로 결정한다.' 'DEVELOPMENT-WORKFLOW explanation-first learning rule missing or duplicated: s13-gate-inclusion'
+  check_context_fixed "$WORKFLOW" LINE '## 3. 단계별 lifecycle' '### 14. TASK 최종 완료' '' '' '' '**실행**' '- 구현·머지, 설명 제공, 독립 이해도 검증, 최종 완료 판정을 구분해 기록한다.' 'DEVELOPMENT-WORKFLOW explanation-first learning rule missing or duplicated: s14-state-separation'
 fi
 
 # ---------------------------------------------------------------------------
@@ -4086,9 +4803,9 @@ if [ -f "$WORKFLOW" ] && [ ! -L "$WORKFLOW" ]; then
 
   check_context_fixed "$WORKFLOW" LINE '## 3. 단계별 lifecycle' '### 11. merge' '' '' '' '**실행**' '- merge 전 learning gate가 없으면 정상 merge 흐름을 진행하고, 일반 TASK learning은 merge 후 수행할 수 있다.' 'DEVELOPMENT-WORKFLOW no-premerge-learning-gate transition missing'
   check_context_fixed "$WORKFLOW" LINE '## 3. 단계별 lifecycle' '### 11. merge' '' '' '' '**실행**' '- merge 전 learning gate가 있고 아직 통과하지 않았다면 단계 13 Learning을 선행 수행한다.' 'DEVELOPMENT-WORKFLOW pre-merge Learning transition missing'
-  check_context_fixed "$WORKFLOW" LINE '## 3. 단계별 lifecycle' '### 11. merge' '' '' '' '**실행**' '- 단계 13 Learning이 PASS하면 단계 11 merge gate로 복귀하며, merge는 사용자 승인 후에만 수행한다.' 'DEVELOPMENT-WORKFLOW Learning-to-merge return transition missing'
+  check_context_fixed "$WORKFLOW" LINE '## 3. 단계별 lifecycle' '### 11. merge' '' '' '' '**실행**' '- 단계 13 Learning에서 학습 gate 조건이 충족되면 단계 11 merge gate로 복귀하며, merge는 사용자 승인 후에만 수행한다.' 'DEVELOPMENT-WORKFLOW Learning-to-merge return transition missing'
   check_context_fixed "$WORKFLOW" LINE '## 3. 단계별 lifecycle' '### 11. merge' '' '' '' '**실행**' '- 이 조건부 transition은 사용자 승인 없는 자동 단계 진행을 의미하지 않는다.' 'DEVELOPMENT-WORKFLOW no-auto-transition rule missing'
-  check_context_fixed "$WORKFLOW" LINE '## 3. 단계별 lifecycle' '### 11. merge' '' '' '' '**실행**' '- 일반 TASK learning은 merge 후 수행할 수 있지만 TASK 최종 완료 전, 다음 핵심 구현 TASK 시작 전에는 통과해야 한다.' 'DEVELOPMENT-WORKFLOW general-TASK learning deadline missing'
+  check_context_fixed "$WORKFLOW" LINE '## 3. 단계별 lifecycle' '### 11. merge' '' '' '' '**실행**' '- 일반 TASK learning은 merge 후 수행할 수 있지만 TASK 최종 완료 전, 다음 핵심 구현 TASK 시작 전에는 해당 TASK에 요구된 학습 의무를 완료해야 한다.' 'DEVELOPMENT-WORKFLOW general-TASK learning deadline missing'
 
   check_context_fixed "$WORKFLOW" LINE '## 3. 단계별 lifecycle' '### 12. 조건부 회고 / 장애 기록' '' '' '' '**중단 조건**' '- 해당 기록이 필요하지 않다는 판단 자체는 TASK 진행을 차단하지 않는다.' 'DEVELOPMENT-WORKFLOW conditional retrospective non-blocking rule missing'
 
@@ -4281,14 +4998,15 @@ check_authoritative_reference_line_in_section \
 
 if [ -f "$LEARNING" ] && [ ! -L "$LEARNING" ]; then
   check_context_fixed "$LEARNING" LINE '## 9. 면접 대비 단계' '### 9.3 압박·꼬리 질문' '' '' '' '' '질문은 한 번에 하나씩 진행한다.' 'Learning one-question-at-a-time rule missing'
-  check_context_fixed "$LEARNING" LINE '## 1. 기본 원칙' '' '' '' '' '' '4. 사용자가 답하기 전에는 모범 답안을 먼저 공개하지 않는다.' 'Learning no-model-answer-before-user rule missing'
+  check_context_fixed "$LEARNING" LINE '## 1. 기본 원칙' '' '' '' '' '' '4. 면접 모드에서는 사용자가 답하기 전에 모범 답안을 먼저 공개하지 않는다.' 'Learning no-model-answer-before-user rule missing'
   check_context_fixed "$LEARNING" LINE '## 11. 통과 기준' '' '' '' '' '' '- 치명적인 오개념 0개' 'Learning zero-critical-misconception criterion missing'
   check_context_fixed "$LEARNING" LINE '## 11. 통과 기준' '' '' '' '' '' '- 핵심 질문 통과율 80% 이상' 'Learning 80-percent criterion missing'
   check_context_fixed "$LEARNING" LINE '## 2. 적용 시점' '' '' '' '' '' '대표·고위험 여부와 learning deadline은 TASK 계획 단계에서 승인한다.' 'Learning planning-time risk/deadline approval missing'
-  check_context_fixed "$LEARNING" LINE '## 2. 적용 시점' '' '' '' '' '' '- 계획에서 merge 전 learning gate가 승인된 TASK는 merge 전에 학습 검증을 통과해야 한다.' 'Learning conditional pre-merge gate missing'
+  check_context_fixed "$LEARNING" LINE '## 2. 적용 시점' '' '' '' '' '' '- 계획에서 merge 전 learning gate가 승인된 TASK는 merge 전에 §15의 학습 gate 조건을 충족해야 한다.' 'Learning conditional pre-merge gate missing'
   check_context_fixed "$LEARNING" LINE '## 2. 적용 시점' '' '' '' '' '' '- 일반 TASK는 merge 후 학습을 진행할 수 있다.' 'Learning general-TASK post-merge option missing'
-  check_context_fixed "$LEARNING" LINE '## 2. 적용 시점' '' '' '' '' '' '- 모든 TASK는 TASK 최종 완료 전, 그리고 다음 핵심 구현 TASK 시작 전까지 필요한 학습 검증을 완료한다.' 'Learning final-completion deadline missing'
-  check_context_fixed "$LEARNING" LINE '## 10. 최종 산출물' '' '' '' '' '' '- pass 여부' 'Learning minimum pass tracking missing'
+  check_context_fixed "$LEARNING" LINE '## 2. 적용 시점' '' '' '' '' '' '- 모든 TASK는 TASK 최종 완료 전, 그리고 다음 핵심 구현 TASK 시작 전까지 해당 TASK에 요구된 학습 의무를 완료한다.' 'Learning final-completion deadline missing'
+  check_context_fixed "$LEARNING" LINE '## 10. 최종 산출물' '' '' '' '' '' '- 설명 제공 상태' 'Learning minimum explanation tracking missing'
+  check_context_fixed "$LEARNING" LINE '## 10. 최종 산출물' '' '' '' '' '' '- 독립 이해도 검증 상태 (면접 모드 결과 또는 미실시)' 'Learning minimum independent-verification tracking missing'
   check_context_fixed "$LEARNING" LINE '## 10. 최종 산출물' '' '' '' '' '' '- 핵심 오해' 'Learning misconception tracking missing'
   check_context_fixed "$LEARNING" LINE '## 10. 최종 산출물' '' '' '' '' '' '- 사용자 기여 / AI 기여 구분' 'Learning user/AI contribution tracking missing'
   check_context_fixed "$LEARNING" LINE '## 10. 최종 산출물' '' '' '' '' '' '대표·고위험 TASK는 다음 저장소 산출물을 필수로 작성한다.' 'Learning representative/high-risk notes requirement missing'
