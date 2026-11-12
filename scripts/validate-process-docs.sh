@@ -3513,11 +3513,11 @@ EOF_ROADMAP_PREREQUISITE_EXPECTED_ROWS
       "Roadmap history contains unapproved status enum"
   fi
 
-  [ "$(roadmap_status_count 완료)" -eq 4 ] ||
-    add_failure "Roadmap 완료 count is not 4"
+  [ "$(roadmap_status_count 완료)" -eq 5 ] ||
+    add_failure "Roadmap 완료 count is not 5"
 
-  [ "$(roadmap_status_count '진행중')" -eq 1 ] ||
-    add_failure "Roadmap 진행중 count is not 1"
+  [ "$(roadmap_status_count '진행중')" -eq 0 ] ||
+    add_failure "Roadmap 진행중 count is not 0"
 
   [ "$(roadmap_status_count 계획)" -eq 3 ] ||
     add_failure "Roadmap 계획 count is not 3"
@@ -3605,9 +3605,10 @@ EOF_ROADMAP_PREREQUISITE_EXPECTED_ROWS
     }
 
     /^\| TASK-063 \|/ {
-      if (t($4) == "진행중" &&
+      if (t($4) == "완료" &&
           index($0, "Issue #110") > 0 &&
-          index($0, "chore/TASK-063-learning-policy-roadmap") > 0) {
+          index($0, "PR #111") > 0 &&
+          index($0, "00560cee0c30a4cae85deef50be1ad28c7793820") > 0) {
         ok=1
       }
     }
@@ -3619,7 +3620,7 @@ EOF_ROADMAP_PREREQUISITE_EXPECTED_ROWS
     }
   ' "$ROADMAP_HISTORY_FILE"
   then
-    add_failure "Roadmap TASK-063 is not 진행중 with Issue #110/branch evidence in full history"
+    add_failure "Roadmap TASK-063 completion status or merge SHA mismatch"
   fi
 
   if roadmap_prerequisite_rows="$(
@@ -3824,9 +3825,10 @@ EOF_ROADMAP_PREREQUISITE_EXPECTED_ROWS
       /^\| TASK-063 \|/ {
         count063++
 
-        if (t($4) == "진행중" &&
+        if (t($4) == "완료" &&
             index($0, "Issue #110") > 0 &&
-            index($0, "chore/TASK-063-learning-policy-roadmap") > 0) {
+            index($0, "PR #111") > 0 &&
+            index($0, "00560cee0c30a4cae85deef50be1ad28c7793820") > 0) {
           ok063++
         }
       }
