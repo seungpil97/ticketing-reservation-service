@@ -35,7 +35,7 @@
 | TASK-061 | Test-First AI 개발 Workflow 도입 및 RED/Test Contract Gate 공식화 | 완료 | Issue #102, PR #103, merge SHA `8c9f097855ddf7250d4dacfb778e19362b6c1b4a`; 최종 완료: 기존 MASTER FINAL COMPLETE 보고(원문 대조 미완료) |
 | TASK-062 | 예약 취소·만료·재선점·결제 좌석 정합성 보장 | 재확인필요 | Issue #104, PR #105, merge SHA `37d907f1d2ed4c79e51855d24d789ca46b97ef8b`; 학습·최종 완료 미확인 |
 | TASK-032 | 이벤트 기반 예약 처리 (Spring Events) | 재확인필요 | Issue #106, PR #107, merge SHA `8593d642105a2396c3db30fd8b331889b47fd428`; 학습·최종 완료 미확인 |
-| TASK-033 | Outbox Pattern 구현 | 재확인필요 | Issue #108, PR #109, merge SHA `372982abdabfee02c4ae30deae5cbb77eff1fb4b`; 설명 완료, 독립 이해도 검증 미확인, 최종 완료 사용자 결정 대기 |
+| TASK-033 | Outbox Pattern 구현 | 완료 | Issue #108, PR #109, merge SHA `372982abdabfee02c4ae30deae5cbb77eff1fb4b`; 최종 완료: 사용자 최종 완료 승인(TASK-033-1 MASTER 방 WORK-2 이후 사용자 “그렇게하자”, MASTER 전달), TASK 한정 결정; 설명 완료, 독립 이해도 검증 미확인, Level 4 최종 PASS 미부여 |
 | TASK-063 | 설명 중심 학습 정책 및 로드맵 근거 정비 | 완료 | Issue #110, PR #111, merge SHA `00560cee0c30a4cae85deef50be1ad28c7793820`; 최종 완료: 사용자 최종 완료 승인(WORK-18, MASTER 전달); 독립 이해도 검증 미실시, Level 미평가 |
 
 ## 다음 직접 진행 순서
@@ -58,8 +58,8 @@ TASK-033-1
 
 A old roadmap의 고유 TASK 74개를 모두 보존한다.
 A에서 과거에 `완료` 또는 `남은 로드맵`으로 분류됐더라도 현재 근거가 확인되지 않으면 이 문서에서는 `재확인필요`로 기록한다.
-현재 근거가 확인된 TASK-031, MASTER에서 완료가 확정된 TASK-059·TASK-060, 기존 MASTER FINAL COMPLETE 보고가 있는 TASK-061, 사용자 최종 완료 승인이 기록된 TASK-063은 `완료`로 기록한다.
-merge는 확인됐지만 학습·최종 완료 근거가 확인되지 않은 TASK-062·TASK-032·TASK-033은 `재확인필요`, 승인된 직접 후속 3개는 `계획`으로 기록한다. 현재 `진행중` TASK는 없다.
+현재 근거가 확인된 TASK-031, MASTER에서 완료가 확정된 TASK-059·TASK-060, 기존 MASTER FINAL COMPLETE 보고가 있는 TASK-061, 사용자 최종 완료 승인이 기록된 TASK-063·TASK-033은 `완료`로 기록한다.
+merge는 확인됐지만 학습·최종 완료 근거가 확인되지 않은 TASK-062·TASK-032는 `재확인필요`, 승인된 직접 후속 3개는 `계획`으로 기록한다. 현재 `진행중` TASK는 없다.
 TASK별 학습·최종 완료 근거는 `## TASK 학습·완료 추적`에서 구분한다.
 
 ### Phase 1. 기반 구축
@@ -150,7 +150,7 @@ TASK별 학습·최종 완료 근거는 `## TASK 학습·완료 추적`에서 �
 | TASK | 내용 | 상태 | 현재 근거 / 조건 | CS 연관 개념 |
 | --- | --- | --- | --- | --- |
 | TASK-032 | 이벤트 기반 예약 처리 (Spring Events) | 재확인필요 | Issue #106, PR #107, merge SHA `8593d642105a2396c3db30fd8b331889b47fd428`; 학습·최종 완료 미확인 | 이벤트 기반 설계/Kafka 비교 (Week 15) |
-| TASK-033 | Outbox Pattern 구현 | 재확인필요 | Issue #108, PR #109, merge SHA `372982abdabfee02c4ae30deae5cbb77eff1fb4b`; 설명 완료, 독립 이해도 검증 미확인, 최종 완료 사용자 결정 대기 | Kafka/트랜잭션 (Week 15, 5) |
+| TASK-033 | Outbox Pattern 구현 | 완료 | Issue #108, PR #109, merge SHA `372982abdabfee02c4ae30deae5cbb77eff1fb4b`; 최종 완료: 사용자 최종 완료 승인(TASK-033-1 MASTER 방 WORK-2 이후 사용자 “그렇게하자”, MASTER 전달), TASK 한정 결정; 설명 완료, 독립 이해도 검증 미확인, Level 4 최종 PASS 미부여 | Kafka/트랜잭션 (Week 15, 5) |
 | TASK-033-1 | Outbox 재처리 실패 시나리오 | 계획 | MASTER 승인 직접 순서; TASK-033 최종 완료(필요한 학습 의무 해소 포함) + 사용자 승인 | 트랜잭션/재시도 (Week 5) |
 | TASK-028 | Redis/DB 장애 시나리오 구현 및 문서화 | 계획 | MASTER 승인 직접 순서; TASK-033-1 완료 + 사용자 승인 | 커넥션 풀/Redis (Week 5, 8) |
 | TASK-043 | 장애 복구 전략 설계 + 코드 구현 | 계획 | MASTER 승인 직접 순서; TASK-028 완료 + 사용자 승인 | 장애 흐름 전반 |
@@ -243,7 +243,7 @@ TASK별 학습·최종 완료 근거는 `## TASK 학습·완료 추적`에서 �
 | TASK-061 | 머지됨 (PR #103, `8c9f097`) | 해당없음 (시행 이전 계약) | 미확인 (기존 MASTER의 WORK-9 PASS 보고 있음, 원문 대조 미완료) | 시행 이전 계약 | 완료 (기존 MASTER FINAL COMPLETE 보고 보존) | 머지: GitHub; 학습·최종 완료: MASTER 보고 |
 | TASK-062 | 머지됨 (PR #105, `37d907f`) | 해당없음 (시행 이전 계약) | 미확인 | 시행 이전 계약; Issue #104 DoD에 고위험 학습·면접 merge 전 PASS 조건 | 미확인 | 머지: GitHub; 학습·최종 완료: 근거 미확보 |
 | TASK-032 | 머지됨 (PR #107, `8593d64`) | 해당없음 (시행 이전 계약) | 미확인 | 시행 이전 계약 | 미확인 | 머지: GitHub; 학습·최종 완료: 근거 미확보 |
-| TASK-033 | 머지됨 (PR #109, `372982a`) | 완료 (시행 이전 설명 중심 학습 기록) | 미확인 (부분 답변 확인, 30초·90초 미실시, Level 4 최종 PASS 미부여) | 시행 이전 계약, 고위험 Level 4 merge 전 gate (Issue #108); 예외: TASK-033 한정으로 사용자 요청에 따라 merge 전 조건만 설명 중심 학습 완료와 기록으로 대체, 최종 완료로 확대되지 않음 | 미확정 (사용자 결정 대기) | 머지: GitHub; 학습: 저장소 `docs/learning/TASK-033/INTERVIEW-NOTES.md`, GitHub PR #109 |
+| TASK-033 | 머지됨 (PR #109, `372982a`) | 완료 (시행 이전 설명 중심 학습 기록) | 미확인 (부분 답변 확인, 30초·90초 미실시, Level 4 최종 PASS 미부여) | 시행 이전 계약, 고위험 Level 4 merge 전 gate (Issue #108); 예외: TASK-033 한정으로 사용자 요청에 따라 merge 전 조건만 설명 중심 학습 완료와 기록으로 대체, 당시 예외는 merge 전 조건에 한정; 최종 완료 결정: 별도 TASK 한정 결정으로 남은 최종 완료 전 학습 의무를 설명 중심 학습 완료와 결과·한계 기록으로 대체, TASK-063 개정 계약 소급 적용 아님 | 완료 (MASTER 보고 기준 사용자 “그렇게하자” 승인 시점 판정, 과거 소급 없음, Valid RED·동결 계약 원문 근거 미확보와 남은 증거 공백·기술 한계 미해결 보존) | 머지: GitHub; 학습: 저장소 `docs/learning/TASK-033/INTERVIEW-NOTES.md`, GitHub PR #109; 최종 완료: MASTER 보고 (TASK-033-1 MASTER 방 WORK-2 이후 사용자 “그렇게하자” 승인, 원문 대조 미완료) |
 | TASK-063 | 머지됨 (PR #111, `00560ce`) | 완료 (MASTER 설명 후 사용자 “진행하자” 수령 확인) | 미실시 (면접 모드 미요청, Level 미평가) | TASK 한정 결정 (Issue #110): 설명 중심, merge 전 설명·기록·사용자 설명 수령 확인·MASTER 정확성 검토 gate | 완료 (WORK-18 사용자 최종 완료 승인, 남은 Low·검증 한계 미해결 보존) | 머지: GitHub PR #111; 학습: 저장소 `docs/learning/TASK-063/INTERVIEW-NOTES.md`, MASTER 보고 (MASTER 설명과 사용자 수령 확인); 최종 완료: MASTER 보고 (WORK-18 사용자 최종 완료 승인) |
 
 ## Learning 연결
