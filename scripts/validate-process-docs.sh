@@ -3513,8 +3513,8 @@ EOF_ROADMAP_PREREQUISITE_EXPECTED_ROWS
       "Roadmap history contains unapproved status enum"
   fi
 
-  [ "$(roadmap_status_count 완료)" -eq 5 ] ||
-    add_failure "Roadmap 완료 count is not 5"
+  [ "$(roadmap_status_count 완료)" -eq 6 ] ||
+    add_failure "Roadmap 완료 count is not 6"
 
   [ "$(roadmap_status_count '진행중')" -eq 0 ] ||
     add_failure "Roadmap 진행중 count is not 0"
@@ -3522,8 +3522,8 @@ EOF_ROADMAP_PREREQUISITE_EXPECTED_ROWS
   [ "$(roadmap_status_count 계획)" -eq 3 ] ||
     add_failure "Roadmap 계획 count is not 3"
 
-  [ "$(roadmap_status_count '재확인필요')" -eq 71 ] ||
-    add_failure "Roadmap 재확인필요 count is not 71"
+  [ "$(roadmap_status_count '재확인필요')" -eq 70 ] ||
+    add_failure "Roadmap 재확인필요 count is not 70"
 
   if ! awk -F'|' '
     function t(s) {
