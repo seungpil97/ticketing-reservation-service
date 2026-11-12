@@ -6195,9 +6195,9 @@ fi
 if fixture="$(make_fixture N164)"; then
   N164_FILE="$fixture/docs/process/PORTFOLIO-ROADMAP.md"
 
-  N164_OLD='| TASK-063 | 설명 중심 학습 정책 및 로드맵 근거 정비 | 진행중 | Issue #110, branch `chore/TASK-063-learning-policy-roadmap` |'
+  N164_OLD='| TASK-063 | 설명 중심 학습 정책 및 로드맵 근거 정비 | 완료 | Issue #110, PR #111, merge SHA `00560cee0c30a4cae85deef50be1ad28c7793820`; 최종 완료: 사용자 최종 완료 승인(WORK-18, MASTER 전달); 독립 이해도 검증 미실시, Level 미평가 |'
 
-  N164_NEW='| TASK-063 | 설명 중심 학습 정책 및 로드맵 근거 정비 | 진행 중 | Issue #110, branch `chore/TASK-063-learning-policy-roadmap` |'
+  N164_NEW='| TASK-063 | 설명 중심 학습 정책 및 로드맵 근거 정비 | 진행 중 | Issue #110, PR #111, merge SHA `00560cee0c30a4cae85deef50be1ad28c7793820`; 최종 완료: 사용자 최종 완료 승인(WORK-18, MASTER 전달); 독립 이해도 검증 미실시, Level 미평가 |'
 
   if ! x2a_replace_exact_line \
     "$N164_FILE" \
@@ -7656,7 +7656,7 @@ S2_R61='| TASK-061 | 머지됨 (PR #103, `8c9f097`) | 해당없음 (시행 이�
 S2_R62='| TASK-062 | 머지됨 (PR #105, `37d907f`) | 해당없음 (시행 이전 계약) | 미확인 | 시행 이전 계약; Issue #104 DoD에 고위험 학습·면접 merge 전 PASS 조건 | 미확인 | 머지: GitHub; 학습·최종 완료: 근거 미확보 |'
 S2_R32='| TASK-032 | 머지됨 (PR #107, `8593d64`) | 해당없음 (시행 이전 계약) | 미확인 | 시행 이전 계약 | 미확인 | 머지: GitHub; 학습·최종 완료: 근거 미확보 |'
 S2_R33='| TASK-033 | 머지됨 (PR #109, `372982a`) | 완료 (시행 이전 설명 중심 학습 기록) | 미확인 (부분 답변 확인, 30초·90초 미실시, Level 4 최종 PASS 미부여) | 시행 이전 계약, 고위험 Level 4 merge 전 gate (Issue #108); 예외: TASK-033 한정으로 사용자 요청에 따라 merge 전 조건만 설명 중심 학습 완료와 기록으로 대체, 최종 완료로 확대되지 않음 | 미확정 (사용자 결정 대기) | 머지: GitHub; 학습: 저장소 `docs/learning/TASK-033/INTERVIEW-NOTES.md`, GitHub PR #109 |'
-S2_R63='| TASK-063 | 미머지 | 완료 (MASTER 설명 후 사용자 “진행하자” 수령 확인) | 미실시 (면접 모드 미요청, Level 미평가) | TASK 한정 결정 (Issue #110): 설명 중심, merge 전 설명·기록·사용자 설명 수령 확인·MASTER 정확성 검토 gate | 미확정 | GitHub Issue #110; 학습: 저장소 `docs/learning/TASK-063/INTERVIEW-NOTES.md`, MASTER 보고 (MASTER 설명과 사용자 수령 확인) |'
+S2_R63='| TASK-063 | 머지됨 (PR #111, `00560ce`) | 완료 (MASTER 설명 후 사용자 “진행하자” 수령 확인) | 미실시 (면접 모드 미요청, Level 미평가) | TASK 한정 결정 (Issue #110): 설명 중심, merge 전 설명·기록·사용자 설명 수령 확인·MASTER 정확성 검토 gate | 완료 (WORK-18 사용자 최종 완료 승인, 남은 Low·검증 한계 미해결 보존) | 머지: GitHub PR #111; 학습: 저장소 `docs/learning/TASK-063/INTERVIEW-NOTES.md`, MASTER 보고 (MASTER 설명과 사용자 수령 확인); 최종 완료: MASTER 보고 (WORK-18 사용자 최종 완료 승인) |'
 
 # S2P1. Pristine: completed TASK-061 with unverified independent check, TASK-limited decision row.
 if s2_begin_case S2P1; then
