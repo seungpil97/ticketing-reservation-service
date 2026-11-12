@@ -314,9 +314,10 @@ GPT 독립 검토 전에 구현 범위와 명백한 결함을 자체 점검한�
 - 현재 TASK 계획에서 merge 전 learning gate가 승인됐는지 확인한다.
 - merge 전 learning gate가 없으면 정상 merge 흐름을 진행하고, 일반 TASK learning은 merge 후 수행할 수 있다.
 - merge 전 learning gate가 있고 아직 통과하지 않았다면 단계 13 Learning을 선행 수행한다.
-- 단계 13 Learning이 PASS하면 단계 11 merge gate로 복귀하며, merge는 사용자 승인 후에만 수행한다.
+- 이 단계의 learning gate 통과는 `docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md` §15의 gate 조건 충족을 뜻하며, 독립 이해도 검증 PASS와 구분한다.
+- 단계 13 Learning에서 학습 gate 조건이 충족되면 단계 11 merge gate로 복귀하며, merge는 사용자 승인 후에만 수행한다.
 - 이 조건부 transition은 사용자 승인 없는 자동 단계 진행을 의미하지 않는다.
-- 일반 TASK learning은 merge 후 수행할 수 있지만 TASK 최종 완료 전, 다음 핵심 구현 TASK 시작 전에는 통과해야 한다.
+- 일반 TASK learning은 merge 후 수행할 수 있지만 TASK 최종 완료 전, 다음 핵심 구현 TASK 시작 전에는 해당 TASK에 요구된 학습 의무를 완료해야 한다.
 
 **산출물**
 - merge 가능 여부 또는 merge 결과
@@ -357,25 +358,28 @@ GPT 독립 검토 전에 구현 범위와 명백한 결함을 자체 점검한�
 ### 13. Learning / interview
 
 **목적**
-TASK 결과를 사용자가 설명하고 방어할 수 있는 상태인지 검증한다.
+TASK 결과를 근거에 기반해 사용자에게 설명하고, 사용자가 요청하면 면접 모드로 독립 이해도를 검증한다.
 
 **입력**
 - 최종 구현과 검증 근거
 - `docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md`
 
 **실행**
-- 대표·고위험 여부와 learning deadline은 TASK 계획 단계에서 승인한다.
-- 계획에서 merge 전 learning gate가 승인된 TASK만 merge 전에 학습을 통과해야 한다.
-- 일반 TASK는 merge 후 학습을 수행할 수 있지만 TASK 최종 완료 전, 다음 핵심 구현 TASK 시작 전에는 통과해야 한다.
-- 학습 결과에는 pass 여부, 핵심 오해, 사용자와 AI 기여 구분을 남긴다.
+- 대표·고위험 여부, merge 전 학습 gate 적용 여부와 learning deadline은 TASK 계획 단계에서 승인한다.
+- 학습은 설명 중심으로 진행하며, 면접 모드는 사용자가 요청한 경우에만 진행한다.
+- 계획에서 merge 전 learning gate가 승인된 TASK만 merge 전에 학습 gate 조건을 충족해야 한다.
+- 일반 TASK는 merge 후 학습을 수행할 수 있지만 TASK 최종 완료 전, 다음 핵심 구현 TASK 시작 전에는 해당 TASK에 요구된 학습 의무를 완료해야 한다.
+- 학습 결과에는 설명 제공 상태, 독립 이해도 검증 상태, 핵심 오해, 사용자와 AI 기여 구분을 남긴다.
+- 설명 완료를 독립 이해도 검증 PASS나 Level 달성으로 기록하지 않는다.
 - 대표·고위험 TASK는 승인된 학습 계약의 산출물 기준을 따른다.
 
 **산출물**
-- 학습 검증 결과
+- 설명 완료 기록과 독립 이해도 검증 상태
 - 필요 시 승인된 학습 산출물
 
 **승인 gate**
-- 학습 통과 조건과 기한은 TASK 계획 단계에서 승인한다.
+- 학습 gate 적용 여부·조건과 기한은 TASK 계획 단계에서 승인한다.
+- 면접 모드 결과를 학습 gate 조건에 포함할지는 사용자가 명시적으로 결정한다.
 
 **중단 조건**
 - 해당 TASK에 필요한 학습 gate 미통과
@@ -393,6 +397,7 @@ TASK 결과를 사용자가 설명하고 방어할 수 있는 상태인지 검�
 
 **실행**
 - DoD와 남은 위험을 확인한다.
+- 구현·머지, 설명 제공, 독립 이해도 검증, 최종 완료 판정을 구분해 기록한다.
 - TASK 상태 변경은 `docs/process/PORTFOLIO-ROADMAP.md` 책임에 따라 관리한다.
 
 **산출물**

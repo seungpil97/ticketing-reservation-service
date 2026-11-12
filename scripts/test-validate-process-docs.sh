@@ -605,9 +605,7 @@ def wrap_section(value, start_heading, next_heading, opener, closer):
 ROADMAP_ANCHOR = (
     "사용자 승인 없이 다음 TASK를 자동으로 시작하지 않는다."
 )
-ROADMAP_PAYLOAD = """TASK-032
-→ TASK-033
-→ TASK-033-1
+ROADMAP_PAYLOAD = """TASK-033-1
 → TASK-028
 → TASK-043"""
 ROADMAP_CANONICAL = (
@@ -867,11 +865,19 @@ rewrite_with_awk "$fixture/docs/process/PORTFOLIO-ROADMAP.md" \
   '{ if ($0 ~ /^\| TASK-059 \|/ && $0 ~ /\| 완료 \|/) sub(/\| 완료 \|/, "| 진행중 |"); print }'
 expect_fail "N8" "Roadmap TASK-059 wrong status rejected" "$fixture"
 
-# N9. TASK-032 prerequisite regressed to TASK-059.
+# N9. TASK-033-1 prerequisite regressed to TASK-032 completion only.
 fixture="$(make_fixture N9)"
 rewrite_with_awk "$fixture/docs/process/PORTFOLIO-ROADMAP.md" \
-  '{ gsub(/TASK-061 완료 \+ 사용자 승인/, "TASK-059 완료 + 사용자 승인"); print }'
-expect_fail "N9" "Roadmap TASK-032 wrong prerequisite rejected" "$fixture"
+  'BEGIN{old="TASK-033 최종 완료(필요한 학습 의무 해소 포함) + 사용자 승인"; new="TASK-032 완료 + 사용자 승인"; n=0}
+   { while ((i=index($0, old)) > 0) { $0=substr($0, 1, i-1) new substr($0, i+length(old)); n++ } print }
+   END{if(n < 1) exit 2}'
+if grep -Fq "TASK-033 최종 완료(필요한 학습 의무 해소 포함) + 사용자 승인" "$fixture/docs/process/PORTFOLIO-ROADMAP.md" ||
+   ! grep -Fq "| TASK-033-1 | Outbox 재처리 실패 시나리오 | 계획 | TASK-032 완료 + 사용자 승인 |" "$fixture/docs/process/PORTFOLIO-ROADMAP.md"
+then
+  record_fail "N9 Roadmap TASK-033-1 prerequisite mutation postcondition failed"
+else
+  expect_fail "N9" "Roadmap TASK-033-1 wrong prerequisite rejected" "$fixture" 0 "Roadmap TASK-033-1 prerequisite mismatch"
+fi
 
 # N10. Extra Git prefix added.
 fixture="$(make_fixture N10)"
@@ -894,8 +900,14 @@ expect_fail "N12" "changed full test command rejected" "$fixture"
 # N13. Learning made pre-merge mandatory for all TASKs.
 fixture="$(make_fixture N13)"
 rewrite_with_awk "$fixture/docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md" \
-  '{ if ($0 == "- 계획에서 merge 전 learning gate가 승인된 TASK는 merge 전에 학습 검증을 통과해야 한다.") print "- 모든 TASK는 merge 전에 학습 검증을 통과해야 한다."; else print }'
-expect_fail "N13" "universal pre-merge learning gate rejected" "$fixture"
+  'BEGIN{n=0} { if ($0 == "- 계획에서 merge 전 learning gate가 승인된 TASK는 merge 전에 §15의 학습 gate 조건을 충족해야 한다.") { print "- 모든 TASK는 merge 전에 학습 검증을 통과해야 한다."; n++ } else print } END{if(n != 1) exit 2}'
+if grep -Fxq -- "- 계획에서 merge 전 learning gate가 승인된 TASK는 merge 전에 §15의 학습 gate 조건을 충족해야 한다." "$fixture/docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md" ||
+   ! grep -Fxq -- "- 모든 TASK는 merge 전에 학습 검증을 통과해야 한다." "$fixture/docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md"
+then
+  record_fail "N13 universal pre-merge mutation postcondition failed"
+else
+  expect_fail "N13" "universal pre-merge learning gate rejected" "$fixture" 0 "Learning incorrectly makes pre-merge learning mandatory for all TASKs"
+fi
 
 # N14. General TASK INTERVIEW-NOTES made mandatory.
 fixture="$(make_fixture N14)"
@@ -973,7 +985,7 @@ expect_fail "N22" "duplicate second related reference rejected" "$fixture" 0 "Mi
 fixture="$(make_fixture N23)"
 rewrite_with_awk "$fixture/docs/process/PORTFOLIO-ROADMAP.md" \
   'BEGIN{inside=0} /^## 전체 TASK 이력$/ {inside=1; print; next} /^## CS 주차 ↔ TASK ↔ interview 연결$/ {inside=0; print; next} { if (inside && $0 ~ /^\| TASK-[0-9]+(-[0-9]+)? \|/) next; print }'
-expect_fail "N23" "zero Roadmap history rows rejected with FAIL marker" "$fixture" 0 "Roadmap full history TASK row count is not 77"
+expect_fail "N23" "zero Roadmap history rows rejected with FAIL marker" "$fixture" 0 "Roadmap full history TASK row count is not 79"
 
 # N24. Remove every final CFL mapping row.
 fixture="$(make_fixture N24)"
@@ -984,42 +996,42 @@ expect_fail "N24" "zero CFL mapping rows rejected with FAIL marker" "$fixture" 0
 # N25. Insert an unexpected TASK inside the approved direct-order fenced block.
 fixture="$(make_fixture N25)"
 rewrite_with_awk "$fixture/docs/process/PORTFOLIO-ROADMAP.md" \
-  'BEGIN{section=0; fence=0; done=0} /^## 다음 직접 진행 순서$/ {section=1; print; next} section && $0=="```text" {fence=1; print; next} section && fence && $0=="TASK-032" && !done {print; print "→ TASK-999"; done=1; next} section && fence && $0=="```" {fence=0} /^## 전체 TASK 이력$/ {section=0} {print} END{if(!done) exit 2}'
+  'BEGIN{section=0; fence=0; done=0} /^## 다음 직접 진행 순서$/ {section=1; print; next} section && $0=="```text" {fence=1; print; next} section && fence && $0=="TASK-033-1" && !done {print; print "→ TASK-999"; done=1; next} section && fence && $0=="```" {fence=0} /^## 전체 TASK 이력$/ {section=0} {print} END{if(!done) exit 2}'
 expect_fail "N25" "extra TASK in Roadmap direct-order fenced block rejected" "$fixture" 0 "Roadmap direct TASK order mismatch"
 
 # N26. Change only current-status TASK-059 from 완료 to 진행중; full history stays unchanged.
 fixture="$(make_fixture N26)"
 rewrite_with_awk "$fixture/docs/process/PORTFOLIO-ROADMAP.md" \
   'BEGIN{inside=0; done=0} /^## 현재 확인 상태$/ {inside=1; print; next} /^## 다음 직접 진행 순서$/ {inside=0; print; next} inside && /^\| TASK-059 \|/ && !done {sub(/\| 완료 \|/, "| 진행중 |"); done=1} {print} END{if(!done) exit 2}'
-expect_fail "N26" "current-status TASK-059 mismatch rejected" "$fixture" 0 "Roadmap current-status TASK-059/TASK-060/TASK-061 state consistency failed"
+expect_fail "N26" "current-status TASK-059 mismatch rejected" "$fixture" 0 "Roadmap current-status TASK-059/TASK-060/TASK-061/TASK-063 state consistency failed"
 
-# N27. Change only current-status TASK-061 from 진행중 to 완료; full history stays unchanged.
+# N27. Change only current-status TASK-061 from 완료 to 진행중; full history stays unchanged.
 fixture="$(make_fixture N27)"
 rewrite_with_awk "$fixture/docs/process/PORTFOLIO-ROADMAP.md" \
   'BEGIN{inside=0;seen=0;changed=0}
    $0=="## 현재 확인 상태"{inside=1;print;next}
    inside && /^## /{inside=0}
-   inside && /^\| TASK-061 \|/{seen++;changed+=sub(/\| 진행중 \|/, "| 완료 |")}
+   inside && /^\| TASK-061 \|/{seen++;changed+=sub(/\| 완료 \|/, "| 진행중 |")}
    {print}
    END{if(seen != 1 || changed != 1) exit 2}'
 
 if ! awk -F'|' '
   function t(s){gsub(/^[[:space:]]+|[[:space:]]+$/, "", s);return s}
-  BEGIN{inside=0;seen=0;complete=0;original=0}
+  BEGIN{inside=0;seen=0;progress=0;original=0}
   $0=="## 현재 확인 상태"{inside=1;next}
   inside && /^## /{inside=0}
   inside && /^\| TASK-061 \|/{
     seen++
     status=t($4)
-    if(status=="완료") complete++
-    if(status=="진행중") original++
+    if(status=="진행중") progress++
+    if(status=="완료") original++
   }
-  END{if(seen != 1 || complete != 1 || original != 0) exit 1}
+  END{if(seen != 1 || progress != 1 || original != 0) exit 1}
 ' "$fixture/docs/process/PORTFOLIO-ROADMAP.md"
 then
   record_fail "N27 current-status TASK-061 mutation postcondition failed"
 else
-  expect_fail "N27" "current-status TASK-061 mismatch rejected" "$fixture" 0 "Roadmap current-status TASK-059/TASK-060/TASK-061 state consistency failed"
+  expect_fail "N27" "current-status TASK-061 mismatch rejected" "$fixture" 0 "Roadmap current-status TASK-059/TASK-060/TASK-061/TASK-063 state consistency failed"
 fi
 
 # N28. Keep the approved full-test command and add a conflicting clean-test command.
@@ -2630,7 +2642,7 @@ else
     "Roadmap history fenced-row decoy rejected" \
     "$fixture" \
     0 \
-    "Roadmap full history TASK row count is not 77"
+    "Roadmap full history TASK row count is not 79"
 fi
 
 # N99. Current-status row survives only as a fenced decoy.
@@ -2679,7 +2691,7 @@ else
     "Roadmap current-status fenced-row decoy rejected" \
     "$fixture" \
     0 \
-    "Roadmap current-status TASK-059/TASK-060/TASK-061 state consistency failed"
+    "Roadmap current-status TASK-059/TASK-060/TASK-061/TASK-063 state consistency failed"
 fi
 
 # N100. History row survives only as a visible off-table decoy.
@@ -2726,7 +2738,7 @@ else
     "Roadmap history visible off-table decoy rejected" \
     "$fixture" \
     0 \
-    "Roadmap full history TASK row count is not 77"
+    "Roadmap full history TASK row count is not 79"
 fi
 
 # N101. Current-status row survives only as a visible off-table decoy.
@@ -2773,7 +2785,7 @@ else
     "Roadmap current-status visible off-table decoy rejected" \
     "$fixture" \
     0 \
-    "Roadmap current-status TASK-059/TASK-060/TASK-061 state consistency failed"
+    "Roadmap current-status TASK-059/TASK-060/TASK-061/TASK-063 state consistency failed"
 fi
 
 # N102. Generic non-empty literal RHS remains a conservative candidate.
@@ -3434,7 +3446,7 @@ else
     "Roadmap current-status TASK ID membership mismatch"
 fi
 
-# N112. TASK-032 authoritative table row is mutated; approved row is off-table.
+# N112. TASK-033-1 authoritative table row is mutated; approved row is off-table.
 fixture="$(make_fixture N112)"
 N112_FILE="$fixture/docs/process/PORTFOLIO-ROADMAP.md"
 N112_TMP="$fixture/docs/process/.N112-roadmap.tmp"
@@ -3443,13 +3455,11 @@ N112_SECTION='## 다음 직접 진행 순서'
 N112_HEADER='| TASK | 내용 | 상태 | 선행 조건 |'
 N112_SEPARATOR='| --- | --- | --- | --- |'
 
-N112_ROW='| TASK-032 | 이벤트 기반 예약 처리 (Spring Events) | 계획 | TASK-061 완료 + 사용자 승인 |'
-N112_MUTATED_ROW='| TASK-032 | 이벤트 기반 예약 처리 (Spring Events) | 계획 | TASK-061 완료 + fixture 승인 |'
+N112_ROW='| TASK-033-1 | Outbox 재처리 실패 시나리오 | 계획 | TASK-033 최종 완료(필요한 학습 의무 해소 포함) + 사용자 승인 |'
+N112_MUTATED_ROW='| TASK-033-1 | Outbox 재처리 실패 시나리오 | 계획 | TASK-033 최종 완료(필요한 학습 의무 해소 포함) + fixture 승인 |'
 
 N112_DIRECT_ORDER_EXPECTED='```text
-TASK-032
-→ TASK-033
-→ TASK-033-1
+TASK-033-1
 → TASK-028
 → TASK-043
 ```'
@@ -3905,17 +3915,17 @@ if [ "$N112_REWRITE_OK" -eq 1 ] &&
    [ "$N112_POST_OK" -eq 1 ]; then
   expect_fail \
     "N112" \
-    "Roadmap TASK-032 off-table prerequisite decoy rejected" \
+    "Roadmap TASK-033-1 off-table prerequisite decoy rejected" \
     "$fixture" \
     0 \
-    "Roadmap TASK-032 prerequisite mismatch"
+    "Roadmap TASK-033-1 prerequisite mismatch"
 else
   if [ "$N112_REWRITE_OK" -ne 1 ]; then
     record_fail \
-      "N112 TASK-032 prerequisite fixture rewrite/setup failed"
+      "N112 TASK-033-1 prerequisite fixture rewrite/setup failed"
   else
     record_fail \
-      "N112 TASK-032 prerequisite fixture postcondition failed"
+      "N112 TASK-033-1 prerequisite fixture postcondition failed"
   fi
 fi
 
@@ -4814,11 +4824,11 @@ else
     "GPT Git / PR core input list mismatch"
 fi
 
-# N129. TASK-033 prerequisite mutation.
+# N129. TASK-033-1 prerequisite-table status mutation.
 fixture="$(make_fixture N129)"
 N129_FILE="$fixture/docs/process/PORTFOLIO-ROADMAP.md"
-N129_OLD='| TASK-033 | Outbox Pattern 구현 | 계획 | TASK-032 완료 + 사용자 승인 |'
-N129_NEW='| TASK-033 | Outbox Pattern 구현 | 계획 | TASK-032 완료 + fixture 승인 |'
+N129_OLD='| TASK-033-1 | Outbox 재처리 실패 시나리오 | 계획 | TASK-033 최종 완료(필요한 학습 의무 해소 포함) + 사용자 승인 |'
+N129_NEW='| TASK-033-1 | Outbox 재처리 실패 시나리오 | 진행중 | TASK-033 최종 완료(필요한 학습 의무 해소 포함) + 사용자 승인 |'
 
 if [ "$(
   x2a_exact_line_count \
@@ -4850,7 +4860,7 @@ then
 else
   expect_fail \
     "N129" \
-    "Roadmap TASK-033 prerequisite mutation rejected" \
+    "Roadmap TASK-033-1 prerequisite-table status mutation rejected" \
     "$fixture" \
     0 \
     "Roadmap next-task prerequisite contract mismatch"
@@ -4859,8 +4869,8 @@ fi
 # N130. TASK-033-1 prerequisite mutation.
 fixture="$(make_fixture N130)"
 N130_FILE="$fixture/docs/process/PORTFOLIO-ROADMAP.md"
-N130_OLD='| TASK-033-1 | Outbox 재처리 실패 시나리오 | 계획 | TASK-033 완료 + 사용자 승인 |'
-N130_NEW='| TASK-033-1 | Outbox 재처리 실패 시나리오 | 계획 | TASK-033 완료 + fixture 승인 |'
+N130_OLD='| TASK-033-1 | Outbox 재처리 실패 시나리오 | 계획 | TASK-033 최종 완료(필요한 학습 의무 해소 포함) + 사용자 승인 |'
+N130_NEW='| TASK-033-1 | Outbox 재처리 실패 시나리오 | 계획 | TASK-033 최종 완료(필요한 학습 의무 해소 포함) + fixture 승인 |'
 
 if [ "$(
   x2a_exact_line_count \
@@ -6181,13 +6191,13 @@ else
   record_fail "N163 fixture construction failed"
 fi
 
-# N164. Current-status TASK-061 uses spaced non-approved enum.
+# N164. Current-status TASK-063 uses spaced non-approved enum.
 if fixture="$(make_fixture N164)"; then
   N164_FILE="$fixture/docs/process/PORTFOLIO-ROADMAP.md"
 
-  N164_OLD='| TASK-061 | Test-First AI 개발 Workflow 도입 및 RED/Test Contract Gate 공식화 | 진행중 | Issue #102, branch `chore/TASK-061-test-first-workflow` |'
+  N164_OLD='| TASK-063 | 설명 중심 학습 정책 및 로드맵 근거 정비 | 진행중 | Issue #110, branch `chore/TASK-063-learning-policy-roadmap` |'
 
-  N164_NEW='| TASK-061 | Test-First AI 개발 Workflow 도입 및 RED/Test Contract Gate 공식화 | 진행 중 | Issue #102, branch `chore/TASK-061-test-first-workflow` |'
+  N164_NEW='| TASK-063 | 설명 중심 학습 정책 및 로드맵 근거 정비 | 진행 중 | Issue #110, branch `chore/TASK-063-learning-policy-roadmap` |'
 
   if ! x2a_replace_exact_line \
     "$N164_FILE" \
@@ -7208,6 +7218,1011 @@ expect_fail \
   "$fixture" \
   0 \
   "TEST-FIRST evidence responsibility missing or duplicated: - PRODUCTION_CHANGE_EVIDENCE"
+
+# ---------------------------------------------------------------------------
+# S2 (TASK-063): explanation-first learning policy and learning tracker.
+#
+# New negative cases must be rejected with an exact FAIL message multiset.
+# Every case first proves the pristine fixture is accepted, then proves the
+# mutation hit exactly the intended lines and files.
+# Set PROCESS_DOCS_S2_EVIDENCE_DIR to keep per-case evidence.
+# ---------------------------------------------------------------------------
+
+S2_EVIDENCE_DIR="${PROCESS_DOCS_S2_EVIDENCE_DIR:-}"
+S2_ROADMAP_REL='docs/process/PORTFOLIO-ROADMAP.md'
+S2_LEARNING_REL='docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md'
+S2_WORKFLOW_REL='docs/process/DEVELOPMENT-WORKFLOW.md'
+S2_PASS_MARKER='PROCESS_DOCS_VALIDATION=PASS'
+S2_FAIL_MARKER='PROCESS_DOCS_VALIDATION=FAIL'
+
+S2_ID=''
+S2_FIXTURE=''
+S2_PRISTINE=''
+S2_MUT_LOG=''
+S2_MUT_OK=1
+
+s2_evidence_copy() {
+  # $1 case id, $2 evidence name, $3 source file
+  if [ -n "$S2_EVIDENCE_DIR" ] && [ -f "$3" ]; then
+    mkdir -p "$S2_EVIDENCE_DIR/$1"
+    cp "$3" "$S2_EVIDENCE_DIR/$1/$2"
+  fi
+}
+
+s2_log() {
+  printf '%s\n' "$*" >> "$S2_MUT_LOG"
+}
+
+s2_count() {
+  awk -v expected="$2" '$0 == expected { count++ } END { print count + 0 }' "$1"
+}
+
+s2_rewrite() {
+  s2_rw_file="$1"
+  shift
+
+  s2_rw_tmp="$(mktemp "$WORK_ROOT/s2-rewrite.XXXXXX")" ||
+    return 1
+
+  if ! awk "$@" "$s2_rw_file" > "$s2_rw_tmp"; then
+    rm -f "$s2_rw_tmp"
+    return 1
+  fi
+
+  if ! cat "$s2_rw_tmp" > "$s2_rw_file"; then
+    rm -f "$s2_rw_tmp"
+    return 1
+  fi
+
+  rm -f "$s2_rw_tmp"
+}
+
+s2_ins_file() {
+  # Writes each argument as one line of a new insertion file.
+  s2_ins_path="$(mktemp "$WORK_ROOT/s2-ins.XXXXXX")" ||
+    return 1
+  printf '%s\n' "$@" > "$s2_ins_path"
+  printf '%s\n' "$s2_ins_path"
+}
+
+s2_replace_line() {
+  s2_rl_file="$1"
+  s2_rl_old="$2"
+  s2_rl_new="$3"
+
+  s2_rl_old_before="$(s2_count "$s2_rl_file" "$s2_rl_old")"
+  s2_rl_new_before="$(s2_count "$s2_rl_file" "$s2_rl_new")"
+  s2_log "replace target_count=$s2_rl_old_before new_count_before=$s2_rl_new_before file=${s2_rl_file#"$S2_FIXTURE"/}"
+
+  [ "$s2_rl_old_before" -eq 1 ] ||
+    return 1
+
+  s2_rewrite "$s2_rl_file" -v old="$s2_rl_old" -v new="$s2_rl_new" '
+    $0 == old { print new; replaced++; next }
+    { print }
+    END { if (replaced != 1) exit 2 }
+  ' ||
+    return 1
+
+  s2_rl_old_after="$(s2_count "$s2_rl_file" "$s2_rl_old")"
+  s2_rl_new_after="$(s2_count "$s2_rl_file" "$s2_rl_new")"
+  s2_log "replace replaced=1 target_count_after=$s2_rl_old_after new_count_after=$s2_rl_new_after"
+
+  [ "$s2_rl_old_after" -eq 0 ] &&
+    [ "$s2_rl_new_after" -eq $((s2_rl_new_before + 1)) ]
+}
+
+s2_delete_line() {
+  s2_dl_file="$1"
+  s2_dl_line="$2"
+
+  s2_dl_before="$(s2_count "$s2_dl_file" "$s2_dl_line")"
+  s2_log "delete target_count=$s2_dl_before file=${s2_dl_file#"$S2_FIXTURE"/}"
+
+  [ "$s2_dl_before" -eq 1 ] ||
+    return 1
+
+  s2_rewrite "$s2_dl_file" -v target="$s2_dl_line" '
+    $0 == target { deleted++; next }
+    { print }
+    END { if (deleted != 1) exit 2 }
+  ' ||
+    return 1
+
+  s2_dl_after="$(s2_count "$s2_dl_file" "$s2_dl_line")"
+  s2_log "delete deleted=1 target_count_after=$s2_dl_after"
+
+  [ "$s2_dl_after" -eq 0 ]
+}
+
+s2_insert_after() {
+  # $1 file, $2 anchor line (must occur exactly once), $3 insertion file
+  s2_ia_file="$1"
+  s2_ia_anchor="$2"
+  s2_ia_ins="$3"
+
+  s2_ia_before="$(s2_count "$s2_ia_file" "$s2_ia_anchor")"
+  s2_ia_lines="$(awk 'END { print NR + 0 }' "$s2_ia_ins")"
+  s2_log "insert_after anchor_count=$s2_ia_before insert_lines=$s2_ia_lines file=${s2_ia_file#"$S2_FIXTURE"/}"
+
+  [ "$s2_ia_before" -eq 1 ] ||
+    return 1
+
+  s2_rewrite "$s2_ia_file" -v anchor="$s2_ia_anchor" -v insfile="$s2_ia_ins" '
+    BEGIN { while ((getline line < insfile) > 0) ins[++k] = line }
+    $0 == anchor { print; for (i = 1; i <= k; i++) print ins[i]; inserted++; next }
+    { print }
+    END { if (inserted != 1) exit 2 }
+  ' ||
+    return 1
+
+  if ! awk -v anchor="$s2_ia_anchor" -v insfile="$s2_ia_ins" '
+    BEGIN { while ((getline line < insfile) > 0) ins[++k] = line }
+    pos > 0 && pos <= k { if ($0 != ins[pos]) bad = 1; pos++; next }
+    $0 == anchor { anchors++; pos = 1; next }
+    END { if (anchors != 1 || pos != k + 1 || bad) exit 1 }
+  ' "$s2_ia_file"
+  then
+    s2_log "insert_after postcondition=FAIL"
+    return 1
+  fi
+
+  s2_log "insert_after inserted=1 postcondition=OK"
+}
+
+s2_append() {
+  # $1 file, $2 insertion file appended at end of file
+  s2_ap_file="$1"
+  s2_ap_ins="$2"
+  s2_ap_lines="$(awk 'END { print NR + 0 }' "$s2_ap_ins")"
+  s2_ap_before="$(awk 'END { print NR + 0 }' "$s2_ap_file")"
+
+  cat "$s2_ap_ins" >> "$s2_ap_file" ||
+    return 1
+
+  s2_ap_after="$(awk 'END { print NR + 0 }' "$s2_ap_file")"
+  s2_log "append lines_before=$s2_ap_before appended=$s2_ap_lines lines_after=$s2_ap_after file=${s2_ap_file#"$S2_FIXTURE"/}"
+
+  [ "$s2_ap_after" -eq $((s2_ap_before + s2_ap_lines)) ] &&
+    tail -n "$s2_ap_lines" "$s2_ap_file" | cmp -s - "$s2_ap_ins"
+}
+
+s2_judge_pass_strict() {
+  # $1 output file, $2 exit code
+  if [ "$2" -ne 0 ]; then
+    printf '%s\n' "NOT_ACCEPTED_EXIT_$2"
+    return
+  fi
+
+  if [ "$(awk 'END { print NR + 0 }' "$1")" -ne 1 ] ||
+     [ "$(awk 'NR == 1 { print; exit }' "$1")" != "$S2_PASS_MARKER" ]; then
+    printf '%s\n' "UNEXPECTED_OUTPUT"
+    return
+  fi
+
+  printf '%s\n' "OK"
+}
+
+s2_judge_fail_exact() {
+  # $1 output file, $2 exit code, $3 expected message file (one per line)
+  if [ "$2" -eq 0 ]; then
+    printf '%s\n' "ACCEPTED"
+    return
+  fi
+
+  if [ "$2" -ne 1 ]; then
+    printf '%s\n' "BAD_EXIT_$2"
+    return
+  fi
+
+  if [ "$(awk 'NR == 1 { print; exit }' "$1")" != "$S2_FAIL_MARKER" ]; then
+    printf '%s\n' "NO_FAIL_MARKER"
+    return
+  fi
+
+  if [ "$(awk 'NR > 1 && index($0, "FAIL: ") != 1 { count++ } END { print count + 0 }' "$1")" -ne 0 ]; then
+    printf '%s\n' "EXTRA_OUTPUT"
+    return
+  fi
+
+  awk 'NR > 1 { print substr($0, 7) }' "$1" | LC_ALL=C sort > "$1.actual-multiset"
+  LC_ALL=C sort "$3" > "$1.expected-multiset"
+
+  if cmp -s "$1.actual-multiset" "$1.expected-multiset"; then
+    printf '%s\n' "OK"
+  else
+    printf '%s\n' "MULTISET_MISMATCH"
+  fi
+}
+
+s2_run_validator() {
+  # $1 fixture, $2 output; prints exit code
+  if run_validator "$1" "$2" 0; then
+    printf '%s\n' 0
+  else
+    printf '%s\n' "$?"
+  fi
+}
+
+expect_pass_strict() {
+  epx_id="$1"
+  epx_desc="$2"
+  epx_fixture="$3"
+  epx_out="$WORK_ROOT/$epx_id.final.out"
+
+  epx_rc="$(s2_run_validator "$epx_fixture" "$epx_out")"
+  epx_verdict="$(s2_judge_pass_strict "$epx_out" "$epx_rc")"
+
+  s2_log "final_validator exit=$epx_rc verdict=$epx_verdict"
+  s2_evidence_copy "$epx_id" validator.out "$epx_out"
+
+  if [ "$epx_verdict" = "OK" ]; then
+    record_pass "$epx_id $epx_desc"
+  else
+    record_fail "$epx_id $epx_desc (expect_pass_strict: $epx_verdict)"
+  fi
+}
+
+expect_fail_exact() {
+  efx_id="$1"
+  efx_desc="$2"
+  efx_fixture="$3"
+  efx_expected="$4"
+  efx_out="$WORK_ROOT/$efx_id.final.out"
+
+  efx_rc="$(s2_run_validator "$efx_fixture" "$efx_out")"
+  efx_verdict="$(s2_judge_fail_exact "$efx_out" "$efx_rc" "$efx_expected")"
+
+  s2_log "final_validator exit=$efx_rc verdict=$efx_verdict"
+  s2_evidence_copy "$efx_id" validator.out "$efx_out"
+  s2_evidence_copy "$efx_id" expected-messages.txt "$efx_expected"
+
+  case "$efx_verdict" in
+    OK)
+      record_pass "$efx_id $efx_desc"
+      ;;
+    ACCEPTED)
+      record_fail "$efx_id $efx_desc (validator incorrectly accepted fixture)"
+      ;;
+    *)
+      record_fail "$efx_id $efx_desc (expect_fail_exact: $efx_verdict)"
+      ;;
+  esac
+}
+
+s2_begin_case() {
+  S2_ID="$1"
+  S2_MUT_OK=1
+  S2_MUT_LOG="$WORK_ROOT/$S2_ID.mutation.log"
+  : > "$S2_MUT_LOG"
+
+  if ! S2_FIXTURE="$(make_fixture "$S2_ID")"; then
+    record_fail "$S2_ID fixture construction failed"
+    return 1
+  fi
+
+  s2_bc_out="$WORK_ROOT/$S2_ID.pristine.out"
+  s2_bc_rc="$(s2_run_validator "$S2_FIXTURE" "$s2_bc_out")"
+  s2_bc_verdict="$(s2_judge_pass_strict "$s2_bc_out" "$s2_bc_rc")"
+  s2_log "pristine_validator exit=$s2_bc_rc verdict=$s2_bc_verdict"
+  s2_evidence_copy "$S2_ID" pristine-validator.out "$s2_bc_out"
+
+  if [ "$s2_bc_verdict" != "OK" ]; then
+    record_fail "$S2_ID pristine fixture not accepted ($s2_bc_verdict)"
+    s2_evidence_copy "$S2_ID" mutation.log "$S2_MUT_LOG"
+    return 1
+  fi
+
+  S2_PRISTINE="$WORK_ROOT/$S2_ID.pristine"
+
+  if ! cp -R "$S2_FIXTURE" "$S2_PRISTINE"; then
+    record_fail "$S2_ID pristine snapshot failed"
+    return 1
+  fi
+}
+
+s2_changed_set() {
+  ( cd "$S2_PRISTINE" && find . -type f | sed 's|^\./||' ) | LC_ALL=C sort > "$WORK_ROOT/$S2_ID.files.pristine"
+  ( cd "$S2_FIXTURE" && find . -type f | sed 's|^\./||' ) | LC_ALL=C sort > "$WORK_ROOT/$S2_ID.files.fixture"
+
+  {
+    LC_ALL=C comm -3 "$WORK_ROOT/$S2_ID.files.pristine" "$WORK_ROOT/$S2_ID.files.fixture" |
+      awk '{ sub(/^\t/, ""); print }'
+
+    LC_ALL=C comm -12 "$WORK_ROOT/$S2_ID.files.pristine" "$WORK_ROOT/$S2_ID.files.fixture" |
+      while IFS= read -r s2_cs_rel
+      do
+        cmp -s "$S2_PRISTINE/$s2_cs_rel" "$S2_FIXTURE/$s2_cs_rel" ||
+          printf '%s\n' "$s2_cs_rel"
+      done
+  } | LC_ALL=C sort -u
+}
+
+s2_check_mutation_scope() {
+  # $1 expected changed-file list (newline separated, sorted; empty for none)
+  if [ "$S2_MUT_OK" -ne 1 ]; then
+    record_fail "$S2_ID mutation precondition/postcondition failed"
+    s2_evidence_copy "$S2_ID" mutation.log "$S2_MUT_LOG"
+    return 1
+  fi
+
+  s2_cms_changed="$(s2_changed_set)"
+  s2_log "changed_files=$(printf '%s' "$s2_cms_changed" | tr '\n' ' ')"
+  s2_log "expected_changed_files=$(printf '%s' "$1" | tr '\n' ' ')"
+
+  : > "$WORK_ROOT/$S2_ID.diff"
+  if [ -n "$s2_cms_changed" ]; then
+    printf '%s\n' "$s2_cms_changed" |
+      while IFS= read -r s2_cms_rel
+      do
+        diff -u "$S2_PRISTINE/$s2_cms_rel" "$S2_FIXTURE/$s2_cms_rel" |
+          awk -v rel="$s2_cms_rel" '
+            NR == 1 { print "--- pristine/" rel; next }
+            NR == 2 { print "+++ fixture/" rel; next }
+            { print }
+          ' >> "$WORK_ROOT/$S2_ID.diff" ||
+          true
+      done
+  fi
+
+  s2_evidence_copy "$S2_ID" pristine-diff.patch "$WORK_ROOT/$S2_ID.diff"
+
+  if [ "$s2_cms_changed" != "$1" ]; then
+    record_fail "$S2_ID changed-file set mismatch"
+    s2_evidence_copy "$S2_ID" mutation.log "$S2_MUT_LOG"
+    return 1
+  fi
+}
+
+s2_negative() {
+  # $1 description, $2 expected changed files, remaining args: expected messages
+  s2_ng_desc="$1"
+  s2_ng_files="$2"
+  shift 2
+
+  printf '%s\n' "$@" > "$WORK_ROOT/$S2_ID.expected"
+
+  if s2_check_mutation_scope "$s2_ng_files"; then
+    expect_fail_exact "$S2_ID" "$s2_ng_desc" "$S2_FIXTURE" "$WORK_ROOT/$S2_ID.expected"
+  fi
+
+  s2_evidence_copy "$S2_ID" mutation.log "$S2_MUT_LOG"
+}
+
+s2_positive() {
+  # $1 description, $2 expected changed files
+  if s2_check_mutation_scope "$2"; then
+    expect_pass_strict "$S2_ID" "$1" "$S2_FIXTURE"
+  fi
+
+  s2_evidence_copy "$S2_ID" mutation.log "$S2_MUT_LOG"
+}
+
+# S2H. Judge-function self checks on synthetic validator output.
+S2_MUT_LOG="$WORK_ROOT/S2H.log"
+: > "$S2_MUT_LOG"
+S2H_DIR="$WORK_ROOT/S2H"
+mkdir -p "$S2H_DIR"
+printf '%s\n' 'Rule A failed' 'Rule B failed' > "$S2H_DIR/expected-ab"
+printf '%s\n' 'Rule A failed' 'Rule A failed' > "$S2H_DIR/expected-aa"
+printf '%s\n' 'Rule A failed' > "$S2H_DIR/expected-a"
+printf '%s\n' "$S2_FAIL_MARKER" 'FAIL: Rule B failed' 'FAIL: Rule A failed' > "$S2H_DIR/out-ab"
+printf '%s\n' "$S2_PASS_MARKER" > "$S2H_DIR/out-pass"
+printf '%s\n' 'FAIL: Rule A failed' 'FAIL: Rule B failed' > "$S2H_DIR/out-no-marker"
+printf '%s\n' "$S2_FAIL_MARKER" 'FAIL: Rule A failed' 'FAIL: Rule B failed' 'FAIL: Rule C failed' > "$S2H_DIR/out-abc"
+printf '%s\n' "$S2_FAIL_MARKER" 'FAIL: Rule A failed' 'FAIL: Rule X failed' > "$S2H_DIR/out-ax"
+printf '%s\n' "$S2_FAIL_MARKER" 'FAIL: Rule A failed' > "$S2H_DIR/out-a"
+printf '%s\n' "$S2_FAIL_MARKER" 'FAIL: Rule A failed' 'FAIL: Rule A failed' > "$S2H_DIR/out-aa"
+printf '%s\n' "$S2_FAIL_MARKER" 'FAIL: Rule A failed' 'FAIL: Rule B failed' 'unexpected trailer' > "$S2H_DIR/out-ab-extra"
+printf '%s\n' "$S2_PASS_MARKER" 'FAIL: Rule A failed' > "$S2H_DIR/out-pass-fail"
+
+s2h_expect() {
+  # $1 id, $2 description, $3 expected verdict, $4 actual verdict
+  if [ "$4" = "$3" ]; then
+    record_pass "$1 $2"
+  else
+    record_fail "$1 $2 (expected verdict $3, got $4)"
+  fi
+}
+
+s2h_expect S2H1 "exact multiset with exit 1 and FAIL marker is accepted" OK \
+  "$(s2_judge_fail_exact "$S2H_DIR/out-ab" 1 "$S2H_DIR/expected-ab")"
+s2h_expect S2H2 "validator exit 0 is reported as accepted fixture" ACCEPTED \
+  "$(s2_judge_fail_exact "$S2H_DIR/out-pass" 0 "$S2H_DIR/expected-ab")"
+s2h_expect S2H3 "unexpected exit code is rejected" BAD_EXIT_2 \
+  "$(s2_judge_fail_exact "$S2H_DIR/out-ab" 2 "$S2H_DIR/expected-ab")"
+s2h_expect S2H4 "missing FAIL marker is rejected" NO_FAIL_MARKER \
+  "$(s2_judge_fail_exact "$S2H_DIR/out-no-marker" 1 "$S2H_DIR/expected-ab")"
+s2h_expect S2H5 "collateral FAIL line is rejected" MULTISET_MISMATCH \
+  "$(s2_judge_fail_exact "$S2H_DIR/out-abc" 1 "$S2H_DIR/expected-ab")"
+s2h_expect S2H6 "different FAIL message is rejected" MULTISET_MISMATCH \
+  "$(s2_judge_fail_exact "$S2H_DIR/out-ax" 1 "$S2H_DIR/expected-ab")"
+s2h_expect S2H7 "missing duplicate FAIL message is rejected" MULTISET_MISMATCH \
+  "$(s2_judge_fail_exact "$S2H_DIR/out-a" 1 "$S2H_DIR/expected-aa")"
+s2h_expect S2H8 "extra duplicate FAIL message is rejected" MULTISET_MISMATCH \
+  "$(s2_judge_fail_exact "$S2H_DIR/out-aa" 1 "$S2H_DIR/expected-a")"
+s2h_expect S2H9 "non-FAIL output line is rejected" EXTRA_OUTPUT \
+  "$(s2_judge_fail_exact "$S2H_DIR/out-ab-extra" 1 "$S2H_DIR/expected-ab")"
+s2h_expect S2H10 "strict positive accepts exit 0 with PASS marker only" OK \
+  "$(s2_judge_pass_strict "$S2H_DIR/out-pass" 0)"
+s2h_expect S2H11 "strict positive rejects FAIL line after PASS marker" UNEXPECTED_OUTPUT \
+  "$(s2_judge_pass_strict "$S2H_DIR/out-pass-fail" 0)"
+s2h_expect S2H12 "strict positive rejects validator exit 1" NOT_ACCEPTED_EXIT_1 \
+  "$(s2_judge_pass_strict "$S2H_DIR/out-ab" 1)"
+
+# Learning tracker rows in the S2 pristine roadmap.
+S2_TRACKER_HEADER='| TASK | 구현·머지 | 설명 제공 | 독립 이해도 검증 | 적용 계약·예외 | 최종 완료 판정 | 근거 출처 |'
+S2_R61='| TASK-061 | 머지됨 (PR #103, `8c9f097`) | 해당없음 (시행 이전 계약) | 미확인 (기존 MASTER의 WORK-9 PASS 보고 있음, 원문 대조 미완료) | 시행 이전 계약 | 완료 (기존 MASTER FINAL COMPLETE 보고 보존) | 머지: GitHub; 학습·최종 완료: MASTER 보고 |'
+S2_R62='| TASK-062 | 머지됨 (PR #105, `37d907f`) | 해당없음 (시행 이전 계약) | 미확인 | 시행 이전 계약; Issue #104 DoD에 고위험 학습·면접 merge 전 PASS 조건 | 미확인 | 머지: GitHub; 학습·최종 완료: 근거 미확보 |'
+S2_R32='| TASK-032 | 머지됨 (PR #107, `8593d64`) | 해당없음 (시행 이전 계약) | 미확인 | 시행 이전 계약 | 미확인 | 머지: GitHub; 학습·최종 완료: 근거 미확보 |'
+S2_R33='| TASK-033 | 머지됨 (PR #109, `372982a`) | 완료 (시행 이전 설명 중심 학습 기록) | 미확인 (부분 답변 확인, 30초·90초 미실시, Level 4 최종 PASS 미부여) | 시행 이전 계약, 고위험 Level 4 merge 전 gate (Issue #108); 예외: TASK-033 한정으로 사용자 요청에 따라 merge 전 조건만 설명 중심 학습 완료와 기록으로 대체, 최종 완료로 확대되지 않음 | 미확정 (사용자 결정 대기) | 머지: GitHub; 학습: 저장소 `docs/learning/TASK-033/INTERVIEW-NOTES.md`, GitHub PR #109 |'
+S2_R63='| TASK-063 | 미머지 | 완료 (MASTER 설명 후 사용자 “진행하자” 수령 확인) | 미실시 (면접 모드 미요청, Level 미평가) | TASK 한정 결정 (Issue #110): 설명 중심, merge 전 설명·기록·사용자 설명 수령 확인·MASTER 정확성 검토 gate | 미확정 | GitHub Issue #110; 학습: 저장소 `docs/learning/TASK-063/INTERVIEW-NOTES.md`, MASTER 보고 (MASTER 설명과 사용자 수령 확인) |'
+
+# S2P1. Pristine: completed TASK-061 with unverified independent check, TASK-limited decision row.
+if s2_begin_case S2P1; then
+  [ "$(s2_count "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_R61")" -eq 1 ] || S2_MUT_OK=0
+  [ "$(s2_count "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_R63")" -eq 1 ] || S2_MUT_OK=0
+  s2_log "precondition R61_count=$(s2_count "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_R61") R63_count=$(s2_count "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_R63")"
+  s2_positive "pristine tracker with TASK-061 completion and unverified independent check accepted" ""
+fi
+
+# S2P2 (P-T3). Revised contract, explanation completed, final completion.
+if s2_begin_case S2P2; then
+  s2_replace_line "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_R61" \
+    '| TASK-061 | 머지됨 (PR #103, `8c9f097`) | 완료 (fixture) | 미확인 (기존 MASTER의 WORK-9 PASS 보고 있음, 원문 대조 미완료) | 개정 계약 (fixture) | 완료 (기존 MASTER FINAL COMPLETE 보고 보존) | 머지: GitHub; 학습·최종 완료: MASTER 보고 |' ||
+    S2_MUT_OK=0
+  s2_positive "P-T3 revised-contract row with explanation completed accepted" "$S2_ROADMAP_REL"
+fi
+
+# S2P3. Explanation completed and independent check not run is valid.
+if s2_begin_case S2P3; then
+  s2_replace_line "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_R61" \
+    '| TASK-061 | 머지됨 (PR #103, `8c9f097`) | 완료 (fixture) | 미실시 (fixture) | 개정 계약 (fixture) | 완료 (기존 MASTER FINAL COMPLETE 보고 보존) | 머지: GitHub; 학습·최종 완료: MASTER 보고 |' ||
+    S2_MUT_OK=0
+  s2_positive "explanation completed with independent check not run accepted" "$S2_ROADMAP_REL"
+fi
+
+# S2P4. TASK-limited decision is not treated as revised contract.
+if s2_begin_case S2P4; then
+  s2_replace_line "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_R61" \
+    '| TASK-061 | 머지됨 (PR #103, `8c9f097`) | 미실시 (fixture) | 미확인 (기존 MASTER의 WORK-9 PASS 보고 있음, 원문 대조 미완료) | TASK 한정 결정 (fixture) | 완료 (기존 MASTER FINAL COMPLETE 보고 보존) | 머지: GitHub; 학습·최종 완료: MASTER 보고 |' ||
+    S2_MUT_OK=0
+  s2_positive "TASK-limited decision row not treated as revised contract" "$S2_ROADMAP_REL"
+fi
+
+# S2P5. Pre-revision contract is not treated as revised contract.
+if s2_begin_case S2P5; then
+  s2_replace_line "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_R61" \
+    '| TASK-061 | 머지됨 (PR #103, `8c9f097`) | 미실시 (fixture) | 미확인 (기존 MASTER의 WORK-9 PASS 보고 있음, 원문 대조 미완료) | 시행 이전 계약 | 완료 (기존 MASTER FINAL COMPLETE 보고 보존) | 머지: GitHub; 학습·최종 완료: MASTER 보고 |' ||
+    S2_MUT_OK=0
+  s2_positive "pre-revision contract row not treated as revised contract" "$S2_ROADMAP_REL"
+fi
+
+# S2N1 (N-T5). Revised contract and final completion without explanation completion.
+if s2_begin_case S2N1; then
+  s2_replace_line "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_R61" \
+    '| TASK-061 | 머지됨 (PR #103, `8c9f097`) | 미실시 (fixture) | 미확인 (기존 MASTER의 WORK-9 PASS 보고 있음, 원문 대조 미완료) | 개정 계약 (fixture) | 완료 (기존 MASTER FINAL COMPLETE 보고 보존) | 머지: GitHub; 학습·최종 완료: MASTER 보고 |' ||
+    S2_MUT_OK=0
+  s2_negative "N-T5 revised-contract final completion without explanation rejected" "$S2_ROADMAP_REL" \
+    "Roadmap learning tracker revised-contract explanation requirement failed: TASK-061"
+fi
+
+# S2N2. Tracker header column renamed.
+if s2_begin_case S2N2; then
+  s2_replace_line "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_TRACKER_HEADER" \
+    '| TASK | 구현·머지 | 설명 제공 | 독립 이해도 검증 | 적용 계약·예외 | 최종 완료 판정 | 근거 |' ||
+    S2_MUT_OK=0
+  s2_negative "tracker header topology mismatch rejected" "$S2_ROADMAP_REL" \
+    "Roadmap learning tracker topology mismatch"
+fi
+
+# S2N3. Tracker row TASK ID absent from full history.
+if s2_begin_case S2N3; then
+  s2_replace_line "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_R62" \
+    '| TASK-9999 | 머지됨 (PR #105, `37d907f`) | 해당없음 (시행 이전 계약) | 미확인 | 시행 이전 계약; Issue #104 DoD에 고위험 학습·면접 merge 전 PASS 조건 | 미확인 | 머지: GitHub; 학습·최종 완료: 근거 미확보 |' ||
+    S2_MUT_OK=0
+  s2_negative "tracker TASK absent from full history rejected" "$S2_ROADMAP_REL" \
+    "Roadmap learning tracker TASK not in full history: TASK-9999" \
+    "Roadmap learning tracker required TASK row missing: TASK-062"
+fi
+
+# S2N4. Duplicate tracker row.
+if s2_begin_case S2N4; then
+  if s2_ins="$(s2_ins_file "$S2_R32")"; then
+    s2_insert_after "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_R32" "$s2_ins" || S2_MUT_OK=0
+  else
+    S2_MUT_OK=0
+  fi
+  [ "$(s2_count "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_R32")" -eq 2 ] || S2_MUT_OK=0
+  s2_log "postcondition R32_count=$(s2_count "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_R32")"
+  s2_negative "duplicate tracker row rejected" "$S2_ROADMAP_REL" \
+    "Roadmap learning tracker duplicate TASK row: TASK-032"
+fi
+
+# S2N5. Independent-check value with arbitrary suffix.
+if s2_begin_case S2N5; then
+  s2_replace_line "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_R62" \
+    '| TASK-062 | 머지됨 (PR #105, `37d907f`) | 해당없음 (시행 이전 계약) | PASS? | 시행 이전 계약; Issue #104 DoD에 고위험 학습·면접 merge 전 PASS 조건 | 미확인 | 머지: GitHub; 학습·최종 완료: 근거 미확보 |' ||
+    S2_MUT_OK=0
+  s2_negative "independent-check value with arbitrary suffix rejected" "$S2_ROADMAP_REL" \
+    "Roadmap learning tracker enum mismatch: TASK-062 독립 이해도 검증"
+fi
+
+# S2N6. Final-completion value without approved remark separator.
+if s2_begin_case S2N6; then
+  s2_replace_line "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_R61" \
+    '| TASK-061 | 머지됨 (PR #103, `8c9f097`) | 해당없음 (시행 이전 계약) | 미확인 (기존 MASTER의 WORK-9 PASS 보고 있음, 원문 대조 미완료) | 시행 이전 계약 | 완료(기존 MASTER FINAL COMPLETE 보고 보존) | 머지: GitHub; 학습·최종 완료: MASTER 보고 |' ||
+    S2_MUT_OK=0
+  s2_negative "final-completion value without approved separator rejected" "$S2_ROADMAP_REL" \
+    "Roadmap learning tracker enum mismatch: TASK-061 최종 완료 판정"
+fi
+
+# S2N7. Contract value that only starts like revised contract.
+if s2_begin_case S2N7; then
+  s2_replace_line "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_R61" \
+    '| TASK-061 | 머지됨 (PR #103, `8c9f097`) | 해당없음 (시행 이전 계약) | 미확인 (기존 MASTER의 WORK-9 PASS 보고 있음, 원문 대조 미완료) | 개정 계약 작성 TASK (fixture) | 완료 (기존 MASTER FINAL COMPLETE 보고 보존) | 머지: GitHub; 학습·최종 완료: MASTER 보고 |' ||
+    S2_MUT_OK=0
+  s2_negative "non-token contract value not treated as revised contract" "$S2_ROADMAP_REL" \
+    "Roadmap learning tracker enum mismatch: TASK-061 적용 계약·예외"
+fi
+
+# S2N8. Completed history row whose tracker final judgement is not completed.
+if s2_begin_case S2N8; then
+  s2_replace_line "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_R61" \
+    '| TASK-061 | 머지됨 (PR #103, `8c9f097`) | 해당없음 (시행 이전 계약) | 미확인 (기존 MASTER의 WORK-9 PASS 보고 있음, 원문 대조 미완료) | 시행 이전 계약 | 미확인 (fixture) | 머지: GitHub; 학습·최종 완료: MASTER 보고 |' ||
+    S2_MUT_OK=0
+  s2_negative "tracker final judgement inconsistent with completed status rejected" "$S2_ROADMAP_REL" \
+    "Roadmap learning tracker final-completion/status inconsistency: TASK-061"
+fi
+
+# S2N9. Final completion whose learning/final evidence is unsecured.
+if s2_begin_case S2N9; then
+  s2_replace_line "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_R61" \
+    '| TASK-061 | 머지됨 (PR #103, `8c9f097`) | 해당없음 (시행 이전 계약) | 미확인 (기존 MASTER의 WORK-9 PASS 보고 있음, 원문 대조 미완료) | 시행 이전 계약 | 완료 (기존 MASTER FINAL COMPLETE 보고 보존) | 머지: GitHub; 학습·최종 완료: 근거 미확보 |' ||
+    S2_MUT_OK=0
+  s2_negative "final completion with unsecured evidence rejected" "$S2_ROADMAP_REL" \
+    "Roadmap learning tracker final-completion evidence missing: TASK-061"
+fi
+
+# S2N10. Final completion backed only by merge evidence.
+if s2_begin_case S2N10; then
+  s2_replace_line "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_R61" \
+    '| TASK-061 | 머지됨 (PR #103, `8c9f097`) | 해당없음 (시행 이전 계약) | 미확인 (기존 MASTER의 WORK-9 PASS 보고 있음, 원문 대조 미완료) | 시행 이전 계약 | 완료 (기존 MASTER FINAL COMPLETE 보고 보존) | 머지: GitHub |' ||
+    S2_MUT_OK=0
+  s2_negative "final completion backed only by merge evidence rejected" "$S2_ROADMAP_REL" \
+    "Roadmap learning tracker final-completion evidence missing: TASK-061"
+fi
+
+# S2N11. Independent PASS without learning evidence.
+if s2_begin_case S2N11; then
+  s2_replace_line "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_R62" \
+    '| TASK-062 | 머지됨 (PR #105, `37d907f`) | 해당없음 (시행 이전 계약) | PASS (fixture) | 시행 이전 계약; Issue #104 DoD에 고위험 학습·면접 merge 전 PASS 조건 | 미확인 | 머지: GitHub; 학습·최종 완료: 근거 미확보 |' ||
+    S2_MUT_OK=0
+  s2_negative "independent PASS without learning evidence rejected" "$S2_ROADMAP_REL" \
+    "Roadmap learning tracker independent-verification evidence missing: TASK-062"
+fi
+
+S2_DEF_UNCONFIRMED='- `미확인`: 기록이나 근거를 확보하지 못했다. 실시 여부를 알 수 없으며, 미실시나 미통과를 뜻하지 않는다.'
+S2_RECHECK_RULE='`재확인필요`는 미구현이나 학습 미실시를 뜻하지 않으며, 미구현 건수로 집계하지 않는다.'
+
+# S2N12. Value definition survives only inside a fence in the tracker section.
+if s2_begin_case S2N12; then
+  s2_delete_line "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_DEF_UNCONFIRMED" || S2_MUT_OK=0
+  if s2_ins="$(s2_ins_file '```text' "$S2_DEF_UNCONFIRMED" '```')"; then
+    s2_insert_after "$S2_FIXTURE/$S2_ROADMAP_REL" '값의 의미:' "$s2_ins" || S2_MUT_OK=0
+  else
+    S2_MUT_OK=0
+  fi
+  [ "$(s2_count "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_DEF_UNCONFIRMED")" -eq 1 ] || S2_MUT_OK=0
+  s2_negative "tracker value definition fenced decoy rejected" "$S2_ROADMAP_REL" \
+    "Roadmap learning tracker value definition missing or duplicated: 미확인"
+fi
+
+# S2N13. 재확인필요 rule moved out of the status-definition section.
+if s2_begin_case S2N13; then
+  s2_delete_line "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_RECHECK_RULE" || S2_MUT_OK=0
+  if s2_ins="$(s2_ins_file '' "$S2_RECHECK_RULE")"; then
+    s2_insert_after "$S2_FIXTURE/$S2_ROADMAP_REL" \
+      'TASK별 설명 제공, 독립 이해도 검증, 최종 완료 근거는 `## TASK 학습·완료 추적`에 기록한다.' \
+      "$s2_ins" || S2_MUT_OK=0
+  else
+    S2_MUT_OK=0
+  fi
+  [ "$(s2_count "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_RECHECK_RULE")" -eq 1 ] || S2_MUT_OK=0
+  s2_negative "재확인필요 rule outside status-definition section rejected" "$S2_ROADMAP_REL" \
+    "Roadmap 재확인필요 non-unimplemented rule missing or duplicated"
+fi
+
+S2_L16_NO_RETRO='- 이 개정을 근거로 시행 이전 TASK의 학습 PASS, Level 달성, FINAL COMPLETE를 소급 부여하거나 기존 판정을 자동 취소하지 않는다.'
+S2_L1_11='11. 학습은 설명 중심을 기본으로 한다. 면접 모드는 사용자가 요청한 경우에만 시작한다.'
+S2_L1_12='12. 설명 제공 완료를 사용자의 독립 이해도 검증 PASS나 Level 달성으로 표현하지 않는다.'
+
+# S2N14. Duplicated canonical learning-contract line.
+if s2_begin_case S2N14; then
+  if s2_ins="$(s2_ins_file "$S2_L16_NO_RETRO")"; then
+    s2_insert_after "$S2_FIXTURE/$S2_LEARNING_REL" "$S2_L16_NO_RETRO" "$s2_ins" || S2_MUT_OK=0
+  else
+    S2_MUT_OK=0
+  fi
+  [ "$(s2_count "$S2_FIXTURE/$S2_LEARNING_REL" "$S2_L16_NO_RETRO")" -eq 2 ] || S2_MUT_OK=0
+  s2_negative "duplicated canonical learning line rejected" "$S2_LEARNING_REL" \
+    "Learning explanation-first canonical line missing or duplicated: §16-no-retroactive"
+fi
+
+# S2N15. Canonical learning-contract line survives only inside a fence.
+if s2_begin_case S2N15; then
+  s2_delete_line "$S2_FIXTURE/$S2_LEARNING_REL" "$S2_L1_11" || S2_MUT_OK=0
+  if s2_ins="$(s2_ins_file '' '```text' "$S2_L1_11" '```')"; then
+    s2_insert_after "$S2_FIXTURE/$S2_LEARNING_REL" "$S2_L1_12" "$s2_ins" || S2_MUT_OK=0
+  else
+    S2_MUT_OK=0
+  fi
+  [ "$(s2_count "$S2_FIXTURE/$S2_LEARNING_REL" "$S2_L1_11")" -eq 1 ] || S2_MUT_OK=0
+  s2_negative "canonical learning line fenced decoy rejected" "$S2_LEARNING_REL" \
+    "Learning explanation-first canonical line missing or duplicated: §1-11"
+fi
+
+# S2N16-S2N18. Forbidden explanation-as-PASS phrases.
+if s2_begin_case S2N16; then
+  if s2_ins="$(s2_ins_file '' '설명 완료는 학습 PASS로 본다.')"; then
+    s2_append "$S2_FIXTURE/$S2_LEARNING_REL" "$s2_ins" || S2_MUT_OK=0
+  else
+    S2_MUT_OK=0
+  fi
+  s2_negative "explanation-as-PASS phrase in learning contract rejected" "$S2_LEARNING_REL" \
+    "Explanation completion treated as independent PASS in docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md"
+fi
+
+if s2_begin_case S2N17; then
+  if s2_ins="$(s2_ins_file '' '설명 완료는 독립 이해도 검증 PASS로 본다.')"; then
+    s2_append "$S2_FIXTURE/$S2_WORKFLOW_REL" "$s2_ins" || S2_MUT_OK=0
+  else
+    S2_MUT_OK=0
+  fi
+  s2_negative "explanation-as-PASS phrase in workflow rejected" "$S2_WORKFLOW_REL" \
+    "Explanation completion treated as independent PASS in docs/process/DEVELOPMENT-WORKFLOW.md"
+fi
+
+if s2_begin_case S2N18; then
+  if s2_ins="$(s2_ins_file '' '설명 완료를 Level 달성으로 본다.')"; then
+    s2_append "$S2_FIXTURE/$S2_ROADMAP_REL" "$s2_ins" || S2_MUT_OK=0
+  else
+    S2_MUT_OK=0
+  fi
+  s2_negative "explanation-as-Level phrase in roadmap rejected" "$S2_ROADMAP_REL" \
+    "Explanation completion treated as independent PASS in docs/process/PORTFOLIO-ROADMAP.md"
+fi
+
+# S2N19. Default explanation prompt starts interview mode.
+if s2_begin_case S2N19; then
+  if s2_ins="$(s2_ins_file '질문은 한 번에 하나씩 해라.')"; then
+    s2_insert_after "$S2_FIXTURE/$S2_LEARNING_REL" '자료 밖 내용을 사실처럼 추가하지 마라.' "$s2_ins" || S2_MUT_OK=0
+  else
+    S2_MUT_OK=0
+  fi
+  [ "$(s2_count "$S2_FIXTURE/$S2_LEARNING_REL" '질문은 한 번에 하나씩 해라.')" -eq 2 ] || S2_MUT_OK=0
+  s2_negative "default prompt starting interview mode rejected" "$S2_LEARNING_REL" \
+    "Learning default prompt starts interview mode"
+fi
+
+# S2N20. Default prompt explanation-only guard removed.
+if s2_begin_case S2N20; then
+  s2_delete_line "$S2_FIXTURE/$S2_LEARNING_REL" \
+    '내가 요청하기 전에는 이해도 질문, 모의 면접, 30초·90초 답변 과제를 시작하지 마라.' ||
+    S2_MUT_OK=0
+  s2_negative "default prompt without explanation-only guard rejected" "$S2_LEARNING_REL" \
+    "Learning default prompt explanation-only guard missing"
+fi
+
+# S2N21. Interview-mode prompt incomplete.
+if s2_begin_case S2N21; then
+  s2_delete_line "$S2_FIXTURE/$S2_LEARNING_REL" '지금부터 면접 모드로 진행해라.' || S2_MUT_OK=0
+  s2_negative "incomplete interview-mode prompt rejected" "$S2_LEARNING_REL" \
+    "Learning interview-mode prompt missing or incomplete"
+fi
+
+# S2N22. Workflow stage 13 gate-inclusion rule moved to stage 12.
+S2_W13_GATE='- 면접 모드 결과를 학습 gate 조건에 포함할지는 사용자가 명시적으로 결정한다.'
+if s2_begin_case S2N22; then
+  s2_delete_line "$S2_FIXTURE/$S2_WORKFLOW_REL" "$S2_W13_GATE" || S2_MUT_OK=0
+  if s2_ins="$(s2_ins_file "$S2_W13_GATE")"; then
+    s2_insert_after "$S2_FIXTURE/$S2_WORKFLOW_REL" '- devlog 작성은 사용자 별도 승인 대상이다.' "$s2_ins" || S2_MUT_OK=0
+  else
+    S2_MUT_OK=0
+  fi
+  [ "$(s2_count "$S2_FIXTURE/$S2_WORKFLOW_REL" "$S2_W13_GATE")" -eq 1 ] || S2_MUT_OK=0
+  s2_negative "workflow gate-inclusion rule in wrong stage rejected" "$S2_WORKFLOW_REL" \
+    "DEVELOPMENT-WORKFLOW explanation-first learning rule missing or duplicated: s13-gate-inclusion"
+fi
+
+# S2N-D01..S2N-D36. Each canonical line removed individually.
+S2_DELETE_CASES="$WORK_ROOT/s2-delete-cases.txt"
+cat > "$S2_DELETE_CASES" <<'EOF_S2_DELETE_CASES'
+docs/process/PORTFOLIO-ROADMAP.md ::: Roadmap learning tracker value definition missing or duplicated: 미확인 ::: - `미확인`: 기록이나 근거를 확보하지 못했다. 실시 여부를 알 수 없으며, 미실시나 미통과를 뜻하지 않는다.
+docs/process/PORTFOLIO-ROADMAP.md ::: Roadmap learning tracker value definition missing or duplicated: 미실시 ::: - `미실시`: 실시하지 않았다는 기록이 있다.
+docs/process/PORTFOLIO-ROADMAP.md ::: Roadmap learning tracker value definition missing or duplicated: 해당없음 ::: - `해당없음`: 적용 계약이 요구하지 않았거나 별도로 추적하지 않았다.
+docs/process/PORTFOLIO-ROADMAP.md ::: Roadmap learning tracker value definition missing or duplicated: 미확정 ::: - `미확정`: 판정 절차가 진행 중이거나 사용자 결정을 기다린다.
+docs/process/PORTFOLIO-ROADMAP.md ::: Roadmap learning tracker value definition missing or duplicated: 근거 출처 ::: - 근거 출처: `GitHub`(Issue·PR 기록), `저장소`(저장소 파일), `MASTER 보고`(MASTER 보고 기준, 원문 대조 미완료), `근거 미확보`
+docs/process/PORTFOLIO-ROADMAP.md ::: Roadmap learning tracker value definition missing or duplicated: 자동 무효화 금지 ::: 이 표의 `미확인`만으로 기존 상태나 최종 완료 판정을 바꾸지 않는다. 값 변경은 사용자 또는 MASTER의 명시적 결정 기록이 있을 때만 한다.
+docs/process/PORTFOLIO-ROADMAP.md ::: Roadmap learning tracker value definition missing or duplicated: 설명 완료 비PASS ::: 설명 제공 `완료`는 독립 이해도 검증 PASS나 Level 달성을 뜻하지 않는다.
+docs/process/PORTFOLIO-ROADMAP.md ::: Roadmap 재확인필요 non-unimplemented rule missing or duplicated ::: `재확인필요`는 미구현이나 학습 미실시를 뜻하지 않으며, 미구현 건수로 집계하지 않는다.
+docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md ::: Learning explanation-first canonical line missing or duplicated: §1-11 ::: 11. 학습은 설명 중심을 기본으로 한다. 면접 모드는 사용자가 요청한 경우에만 시작한다.
+docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md ::: Learning explanation-first canonical line missing or duplicated: §1-12 ::: 12. 설명 제공 완료를 사용자의 독립 이해도 검증 PASS나 Level 달성으로 표현하지 않는다.
+docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md ::: Learning explanation-first canonical line missing or duplicated: §2-gate-not-pass ::: - 학습 gate 충족과 학습 의무 완료는 독립 이해도 검증 PASS를 뜻하지 않는다.
+docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md ::: Learning explanation-first canonical line missing or duplicated: §6-interview-only ::: 이 단계는 면접 모드다. 사용자가 요청한 경우에만 진행하며, 요청이 없으면 독립 이해도 검증을 미실시로 기록한다.
+docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md ::: Learning explanation-first canonical line missing or duplicated: §9-interview-only ::: 모의 면접은 사용자가 요청한 경우에만 진행하며, §6 이해도 질문을 통과한 뒤 진행한다.
+docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md ::: Learning explanation-first canonical line missing or duplicated: §11-intro ::: 면접 모드에서는 다음을 모두 만족해야 독립 이해도 검증 PASS로 판정한다.
+docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md ::: Learning explanation-first canonical line missing or duplicated: §11-not-explanation ::: 이 기준은 설명 완료 판정에 사용하지 않는다. 설명 완료 기준은 §15를 따른다.
+docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md ::: Learning explanation-first canonical line missing or duplicated: §13-no-auto-interview ::: - 사용자 요청 없이 면접 모드(이해도 질문·모의 면접·30초·90초 과제)를 시작하지 않는다.
+docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md ::: Learning explanation-first canonical line missing or duplicated: §13-no-explanation-pass ::: - 설명 제공 완료를 독립 이해도 검증 PASS나 Level 달성으로 표현하지 않는다.
+docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md ::: Learning explanation-first canonical line missing or duplicated: §13-no-retroactive ::: - 이 계약을 근거로 시행 이전 TASK의 학습 PASS, Level 달성, FINAL COMPLETE를 소급 부여하거나 기존 판정을 자동 취소하지 않는다.
+docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md ::: Learning explanation-first canonical line missing or duplicated: §15.1-1 ::: 1. 필수 설명: §4.1~§4.7 전 항목과 §5의 관점·분류를 설명한다. 대표·고위험 TASK는 §8의 해당 등급 항목을 포함한다. 최종 반영·미반영 Finding과 근거, AI 수행과 사용자 판단의 구분을 포함한다.
+docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md ::: Learning explanation-first canonical line missing or duplicated: §15.1-2 ::: 2. 기록: §10 기준으로 기록한다. 설명 대상 기준 SHA, 학습 패킷 출처, 설명 중 드러난 오해와 교정 내용, 독립 재확인 여부를 남긴다.
+docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md ::: Learning explanation-first canonical line missing or duplicated: §15.1-3 ::: 3. 사용자 설명 수령 확인: 사용자가 설명을 받았음을 확인한 기록을 남긴다. 이 확인은 이해도 판정이 아니다.
+docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md ::: Learning explanation-first canonical line missing or duplicated: §15.1-4 ::: 4. MASTER 정확성 검토: MASTER가 기록을 학습 패킷의 최종 코드·리뷰·테스트 증거와 대조해 사실 오류, 과장, 누락이 없는지 검토하고 결과를 기록한다. 이 검토는 기록 내용의 정확성 검토이며 사용자 이해도 판정이 아니다.
+docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md ::: Learning explanation-first canonical line missing or duplicated: §15.2-not-run ::: - 면접 모드를 진행하지 않았으면 독립 이해도 검증은 `미실시`, Level은 `미평가`로 기록한다.
+docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md ::: Learning explanation-first canonical line missing or duplicated: §15.3-gate ::: - 계획에서 merge 전 learning gate가 승인된 TASK는 §15.1의 네 요건을 모두 충족해야 한다. 사용자가 면접 모드 결과를 gate 조건에 포함하기로 결정한 경우에는 그 승인된 추가 조건도 충족해야 gate 조건을 충족한다.
+docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md ::: Learning explanation-first canonical line missing or duplicated: §15.3-gate-inclusion ::: - 면접 모드 결과를 gate 조건에 포함할지는 사용자가 명시적으로 결정하고 그 결정을 기록한다. 포함 결정이 기록되지 않았으면 면접 모드 결과는 별도로 기록하며 gate 조건에 포함하지 않는다.
+docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md ::: Learning explanation-first canonical line missing or duplicated: §16-effective ::: - 이 개정은 TASK-063 merge 이후 계획이 승인된 TASK부터 적용한다.
+docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md ::: Learning explanation-first canonical line missing or duplicated: §16-no-auto-convert ::: - 이미 승인된 계획은 이 개정으로 자동 전환하지 않는다.
+docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md ::: Learning explanation-first canonical line missing or duplicated: §16-task063 ::: - TASK-063은 Issue #110에 기록된 TASK 한정 결정을 따른다.
+docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md ::: Learning explanation-first canonical line missing or duplicated: §16-past-by-then-contract ::: - 시행 이전 TASK는 당시 적용 계약과 기록된 승인·예외로 판단한다.
+docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md ::: Learning explanation-first canonical line missing or duplicated: §16-no-retroactive ::: - 이 개정을 근거로 시행 이전 TASK의 학습 PASS, Level 달성, FINAL COMPLETE를 소급 부여하거나 기존 판정을 자동 취소하지 않는다.
+docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md ::: Learning explanation-first canonical line missing or duplicated: §16-gates-unchanged ::: - 개발·리뷰·회귀·Git·사용자 최종 승인 gate는 이 개정으로 바뀌지 않는다.
+docs/process/DEVELOPMENT-WORKFLOW.md ::: DEVELOPMENT-WORKFLOW explanation-first learning rule missing or duplicated: s11-gate-definition ::: - 이 단계의 learning gate 통과는 `docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md` §15의 gate 조건 충족을 뜻하며, 독립 이해도 검증 PASS와 구분한다.
+docs/process/DEVELOPMENT-WORKFLOW.md ::: DEVELOPMENT-WORKFLOW explanation-first learning rule missing or duplicated: s13-explanation-first ::: - 학습은 설명 중심으로 진행하며, 면접 모드는 사용자가 요청한 경우에만 진행한다.
+docs/process/DEVELOPMENT-WORKFLOW.md ::: DEVELOPMENT-WORKFLOW explanation-first learning rule missing or duplicated: s13-no-explanation-pass ::: - 설명 완료를 독립 이해도 검증 PASS나 Level 달성으로 기록하지 않는다.
+docs/process/DEVELOPMENT-WORKFLOW.md ::: DEVELOPMENT-WORKFLOW explanation-first learning rule missing or duplicated: s13-gate-inclusion ::: - 면접 모드 결과를 학습 gate 조건에 포함할지는 사용자가 명시적으로 결정한다.
+docs/process/DEVELOPMENT-WORKFLOW.md ::: DEVELOPMENT-WORKFLOW explanation-first learning rule missing or duplicated: s14-state-separation ::: - 구현·머지, 설명 제공, 독립 이해도 검증, 최종 완료 판정을 구분해 기록한다.
+EOF_S2_DELETE_CASES
+
+s2_delete_index=0
+while IFS= read -r s2_delete_row <&3
+do
+  [ -n "$s2_delete_row" ] || continue
+  s2_delete_index=$((s2_delete_index + 1))
+  s2_delete_rel="${s2_delete_row%% ::: *}"
+  s2_delete_rest="${s2_delete_row#* ::: }"
+  s2_delete_msg="${s2_delete_rest%% ::: *}"
+  s2_delete_line_text="${s2_delete_rest#* ::: }"
+  s2_delete_id="$(printf 'S2N-D%02d' "$s2_delete_index")"
+
+  if s2_begin_case "$s2_delete_id"; then
+    s2_delete_line "$S2_FIXTURE/$s2_delete_rel" "$s2_delete_line_text" || S2_MUT_OK=0
+    s2_negative "canonical line removal rejected (${s2_delete_msg##*: })" "$s2_delete_rel" "$s2_delete_msg"
+  fi
+done 3< "$S2_DELETE_CASES"
+
+if [ "$s2_delete_index" -ne 36 ]; then
+  record_fail "S2N-D case table row count is not 36"
+fi
+
+# S2M1. Final completion against non-completed status and without final evidence.
+if s2_begin_case S2M1; then
+  s2_replace_line "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_R33" \
+    '| TASK-033 | 머지됨 (PR #109, `372982a`) | 완료 (시행 이전 설명 중심 학습 기록) | 미확인 (부분 답변 확인, 30초·90초 미실시, Level 4 최종 PASS 미부여) | 시행 이전 계약, 고위험 Level 4 merge 전 gate (Issue #108); 예외: TASK-033 한정으로 사용자 요청에 따라 merge 전 조건만 설명 중심 학습 완료와 기록으로 대체, 최종 완료로 확대되지 않음 | 완료 (fixture) | 머지: GitHub; 학습: 저장소 `docs/learning/TASK-033/INTERVIEW-NOTES.md`, GitHub PR #109 |' ||
+    S2_MUT_OK=0
+  s2_negative "final completion inconsistent and without final evidence rejected" "$S2_ROADMAP_REL" \
+    "Roadmap learning tracker final-completion/status inconsistency: TASK-033" \
+    "Roadmap learning tracker final-completion evidence missing: TASK-033"
+fi
+
+# S2M2. Canonical line replaced by a forbidden explanation-as-PASS phrase.
+if s2_begin_case S2M2; then
+  s2_replace_line "$S2_FIXTURE/$S2_LEARNING_REL" "$S2_L1_12" '12. 설명 완료는 학습 PASS로 본다.' || S2_MUT_OK=0
+  s2_negative "canonical line replaced by explanation-as-PASS phrase rejected" "$S2_LEARNING_REL" \
+    "Learning explanation-first canonical line missing or duplicated: §1-12" \
+    "Explanation completion treated as independent PASS in docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md"
+fi
+
+# S2M3. Duplicate tracker heading invalidates the tracker and its definitions.
+if s2_begin_case S2M3; then
+  if s2_ins="$(s2_ins_file '' '## TASK 학습·완료 추적')"; then
+    s2_append "$S2_FIXTURE/$S2_ROADMAP_REL" "$s2_ins" || S2_MUT_OK=0
+  else
+    S2_MUT_OK=0
+  fi
+  [ "$(s2_count "$S2_FIXTURE/$S2_ROADMAP_REL" '## TASK 학습·완료 추적')" -eq 2 ] || S2_MUT_OK=0
+  s2_negative "duplicate tracker heading rejected" "$S2_ROADMAP_REL" \
+    "Roadmap learning tracker topology mismatch" \
+    "Roadmap learning tracker value definition missing or duplicated: 미확인" \
+    "Roadmap learning tracker value definition missing or duplicated: 미실시" \
+    "Roadmap learning tracker value definition missing or duplicated: 해당없음" \
+    "Roadmap learning tracker value definition missing or duplicated: 미확정" \
+    "Roadmap learning tracker value definition missing or duplicated: 근거 출처" \
+    "Roadmap learning tracker value definition missing or duplicated: 자동 무효화 금지" \
+    "Roadmap learning tracker value definition missing or duplicated: 설명 완료 비PASS"
+fi
+
+# ---------------------------------------------------------------------------
+# S4 (TASK-063 WORK-6): review follow-up cases.
+#
+# S4C: existing-path regression coverage (B2, B9, B4-b).
+# S4P/S4N: required tracker rows, rows outside the approved table (B11) and
+# evidence source format (B12).
+# ---------------------------------------------------------------------------
+
+S4_DEFAULT_ANCHOR='자료 밖 내용을 사실처럼 추가하지 마라.'
+S4_TASK_031_ROW='| TASK-031 | 머지됨 (PR #97, `f0aabf8`) | 해당없음 (시행 이전 계약) | 미확인 | 시행 이전 계약 | 완료 (fixture) | 머지: GitHub; 최종 완료: GitHub (fixture) |'
+
+# S4C1. Invalid implementation/merge value.
+if s2_begin_case S4C1; then
+  s2_replace_line "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_R62" \
+    '| TASK-062 | 머지 완료 (fixture) | 해당없음 (시행 이전 계약) | 미확인 | 시행 이전 계약; Issue #104 DoD에 고위험 학습·면접 merge 전 PASS 조건 | 미확인 | 머지: GitHub; 학습·최종 완료: 근거 미확보 |' ||
+    S2_MUT_OK=0
+  s2_negative "invalid implementation/merge value rejected" "$S2_ROADMAP_REL" \
+    "Roadmap learning tracker enum mismatch: TASK-062 구현·머지"
+fi
+
+# S4C2. Invalid explanation value.
+if s2_begin_case S4C2; then
+  s2_replace_line "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_R62" \
+    '| TASK-062 | 머지됨 (PR #105, `37d907f`) | 완료됨 (fixture) | 미확인 | 시행 이전 계약; Issue #104 DoD에 고위험 학습·면접 merge 전 PASS 조건 | 미확인 | 머지: GitHub; 학습·최종 완료: 근거 미확보 |' ||
+    S2_MUT_OK=0
+  s2_negative "invalid explanation value rejected" "$S2_ROADMAP_REL" \
+    "Roadmap learning tracker enum mismatch: TASK-062 설명 제공"
+fi
+
+# S4C3-S4C7. Each remaining interview-start line in the default prompt.
+s4_interview_start_index=2
+for s4_interview_start_line in \
+  '지금부터 면접 모드로 진행해라.' \
+  '내가 답하기 전에는 모범 답안을 공개하지 마라.' \
+  '틀린 부분과 빠진 부분만 설명한 뒤 같은 질문에 다시 답하게 해라.' \
+  '치명적인 오개념이 없고 핵심 질문의 80% 이상을 통과할 때까지 진행해라.' \
+  '마지막에는 내가 직접 작성한 30초 답변, 90초 답변,'
+do
+  s4_interview_start_index=$((s4_interview_start_index + 1))
+  s4_interview_start_before=''
+
+  if s2_begin_case "S4C$s4_interview_start_index"; then
+    s4_interview_start_before="$(s2_count "$S2_FIXTURE/$S2_LEARNING_REL" "$s4_interview_start_line")"
+
+    if s2_ins="$(s2_ins_file "$s4_interview_start_line")"; then
+      s2_insert_after "$S2_FIXTURE/$S2_LEARNING_REL" "$S4_DEFAULT_ANCHOR" "$s2_ins" || S2_MUT_OK=0
+    else
+      S2_MUT_OK=0
+    fi
+
+    [ "$(s2_count "$S2_FIXTURE/$S2_LEARNING_REL" "$s4_interview_start_line")" -eq $((s4_interview_start_before + 1)) ] ||
+      S2_MUT_OK=0
+    s2_log "postcondition line_count_before=$s4_interview_start_before line_count_after=$(s2_count "$S2_FIXTURE/$S2_LEARNING_REL" "$s4_interview_start_line")"
+    s2_negative "default prompt interview-start line rejected ($s4_interview_start_line)" "$S2_LEARNING_REL" \
+      "Learning default prompt starts interview mode"
+  fi
+done
+
+# S4C8-S4C10. Each remaining required interview-mode line removed.
+s4_interview_required_index=7
+for s4_interview_required_line in \
+  '질문은 한 번에 하나씩 해라.' \
+  '내가 답하기 전에는 모범 답안을 공개하지 마라.' \
+  '치명적인 오개념이 없고 핵심 질문의 80% 이상을 통과할 때까지 진행해라.'
+do
+  s4_interview_required_index=$((s4_interview_required_index + 1))
+
+  if s2_begin_case "S4C$s4_interview_required_index"; then
+    s2_delete_line "$S2_FIXTURE/$S2_LEARNING_REL" "$s4_interview_required_line" || S2_MUT_OK=0
+    s2_negative "interview-mode prompt required line removal rejected ($s4_interview_required_line)" "$S2_LEARNING_REL" \
+      "Learning interview-mode prompt missing or incomplete"
+  fi
+done
+
+# S4C11. Independent PASS backed by a learning-only labelled source.
+if s2_begin_case S4C11; then
+  s2_replace_line "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_R62" \
+    '| TASK-062 | 머지됨 (PR #105, `37d907f`) | 해당없음 (시행 이전 계약) | PASS (fixture) | 시행 이전 계약; Issue #104 DoD에 고위험 학습·면접 merge 전 PASS 조건 | 미확인 | 머지: GitHub; 학습: GitHub (fixture) |' ||
+    S2_MUT_OK=0
+  s2_positive "independent PASS with learning-only labelled source accepted" "$S2_ROADMAP_REL"
+fi
+
+# S4P1. TASK row example inside a fence in the tracker section.
+if s2_begin_case S4P1; then
+  if s2_ins="$(s2_ins_file '' '```text' "$S2_R61" '```')"; then
+    s2_insert_after "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_R63" "$s2_ins" || S2_MUT_OK=0
+  else
+    S2_MUT_OK=0
+  fi
+  [ "$(s2_count "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_R61")" -eq 2 ] || S2_MUT_OK=0
+  s2_positive "fenced TASK row example in tracker section accepted" "$S2_ROADMAP_REL"
+fi
+
+# S4P2. Additional valid TASK row beyond the required minimum set.
+if s2_begin_case S4P2; then
+  if s2_ins="$(s2_ins_file "$S4_TASK_031_ROW")"; then
+    s2_insert_after "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_R63" "$s2_ins" || S2_MUT_OK=0
+  else
+    S2_MUT_OK=0
+  fi
+  s2_positive "additional valid tracker row accepted" "$S2_ROADMAP_REL"
+fi
+
+# S4P3. Evidence source with an approved remark.
+if s2_begin_case S4P3; then
+  s2_replace_line "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_R61" \
+    '| TASK-061 | 머지됨 (PR #103, `8c9f097`) | 해당없음 (시행 이전 계약) | 미확인 (기존 MASTER의 WORK-9 PASS 보고 있음, 원문 대조 미완료) | 시행 이전 계약 | 완료 (기존 MASTER FINAL COMPLETE 보고 보존) | 머지: GitHub; 학습·최종 완료: MASTER 보고 (fixture) |' ||
+    S2_MUT_OK=0
+  s2_positive "evidence source with approved remark accepted" "$S2_ROADMAP_REL"
+fi
+
+# S4N1. One required tracker row removed.
+if s2_begin_case S4N1; then
+  s2_delete_line "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_R62" || S2_MUT_OK=0
+  s2_negative "required tracker row removal rejected" "$S2_ROADMAP_REL" \
+    "Roadmap learning tracker required TASK row missing: TASK-062"
+fi
+
+# S4N2. Every required tracker row removed; header and separator remain.
+if s2_begin_case S4N2; then
+  for s4_required_row in "$S2_R61" "$S2_R62" "$S2_R32" "$S2_R33" "$S2_R63"
+  do
+    s2_delete_line "$S2_FIXTURE/$S2_ROADMAP_REL" "$s4_required_row" || S2_MUT_OK=0
+  done
+  [ "$(s2_count "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_TRACKER_HEADER")" -eq 1 ] || S2_MUT_OK=0
+  s2_negative "all required tracker rows removal rejected" "$S2_ROADMAP_REL" \
+    "Roadmap learning tracker required TASK row missing: TASK-061" \
+    "Roadmap learning tracker required TASK row missing: TASK-062" \
+    "Roadmap learning tracker required TASK row missing: TASK-032" \
+    "Roadmap learning tracker required TASK row missing: TASK-033" \
+    "Roadmap learning tracker required TASK row missing: TASK-063"
+fi
+
+# S4N3. Malformed TASK row in the middle ends the approved table early.
+if s2_begin_case S4N3; then
+  if s2_ins="$(s2_ins_file '|TASK-9998| 미머지 | 미실시 | 미실시 | 시행 이전 계약 | 미확인 | GitHub |')"; then
+    s2_insert_after "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_R62" "$s2_ins" || S2_MUT_OK=0
+  else
+    S2_MUT_OK=0
+  fi
+  s2_negative "rows hidden behind a malformed tracker row rejected" "$S2_ROADMAP_REL" \
+    "Roadmap learning tracker required TASK row missing: TASK-032" \
+    "Roadmap learning tracker required TASK row missing: TASK-033" \
+    "Roadmap learning tracker required TASK row missing: TASK-063" \
+    "Roadmap learning tracker TASK row outside approved table: TASK-9998" \
+    "Roadmap learning tracker TASK row outside approved table: TASK-032" \
+    "Roadmap learning tracker TASK row outside approved table: TASK-033" \
+    "Roadmap learning tracker TASK row outside approved table: TASK-063"
+fi
+
+# S4N4. TASK row left in the tracker section after the table ends.
+if s2_begin_case S4N4; then
+  if s2_ins="$(s2_ins_file '' "$S4_TASK_031_ROW")"; then
+    s2_insert_after "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_R63" "$s2_ins" || S2_MUT_OK=0
+  else
+    S2_MUT_OK=0
+  fi
+  s2_negative "tracker row after the table end rejected" "$S2_ROADMAP_REL" \
+    "Roadmap learning tracker TASK row outside approved table: TASK-031"
+fi
+
+# S4N5. Source name followed by an unapproved negation (pair of S4P3).
+if s2_begin_case S4N5; then
+  s2_replace_line "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_R61" \
+    '| TASK-061 | 머지됨 (PR #103, `8c9f097`) | 해당없음 (시행 이전 계약) | 미확인 (기존 MASTER의 WORK-9 PASS 보고 있음, 원문 대조 미완료) | 시행 이전 계약 | 완료 (기존 MASTER FINAL COMPLETE 보고 보존) | 머지: GitHub; 학습·최종 완료: MASTER 보고 없음 |' ||
+    S2_MUT_OK=0
+  s2_negative "final evidence with unapproved source text rejected" "$S2_ROADMAP_REL" \
+    "Roadmap learning tracker evidence source format invalid: TASK-061 학습·최종 완료" \
+    "Roadmap learning tracker final-completion evidence missing: TASK-061"
+fi
+
+# S4N6. Independent PASS with an unapproved learning source text.
+if s2_begin_case S4N6; then
+  s2_replace_line "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_R62" \
+    '| TASK-062 | 머지됨 (PR #105, `37d907f`) | 해당없음 (시행 이전 계약) | PASS (fixture) | 시행 이전 계약; Issue #104 DoD에 고위험 학습·면접 merge 전 PASS 조건 | 미확인 | 머지: GitHub; 학습: GitHub 기록 미확인 |' ||
+    S2_MUT_OK=0
+  s2_negative "independent evidence with unapproved source text rejected" "$S2_ROADMAP_REL" \
+    "Roadmap learning tracker evidence source format invalid: TASK-062 학습" \
+    "Roadmap learning tracker independent-verification evidence missing: TASK-062"
+fi
+
+# S4N7. Merge evidence with an unapproved source text.
+if s2_begin_case S4N7; then
+  s2_replace_line "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_R61" \
+    '| TASK-061 | 머지됨 (PR #103, `8c9f097`) | 해당없음 (시행 이전 계약) | 미확인 (기존 MASTER의 WORK-9 PASS 보고 있음, 원문 대조 미완료) | 시행 이전 계약 | 완료 (기존 MASTER FINAL COMPLETE 보고 보존) | 머지: GitHub 머지 확인 안 됨; 학습·최종 완료: MASTER 보고 |' ||
+    S2_MUT_OK=0
+  s2_negative "merge evidence with unapproved source text rejected" "$S2_ROADMAP_REL" \
+    "Roadmap learning tracker evidence source format invalid: TASK-061 머지"
+fi
 
 if [ "$SELF_ERRORS" -ne 0 ]; then
   printf '%s\n' "VALIDATOR_SELF_TEST=FAIL"

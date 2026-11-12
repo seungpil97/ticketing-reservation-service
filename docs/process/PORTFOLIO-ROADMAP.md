@@ -21,6 +21,8 @@
 - `계획`: 사용자 승인된 후속 TASK
 - `재확인필요`: 과거 자료에는 있으나 현재 완료/진행 근거가 확인되지 않은 항목
 
+`재확인필요`는 미구현이나 학습 미실시를 뜻하지 않으며, 미구현 건수로 집계하지 않는다.
+
 별도 상태 이력 열은 두지 않는다. 상세 변경 이력은 Issue, PR, commit 등 실제 근거에서 확인한다.
 
 ## 현재 확인 상태
@@ -30,25 +32,25 @@
 | TASK-031 | Redis Sliding Window 기반 Rate Limiting 구현 | 완료 | Issue #96, PR #97, commit `f0aabf8` |
 | TASK-059 | Claude Code 최소 구성 적용 및 위험 리뷰 Agent 검증 | 완료 | merge SHA `122816d91533befcc7a63c06cf83a7150e1fd05d` |
 | TASK-060 | 프로젝트 프로세스 문서 정합성 복구 및 학습 계약 추가 | 완료 | Issue #100, PR #101, merge SHA `607474972a9d853567ac818f68b7a3e16cf7a03e` |
-| TASK-061 | Test-First AI 개발 Workflow 도입 및 RED/Test Contract Gate 공식화 | 진행중 | Issue #102, branch `chore/TASK-061-test-first-workflow` |
+| TASK-061 | Test-First AI 개발 Workflow 도입 및 RED/Test Contract Gate 공식화 | 완료 | Issue #102, PR #103, merge SHA `8c9f097855ddf7250d4dacfb778e19362b6c1b4a`; 최종 완료: 기존 MASTER FINAL COMPLETE 보고(원문 대조 미완료) |
+| TASK-062 | 예약 취소·만료·재선점·결제 좌석 정합성 보장 | 재확인필요 | Issue #104, PR #105, merge SHA `37d907f1d2ed4c79e51855d24d789ca46b97ef8b`; 학습·최종 완료 미확인 |
+| TASK-032 | 이벤트 기반 예약 처리 (Spring Events) | 재확인필요 | Issue #106, PR #107, merge SHA `8593d642105a2396c3db30fd8b331889b47fd428`; 학습·최종 완료 미확인 |
+| TASK-033 | Outbox Pattern 구현 | 재확인필요 | Issue #108, PR #109, merge SHA `372982abdabfee02c4ae30deae5cbb77eff1fb4b`; 설명 완료, 독립 이해도 검증 미확인, 최종 완료 사용자 결정 대기 |
+| TASK-063 | 설명 중심 학습 정책 및 로드맵 근거 정비 | 진행중 | Issue #110, branch `chore/TASK-063-learning-policy-roadmap` |
 
 ## 다음 직접 진행 순서
 
 사용자 승인 없이 다음 TASK를 자동으로 시작하지 않는다.
 
 ```text
-TASK-032
-→ TASK-033
-→ TASK-033-1
+TASK-033-1
 → TASK-028
 → TASK-043
 ```
 
 | TASK | 내용 | 상태 | 선행 조건 |
 | --- | --- | --- | --- |
-| TASK-032 | 이벤트 기반 예약 처리 (Spring Events) | 계획 | TASK-061 완료 + 사용자 승인 |
-| TASK-033 | Outbox Pattern 구현 | 계획 | TASK-032 완료 + 사용자 승인 |
-| TASK-033-1 | Outbox 재처리 실패 시나리오 | 계획 | TASK-033 완료 + 사용자 승인 |
+| TASK-033-1 | Outbox 재처리 실패 시나리오 | 계획 | TASK-033 최종 완료(필요한 학습 의무 해소 포함) + 사용자 승인 |
 | TASK-028 | Redis/DB 장애 시나리오 구현 및 문서화 | 계획 | TASK-033-1 완료 + 사용자 승인 |
 | TASK-043 | 장애 복구 전략 설계 + 코드 구현 | 계획 | TASK-028 완료 + 사용자 승인 |
 
@@ -56,7 +58,9 @@ TASK-032
 
 A old roadmap의 고유 TASK 74개를 모두 보존한다.
 A에서 과거에 `완료` 또는 `남은 로드맵`으로 분류됐더라도 현재 근거가 확인되지 않으면 이 문서에서는 `재확인필요`로 기록한다.
-현재 근거가 확인된 TASK-031과 MASTER에서 완료가 확정된 TASK-059, TASK-060은 `완료`, 현재 수행 중인 TASK-061은 `진행중`, 승인된 직접 후속 5개는 `계획`으로 기록한다.
+현재 근거가 확인된 TASK-031, MASTER에서 완료가 확정된 TASK-059·TASK-060, 기존 MASTER FINAL COMPLETE 보고가 있는 TASK-061은 `완료`로 기록한다.
+merge는 확인됐지만 학습·최종 완료 근거가 확인되지 않은 TASK-062·TASK-032·TASK-033은 `재확인필요`, 현재 수행 중인 TASK-063은 `진행중`, 승인된 직접 후속 3개는 `계획`으로 기록한다.
+TASK별 학습·최종 완료 근거는 `## TASK 학습·완료 추적`에서 구분한다.
 
 ### Phase 1. 기반 구축
 
@@ -139,14 +143,15 @@ A에서 과거에 `완료` 또는 `남은 로드맵`으로 분류됐더라도 �
 | TASK-046 | 예약/결제/HOLD/좌석 상태 전이 및 동시 결제 정합성 보강 | 재확인필요 | A old roadmap 기록만 확인됨; 현재 완료/진행 근거 재검증 필요 | Lock/MVCC, 트랜잭션 (Week 4~5) |
 | TASK-052 | Idempotency Key 기반 예약 생성 API 중복 요청 방지 확장 | 재확인필요 | A old roadmap 기록만 확인됨; 현재 완료/진행 근거 재검증 필요 | 트랜잭션/Redis (Week 5, 8) |
 | TASK-031 | Redis Sliding Window 기반 Rate Limiting 구현 | 완료 | B current: Issue #96, PR #97, commit `f0aabf8` | Redis/동시성 (Week 8, 10) |
+| TASK-062 | 예약 취소·만료·재선점·결제 좌석 정합성 보장 | 재확인필요 | Issue #104, PR #105, merge SHA `37d907f1d2ed4c79e51855d24d789ca46b97ef8b`; 학습·최종 완료 미확인 | Lock/MVCC, 트랜잭션 (Week 4~5) |
 
 ### Phase 4-2. 이벤트 처리 & 장애 신뢰성
 
 | TASK | 내용 | 상태 | 현재 근거 / 조건 | CS 연관 개념 |
 | --- | --- | --- | --- | --- |
-| TASK-032 | 이벤트 기반 예약 처리 (Spring Events) | 계획 | MASTER 승인 직접 순서; TASK-061 완료 + 사용자 승인 | 이벤트 기반 설계/Kafka 비교 (Week 15) |
-| TASK-033 | Outbox Pattern 구현 | 계획 | MASTER 승인 직접 순서; TASK-032 완료 + 사용자 승인 | Kafka/트랜잭션 (Week 15, 5) |
-| TASK-033-1 | Outbox 재처리 실패 시나리오 | 계획 | MASTER 승인 직접 순서; TASK-033 완료 + 사용자 승인 | 트랜잭션/재시도 (Week 5) |
+| TASK-032 | 이벤트 기반 예약 처리 (Spring Events) | 재확인필요 | Issue #106, PR #107, merge SHA `8593d642105a2396c3db30fd8b331889b47fd428`; 학습·최종 완료 미확인 | 이벤트 기반 설계/Kafka 비교 (Week 15) |
+| TASK-033 | Outbox Pattern 구현 | 재확인필요 | Issue #108, PR #109, merge SHA `372982abdabfee02c4ae30deae5cbb77eff1fb4b`; 설명 완료, 독립 이해도 검증 미확인, 최종 완료 사용자 결정 대기 | Kafka/트랜잭션 (Week 15, 5) |
+| TASK-033-1 | Outbox 재처리 실패 시나리오 | 계획 | MASTER 승인 직접 순서; TASK-033 최종 완료(필요한 학습 의무 해소 포함) + 사용자 승인 | 트랜잭션/재시도 (Week 5) |
 | TASK-028 | Redis/DB 장애 시나리오 구현 및 문서화 | 계획 | MASTER 승인 직접 순서; TASK-033-1 완료 + 사용자 승인 | 커넥션 풀/Redis (Week 5, 8) |
 | TASK-043 | 장애 복구 전략 설계 + 코드 구현 | 계획 | MASTER 승인 직접 순서; TASK-028 완료 + 사용자 승인 | 장애 흐름 전반 |
 | TASK-034 | Circuit Breaker 적용 (Resilience4j) | 재확인필요 | A old roadmap 기록만 확인됨; 현재 완료/진행 근거 재검증 필요; A old roadmap에서 선택 TASK로 기록 | 장애 격리 (Week 15) |
@@ -198,7 +203,8 @@ A에서 과거에 `완료` 또는 `남은 로드맵`으로 분류됐더라도 �
 | --- | --- | --- | --- | --- |
 | TASK-059 | Claude Code 최소 구성 적용 및 위험 리뷰 Agent 검증 | 완료 | merge SHA `122816d91533befcc7a63c06cf83a7150e1fd05d` | — |
 | TASK-060 | 프로젝트 프로세스 문서 정합성 복구 및 학습 계약 추가 | 완료 | Issue #100, PR #101, merge SHA `607474972a9d853567ac818f68b7a3e16cf7a03e` | 프로세스 / AI 협업 / 검증 |
-| TASK-061 | Test-First AI 개발 Workflow 도입 및 RED/Test Contract Gate 공식화 | 진행중 | Issue #102, branch `chore/TASK-061-test-first-workflow` | 테스트 / AI 협업 / 검증 |
+| TASK-061 | Test-First AI 개발 Workflow 도입 및 RED/Test Contract Gate 공식화 | 완료 | Issue #102, PR #103, merge SHA `8c9f097855ddf7250d4dacfb778e19362b6c1b4a`; 최종 완료: 기존 MASTER FINAL COMPLETE 보고(원문 대조 미완료) | 테스트 / AI 협업 / 검증 |
+| TASK-063 | 설명 중심 학습 정책 및 로드맵 근거 정비 | 진행중 | Issue #110, branch `chore/TASK-063-learning-policy-roadmap` | 프로세스 / AI 협업 / 학습 |
 
 ## CS 주차 ↔ TASK ↔ interview 연결
 
@@ -216,15 +222,40 @@ A에서 과거에 `완료` 또는 `남은 로드맵`으로 분류됐더라도 �
 | Week 14 (Docker/CI/CD) | TASK-008, TASK-015, TASK-038, TASK-038-1 | 배포 실패 경험, 롤백 전략 |
 | Week 15 (Kafka/MSA) | TASK-032, TASK-033, TASK-048 | Kafka 미도입 이유, Spring Events 한계, Outbox 선택 이유 |
 
+## TASK 학습·완료 추적
+
+학습·최종 완료 판정이 필요한 TASK의 구현·머지, 설명 제공, 독립 이해도 검증, 적용 계약·예외, 최종 완료 판정과 근거 출처를 구분한다.
+기존 `재확인필요` 항목은 이 표에 넣지 않는다.
+
+값의 의미:
+
+- `미확인`: 기록이나 근거를 확보하지 못했다. 실시 여부를 알 수 없으며, 미실시나 미통과를 뜻하지 않는다.
+- `미실시`: 실시하지 않았다는 기록이 있다.
+- `해당없음`: 적용 계약이 요구하지 않았거나 별도로 추적하지 않았다.
+- `미확정`: 판정 절차가 진행 중이거나 사용자 결정을 기다린다.
+- 근거 출처: `GitHub`(Issue·PR 기록), `저장소`(저장소 파일), `MASTER 보고`(MASTER 보고 기준, 원문 대조 미완료), `근거 미확보`
+
+이 표의 `미확인`만으로 기존 상태나 최종 완료 판정을 바꾸지 않는다. 값 변경은 사용자 또는 MASTER의 명시적 결정 기록이 있을 때만 한다.
+설명 제공 `완료`는 독립 이해도 검증 PASS나 Level 달성을 뜻하지 않는다.
+
+| TASK | 구현·머지 | 설명 제공 | 독립 이해도 검증 | 적용 계약·예외 | 최종 완료 판정 | 근거 출처 |
+| --- | --- | --- | --- | --- | --- | --- |
+| TASK-061 | 머지됨 (PR #103, `8c9f097`) | 해당없음 (시행 이전 계약) | 미확인 (기존 MASTER의 WORK-9 PASS 보고 있음, 원문 대조 미완료) | 시행 이전 계약 | 완료 (기존 MASTER FINAL COMPLETE 보고 보존) | 머지: GitHub; 학습·최종 완료: MASTER 보고 |
+| TASK-062 | 머지됨 (PR #105, `37d907f`) | 해당없음 (시행 이전 계약) | 미확인 | 시행 이전 계약; Issue #104 DoD에 고위험 학습·면접 merge 전 PASS 조건 | 미확인 | 머지: GitHub; 학습·최종 완료: 근거 미확보 |
+| TASK-032 | 머지됨 (PR #107, `8593d64`) | 해당없음 (시행 이전 계약) | 미확인 | 시행 이전 계약 | 미확인 | 머지: GitHub; 학습·최종 완료: 근거 미확보 |
+| TASK-033 | 머지됨 (PR #109, `372982a`) | 완료 (시행 이전 설명 중심 학습 기록) | 미확인 (부분 답변 확인, 30초·90초 미실시, Level 4 최종 PASS 미부여) | 시행 이전 계약, 고위험 Level 4 merge 전 gate (Issue #108); 예외: TASK-033 한정으로 사용자 요청에 따라 merge 전 조건만 설명 중심 학습 완료와 기록으로 대체, 최종 완료로 확대되지 않음 | 미확정 (사용자 결정 대기) | 머지: GitHub; 학습: 저장소 `docs/learning/TASK-033/INTERVIEW-NOTES.md`, GitHub PR #109 |
+| TASK-063 | 미머지 | 완료 (MASTER 설명 후 사용자 “진행하자” 수령 확인) | 미실시 (면접 모드 미요청, Level 미평가) | TASK 한정 결정 (Issue #110): 설명 중심, merge 전 설명·기록·사용자 설명 수령 확인·MASTER 정확성 검토 gate | 미확정 | GitHub Issue #110; 학습: 저장소 `docs/learning/TASK-063/INTERVIEW-NOTES.md`, MASTER 보고 (MASTER 설명과 사용자 수령 확인) |
+
 ## Learning 연결
 
 TASK별 학습·면접 검증의 상세 기준은 `docs/process/TASK-LEARNING-INTERVIEW-CONTRACT.md`를 따른다.
 대표/고위험 여부와 learning deadline은 TASK 계획 단계에서 승인하며, 학습 산출물 경로와 pass 기준도 해당 계약을 단일 기준으로 사용한다.
+TASK별 설명 제공, 독립 이해도 검증, 최종 완료 근거는 `## TASK 학습·완료 추적`에 기록한다.
 
 ## TASK coverage 기준
 
 - A old roadmap 고유 TASK: 74
 - B current roadmap 고유 TASK: 8
-- 이 후보의 전체 TASK 이력 고유 TASK: 77
+- 이 후보의 전체 TASK 이력 고유 TASK: 79
 - A old roadmap에서 누락된 TASK: 없음
-- A 기준 신규 TASK: TASK-059, TASK-060, TASK-061
+- A 기준 신규 TASK: TASK-059, TASK-060, TASK-061, TASK-062, TASK-063
