@@ -872,7 +872,7 @@ rewrite_with_awk "$fixture/docs/process/PORTFOLIO-ROADMAP.md" \
    { while ((i=index($0, old)) > 0) { $0=substr($0, 1, i-1) new substr($0, i+length(old)); n++ } print }
    END{if(n < 1) exit 2}'
 if grep -Fq "TASK-033 최종 완료(필요한 학습 의무 해소 포함) + 사용자 승인" "$fixture/docs/process/PORTFOLIO-ROADMAP.md" ||
-   ! grep -Fq "| TASK-033-1 | Outbox 재처리 실패 시나리오 | 진행중 | TASK-032 완료 + 사용자 승인 |" "$fixture/docs/process/PORTFOLIO-ROADMAP.md"
+   ! grep -Fq "| TASK-033-1 | Outbox 재처리 실패 시나리오 | 완료 | TASK-032 완료 + 사용자 승인 |" "$fixture/docs/process/PORTFOLIO-ROADMAP.md"
 then
   record_fail "N9 Roadmap TASK-033-1 prerequisite mutation postcondition failed"
 else
@@ -3455,8 +3455,8 @@ N112_SECTION='## 다음 직접 진행 순서'
 N112_HEADER='| TASK | 내용 | 상태 | 선행 조건 |'
 N112_SEPARATOR='| --- | --- | --- | --- |'
 
-N112_ROW='| TASK-033-1 | Outbox 재처리 실패 시나리오 | 진행중 | TASK-033 최종 완료(필요한 학습 의무 해소 포함) + 사용자 승인 |'
-N112_MUTATED_ROW='| TASK-033-1 | Outbox 재처리 실패 시나리오 | 진행중 | TASK-033 최종 완료(필요한 학습 의무 해소 포함) + fixture 승인 |'
+N112_ROW='| TASK-033-1 | Outbox 재처리 실패 시나리오 | 완료 | TASK-033 최종 완료(필요한 학습 의무 해소 포함) + 사용자 승인 |'
+N112_MUTATED_ROW='| TASK-033-1 | Outbox 재처리 실패 시나리오 | 완료 | TASK-033 최종 완료(필요한 학습 의무 해소 포함) + fixture 승인 |'
 
 N112_DIRECT_ORDER_EXPECTED='```text
 TASK-033-1
@@ -4827,7 +4827,7 @@ fi
 # N129. TASK-033-1 prerequisite-table status mutation.
 fixture="$(make_fixture N129)"
 N129_FILE="$fixture/docs/process/PORTFOLIO-ROADMAP.md"
-N129_OLD='| TASK-033-1 | Outbox 재처리 실패 시나리오 | 진행중 | TASK-033 최종 완료(필요한 학습 의무 해소 포함) + 사용자 승인 |'
+N129_OLD='| TASK-033-1 | Outbox 재처리 실패 시나리오 | 완료 | TASK-033 최종 완료(필요한 학습 의무 해소 포함) + 사용자 승인 |'
 N129_NEW='| TASK-033-1 | Outbox 재처리 실패 시나리오 | 계획 | TASK-033 최종 완료(필요한 학습 의무 해소 포함) + 사용자 승인 |'
 
 if [ "$(
@@ -4869,8 +4869,8 @@ fi
 # N130. TASK-033-1 prerequisite mutation.
 fixture="$(make_fixture N130)"
 N130_FILE="$fixture/docs/process/PORTFOLIO-ROADMAP.md"
-N130_OLD='| TASK-033-1 | Outbox 재처리 실패 시나리오 | 진행중 | TASK-033 최종 완료(필요한 학습 의무 해소 포함) + 사용자 승인 |'
-N130_NEW='| TASK-033-1 | Outbox 재처리 실패 시나리오 | 진행중 | TASK-033 최종 완료(필요한 학습 의무 해소 포함) + fixture 승인 |'
+N130_OLD='| TASK-033-1 | Outbox 재처리 실패 시나리오 | 완료 | TASK-033 최종 완료(필요한 학습 의무 해소 포함) + 사용자 승인 |'
+N130_NEW='| TASK-033-1 | Outbox 재처리 실패 시나리오 | 완료 | TASK-033 최종 완료(필요한 학습 의무 해소 포함) + fixture 승인 |'
 
 if [ "$(
   x2a_exact_line_count \
