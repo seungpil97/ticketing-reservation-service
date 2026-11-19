@@ -5,6 +5,9 @@
 Decided (2026-11) — TASK-033(#108)에서 도입. [ADR-003](ADR-003-no-outbox.md)을 대체한다.
 재시도 정책과 운영 확장은 TASK-033-1에서 다룬다.
 
+TASK-033-1(#115) 이후: 처리 실패 기록·백오프·최종 실패(FAILED)·수동 재처리·처리 지연 관측은 [ADR-006](ADR-006-outbox-retry-and-failure.md)이 결정한다.
+아래 본문은 TASK-033 결정 당시의 기록이며, 바뀐 부분은 끝의 「TASK-033-1 이후 변경」에 정리한다.
+
 ## Context
 
 ADR-003은 "알림·외부 연동 등 이벤트 발행 요건 없음"을 근거로 Outbox를 적용하지 않았다.
@@ -115,6 +118,23 @@ relay는 단일 인스턴스 전제에서 순회 위치를 메모리에 둔다.
 - 다중 인스턴스가 필요해지면 후보 조회에 `SKIP LOCKED` 또는 분산 스케줄 잠금을 검토한다.
 - 외부 발행 요건이 생기면 같은 Outbox를 브로커 발행의 원천으로 확장하는 방향을 우선 검토한다 (ADR-001).
 
+### TASK-033-1 이후 변경 ([ADR-006](ADR-006-outbox-retry-and-failure.md))
+
+TASK-033-1(#115)에서 위 Future Path의 TASK-033-1 항목을 구현했다. 이 절은 TASK-033 당시 본문을 고치지 않고 달라진 점만 적는다.
+
+| TASK-033 당시 기록 | TASK-033-1 이후 |
+|---|---|
+| §2·§4: 실패 건은 PENDING으로 남아 다음 순회에서 재시도 | 실패는 처리 rollback 뒤 별도 트랜잭션으로 기록되고, 기록된 다음 시도 시각 이후에만 다시 후보가 된다. 기록된 실패 5회(기본값)에서 FAILED로 전이해 자동 순회에서 빠진다 |
+| §4: 순회 상한은 최대 PENDING ID | 지금 처리 대상(다음 시도 시각이 없거나 지난) PENDING의 최대 ID. 커서·batch·같은 호출 안 새 순회 1회 규칙은 그대로다 |
+| §2: 처리기는 잠금 후 PENDING만 재확인 | 잠금 후 PENDING과 처리 대상 여부를 재확인한다. 처리 완료 시 다음 시도 시각을 지우고 상태 버전을 올리며 실패 이력은 남긴다 |
+| §3: 상태 PENDING·PROCESSED | FAILED 추가. FAILED는 DB 프로시저 `outbox_requeue_failed`로만 PENDING에 되돌린다 |
+| 현재 한계: 시도 횟수·마지막 오류·다음 시도 시각 미기록 | 기록된 실패 수·마지막 실패 시각·허용 목록 오류 분류·다음 시도 시각·상태 버전을 기록한다 (V16). 기록된 실패 수는 실제 시도 수의 하한이다 |
+| Future Path TASK-033-1 후속 제안: 실제 실패 경로 검증 | 실제 UNIQUE·FK·깨진 payload에서 해당 항목만 rollback되고 실패가 기록되며 다음 항목이 처리되는 것을 격리 MariaDB에서 확인했다 |
+| Future Path TASK-033-1 후속 제안: 동시 실행 검증 | 실패 기록기·재처리 프로시저의 실제 잠금 대기 후 최신 상태 판단만 검증했다. relay 수준 동시성 전체(F-3)와 다중 인스턴스는 검증하지 않았다 |
+
+그대로 유지되는 것: 결제와 Outbox 같은 트랜잭션 저장(§1), 알림과 처리 완료 같은 커밋(§2), 중복 처리 방어(§3), 스케줄러(§5), FK·보존 정책(§6),
+처리 완료 행 보존 정책 부재, 공유 테스트 DB Outbox 행 누적, 단일 인스턴스 전제.
+
 ## Related Code / Docs
 
 - `payment/application/event/PaymentOutboxListener.java` — 결제 트랜잭션 안 Outbox 저장 (`@Order(1)`, MANDATORY)
@@ -124,4 +144,5 @@ relay는 단일 인스턴스 전제에서 순회 위치를 메모리에 둔다.
 - `outbox/domain/OutboxEvent.java`, `notification/domain/Notification.java`
 - `src/main/resources/db/migration/V15__create_outbox_event_and_notification.sql`
 - `docs/architecture/adr/ADR-003-no-outbox.md` — 대체된 결정
-- 연계 TASK: TASK-033 (#108), TASK-033-1 (Outbox 재처리 실패 시나리오)
+- `docs/architecture/adr/ADR-006-outbox-retry-and-failure.md` — TASK-033-1 실패 기록·재시도·최종 실패·수동 재처리
+- 연계 TASK: TASK-033 (#108), TASK-033-1 (#115, Outbox 재처리 실패 시나리오)

@@ -4,6 +4,7 @@ import com.pil97.ticketing.support.consistency.ConsistencyFixture;
 import com.pil97.ticketing.support.consistency.SqlObserver;
 import com.pil97.ticketing.support.consistency.SqlObserverConfig;
 import com.pil97.ticketing.support.outbox.IsolatedMariaDb;
+import com.pil97.ticketing.support.outbox.MutableClock;
 import com.pil97.ticketing.support.outbox.OutboxFaultInterceptor;
 import com.pil97.ticketing.support.outbox.OutboxFixture;
 import com.pil97.ticketing.support.outbox.OutboxFixture.Seeded;
@@ -26,6 +27,7 @@ import org.testcontainers.containers.MariaDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.time.LocalDateTime;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -55,6 +57,9 @@ import static org.mockito.Mockito.verify;
  *   <li>상한 뒤에 추가된 PENDING은 다음 순회에서 다뤄지므로, 실패한 앞쪽 행은 큰 ID가 계속 추가되어도 다음 순회에서 다시 시도된다</li>
  * </ul>
  *
+ * <p>TASK-033-1 (#115) After 계약 (AC-6·AC-6B-2·AC-6B-3): 실패 건은 기록된 다음 시도 시각 이후에만 다시 선택된다.
+ * 재시도 단계 앞에서 MutableClock을 다음 시도 시각까지 진행한다. rollback·알림 1건·실패 격리·순회 의미는 그대로다.
+ *
  * <p>시작 상태는 결제 서비스를 거치지 않고 만든다 (결제 완료 행 + JDBC로 넣은 PENDING Outbox).
  * 격리 DB에는 이 클래스가 만든 행만 있고, 각 테스트는 자기 행을 정리해 다음 테스트 시작 시 PENDING이 없다.
  * 최종 상태는 JDBC autocommit 조회로 트랜잭션 종료 후 별도로 읽는다.
@@ -62,10 +67,14 @@ import static org.mockito.Mockito.verify;
 @Testcontainers
 @SpringBootTest(properties = {
   "outbox.relay.batch-size=2",
+  "outbox.relay.retry.max-attempts=5",
+  "outbox.relay.retry.initial-backoff=30s",
+  "outbox.relay.retry.max-backoff=10m",
   "spring.jpa.properties.hibernate.session_factory.interceptor="
     + "com.pil97.ticketing.support.outbox.OutboxFaultInterceptor"})
 @ActiveProfiles("test")
-@Import({ConsistencyFixture.class, OutboxFixture.class, SchedulerExclusionConfig.class, SqlObserverConfig.class})
+@Import({ConsistencyFixture.class, OutboxFixture.class, SchedulerExclusionConfig.class, SqlObserverConfig.class,
+  MutableClock.Config.class})
 @DirtiesContext
 class OutboxRelayIntegrationTest {
 
@@ -82,6 +91,7 @@ class OutboxRelayIntegrationTest {
   @Autowired private OutboxRelayService relayService;
   @MockitoSpyBean private OutboxItemProcessor itemProcessor;
   @Autowired private ApplicationContext context;
+  @Autowired private MutableClock clock;
 
   @BeforeEach
   void setUp() {
@@ -89,6 +99,16 @@ class OutboxRelayIntegrationTest {
     assertThat(outbox.currentDatabase()).as("격리 DB 사용").isEqualTo(IsolatedMariaDb.DATABASE);
     SqlObserver.clear();
     OutboxFaultInterceptor.reset();
+    clock.set(MutableClock.START);
+  }
+
+  /**
+   * 기록된 다음 시도 시각 (실패 기록이 없으면 AssertionError - 재시도 단계 진입 전 단정)
+   */
+  private LocalDateTime nextAttemptAt(Seeded seeded, String label) {
+    LocalDateTime next = outbox.retryRow(seeded.outboxId()).nextAttemptAt();
+    assertThat(next).as("%s 다음 시도 시각 기록", label).isNotNull();
+    return next;
   }
 
   @AfterEach
@@ -169,7 +189,7 @@ class OutboxRelayIntegrationTest {
   // ===================== AC-6 처리 완료 표시 단계 실패 =====================
 
   @Test
-  @DisplayName("AC-6 알림 기록 이후 처리 완료 표시 단계 장애: 알림 롤백·PENDING 유지, 다음 폴링에서 알림 1건과 처리 완료")
+  @DisplayName("AC-6 알림 기록 이후 처리 완료 표시 단계 장애: 알림 롤백·PENDING 유지, 같은 시각 폴링은 미선택, 다음 시도 시각 이후 폴링에서 알림 1건과 처리 완료")
   void ac6_failureAfterNotificationInsert_rollsBackAndRetries() {
     Seeded s = outbox.seedPending();
     OutboxFaultInterceptor.failOnce(s.outboxId());
@@ -185,6 +205,15 @@ class OutboxRelayIntegrationTest {
     assertThat(fixture.paymentRow(s.paymentId()).get("status")).isEqualTo("SUCCESS");
     assertThat(fixture.reservationStatus(s.reservationId())).isEqualTo("CONFIRMED");
 
+    // After: 같은 시각 폴링에서는 다시 선택하지 않는다 (기록된 실패 1회)
+    clearInvocations(itemProcessor);
+    relayService.relay();
+    verify(itemProcessor, never()).process(s.outboxId());
+    assertPending(outbox.snapshot(s), "같은 시각 폴링 후");
+    assertThat(outbox.retryRow(s.outboxId()).failedAttempts()).as("기록된 실패").isEqualTo(1);
+
+    // After: 다음 시도 시각까지 진행한 뒤 재처리
+    clock.set(nextAttemptAt(s, "실패 시도 후"));
     relayService.relay();
     Snapshot retried = outbox.snapshot(s);
     assertProcessed(retried, "재처리 후");
@@ -235,8 +264,11 @@ class OutboxRelayIntegrationTest {
     assertPending(outbox.snapshot(r1), "폴링 2 r1");
     assertPending(outbox.snapshot(r2), "폴링 2 r2");
 
-    // 폴링 3 (장애 해제): 새 순회에서 r1·r2 재시도 성공
+    // 폴링 3 (장애 해제, After: r1·r2 다음 시도 시각 이후로 진행): 새 순회에서 r1·r2 재시도 성공
     OutboxFaultInterceptor.disarm();
+    LocalDateTime r1Next = nextAttemptAt(r1, "폴링 2 후 r1");
+    LocalDateTime r2Next = nextAttemptAt(r2, "폴링 2 후 r2");
+    clock.set(r1Next.isAfter(r2Next) ? r1Next : r2Next);
     relayService.relay();
     assertProcessed(outbox.snapshot(r1), "폴링 3 r1");
     assertProcessed(outbox.snapshot(r2), "폴링 3 r2");
@@ -264,8 +296,9 @@ class OutboxRelayIntegrationTest {
     assertPending(outbox.snapshot(r4), "폴링 2 r4");
     assertThat(OutboxFaultInterceptor.injectedCount(r1.outboxId())).as("폴링 2 r1 시도 누계").isEqualTo(1);
 
-    // 폴링 3 전 r5 추가: 새 순회(상한 r5)가 앞쪽 실패 건 r1부터 다시 선택한다
+    // 폴링 3 전 r5 추가 (After: r1 다음 시도 시각 이후로 진행): 새 순회(상한 r5)가 앞쪽 실패 건 r1부터 다시 선택한다
     Seeded r5 = outbox.seedPending();
+    clock.set(nextAttemptAt(r1, "폴링 2 후 r1"));
     relayService.relay();
     assertThat(OutboxFaultInterceptor.injectedCount(r1.outboxId())).as("폴링 3 r1 재시도 누계").isEqualTo(2);
     assertPending(outbox.snapshot(r1), "폴링 3 r1");

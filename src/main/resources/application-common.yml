@@ -23,8 +23,16 @@ outbox:
   relay:
     fixed-delay-ms: 5000
     batch-size: 100
+    # 처리 지연 관측 로그 최소 간격 (TASK-033-1, 10s~1h)
+    backlog-log-interval: 60s
+    # 처리 실패 재시도 (TASK-033-1) - 기록된 실패 max-attempts회에서 FAILED, 대기 = min(initial × 2^(k-1), max)
+    retry:
+      max-attempts: 5
+      initial-backoff: 30s
+      max-backoff: 10m
 
 logging:
   level:
     org.hibernate.SQL: debug
-    org.hibernate.orm.jdbc.bind: trace
+    # 바인딩 값(payload 등) 출력은 기본으로 끈다 (TASK-033-1). 따옴표는 YAML boolean 해석 방지
+    org.hibernate.orm.jdbc.bind: "OFF"
