@@ -33,6 +33,7 @@ import com.pil97.ticketing.showtimeseat.error.ShowtimeSeatErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -180,7 +181,7 @@ public class PaymentService {
       // 트랜잭션 커밋 후 Redis 저장
       // - 커밋 전 저장 시 롤백되면 DB에는 실패, Redis에는 성공 응답이 남는 불일치 발생
       // - afterCommit 콜백에서 실행하여 DB 커밋 성공이 보장된 후 저장
-      registerAfterCommit(idempotencyKey, fingerprint, response);
+      registerAfterCommit(idempotencyKey, fingerprint, response, reservation.getId());
 
       success = true;
       return response;
@@ -196,10 +197,13 @@ public class PaymentService {
   /**
    * 트랜잭션 커밋 후 Redis 결과 저장 및 lock 해제 등록
    * - afterCommit: 커밋 성공 시에만 실행
+   *   - 결과 저장의 Redis 접근 오류(DataAccessException)는 ERROR 로그만 남기고 커밋된 결제 응답을 유지한다 (TASK-028)
+   *   - 추가 lock 삭제·재시도는 하지 않는다: 남은 lock은 기존 TTL로 만료된다
+   *   - 로그에는 멱등키 원문·응답 본문·금액·예외 메시지를 넣지 않는다
    * - afterCompletion: 롤백 포함 모든 완료 시 실행 - lock 해제 보장
    */
   private void registerAfterCommit(String idempotencyKey, String fingerprint,
-                                   PaymentResponse response) {
+                                   PaymentResponse response, Long reservationId) {
     if (!TransactionSynchronizationManager.isSynchronizationActive()) {
       throw new IllegalStateException("Transaction synchronization is not active");
     }
@@ -209,8 +213,13 @@ public class PaymentService {
       @Override
       public void afterCommit() {
         // DB 커밋 성공 후 Redis에 결과 저장 및 lock 해제
-        idempotencyRedisRepository.save(
-          IDEMPOTENCY_PREFIX, idempotencyKey, fingerprint, response, IDEMPOTENCY_TTL);
+        try {
+          idempotencyRedisRepository.save(
+            IDEMPOTENCY_PREFIX, idempotencyKey, fingerprint, response, IDEMPOTENCY_TTL);
+        } catch (DataAccessException e) {
+          log.error("idempotency result save failed: prefix={}, paymentId={}, reservationId={}, errorType={}",
+            IDEMPOTENCY_PREFIX, response.paymentId(), reservationId, e.getClass().getSimpleName());
+        }
       }
 
       @Override
