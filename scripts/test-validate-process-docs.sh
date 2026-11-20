@@ -4911,8 +4911,8 @@ fi
 # N131. TASK-028 prerequisite mutation.
 fixture="$(make_fixture N131)"
 N131_FILE="$fixture/docs/process/PORTFOLIO-ROADMAP.md"
-N131_OLD='| TASK-028 | Redis/DB 장애 시나리오 구현 및 문서화 | 계획 | TASK-033-1 완료 + 사용자 승인 |'
-N131_NEW='| TASK-028 | Redis/DB 장애 시나리오 구현 및 문서화 | 계획 | TASK-033-1 완료 + fixture 승인 |'
+N131_OLD='| TASK-028 | Redis/DB 장애 시나리오 구현 및 문서화 | 완료 | TASK-033-1 완료 + 사용자 승인 |'
+N131_NEW='| TASK-028 | Redis/DB 장애 시나리오 구현 및 문서화 | 완료 | TASK-033-1 완료 + fixture 승인 |'
 
 if [ "$(
   x2a_exact_line_count \
@@ -8182,6 +8182,7 @@ if s2_begin_case S4N3; then
     "Roadmap learning tracker TASK row outside approved table: TASK-032" \
     "Roadmap learning tracker TASK row outside approved table: TASK-033" \
     "Roadmap learning tracker TASK row outside approved table: TASK-033-1" \
+    "Roadmap learning tracker TASK row outside approved table: TASK-028" \
     "Roadmap learning tracker TASK row outside approved table: TASK-063"
 fi
 

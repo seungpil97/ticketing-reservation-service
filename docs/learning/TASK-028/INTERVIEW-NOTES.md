@@ -1,6 +1,6 @@
 # TASK-028 학습 기록 — 결제 경로 Redis 멱등성 결과 저장 실패·DB 커넥션 획득 실패
 
-> **설명 완료 기록 — 사용자 설명 수령 확인 있음(2026-11-20 KST), MASTER 정확성 검토 완료(WORK-21 반영본, 보정 4건 확인), merge 전 설명 중심 학습 gate 충족(계약 §15.3), 독립 이해도 검증 미실시·Level 미평가**
+> **설명 완료 기록 — 사용자 설명 수령 확인 있음(2026-11-20 KST), MASTER 정확성 검토 완료(WORK-21 반영본, 보정 4건 확인), merge 전 설명 중심 학습 gate 충족(계약 §15.3), 독립 이해도 검증 미실시·Level 미평가, TASK 최종 완료(2026-11-20 KST 사용자 승인)**
 
 - 대상: Issue #119, PR #120, 브랜치 `feat/TASK-028-payment-redis-db-failure-scenarios`
 - 설명 대상 기준 SHA: `53e882ee532ed98aed1808ab4b74a0ebf18bbda0` (검토 HEAD = PR #120 head = CI run 44528202352 대상)
@@ -25,6 +25,7 @@
 | 독립 이해도 검증 | **미실시** (면접 모드 미요청) |
 | Level | **미평가** |
 | merge 전 학습 gate | **충족** (계약 §15.3, 아래 §15.1 네 요건 충족. 면접 결과는 gate 조건 아님) |
+| TASK 최종 완료 | **완료** (2026-11-20 KST, TASK-028 MASTER 방 WORK-25 사용자 최종 완료 승인, MASTER 전달. 아래 "최종 완료 기록") |
 
 ### 세 가지 검토·검증의 구분
 
@@ -51,6 +52,24 @@ WORK-21에서 반영한 MASTER 정확성 검토 보정 (AI 작성 설명의 오�
 2. replay 조건을 "저장된 결과가 있고 요청 fingerprint가 일치"로 정정했다. SET 성공 후 락 DELETE만 실패한 경우도 결과 키를 읽을 수 있고 fingerprint가 일치해야 200이 가능하며, 이 조합은 미검증이다 (§3, §7)
 3. 락 해제를 실패 시점에 따라 `processPayment`의 `finally`와 등록된 `afterCompletion`으로 나눠 썼다. 커밋 후 SET 직전 주입에는 추가 해제가 없다 (§3, §5)
 4. S1의 결과 키 부재는 SET 직전 주입에서 관찰한 상태로 한정했다. S2의 "본문 진입 전 실패"는 풀 상태와 트랜잭션 시작 예외 스택을 근거로 들고, `find` spy 0회 단언에는 양성 대조가 없다는 한계를 유지했다 (§5, §6, §7)
+
+### 최종 완료 기록
+
+- 구현·병합: PR #120 merge (merge commit `c795d250a12ebfc52b5022a5fffe8d61c3b2d02e`, 2026-11-20 KST 기능 병합), 최종 기능 head `2c1fa8dfb1121c4e5823c386c67a6ef0241efcda`, Issue #119는 PR #120에 의해 자동 종료
+- 검증: 승인 리뷰 5987530827 (seungpil97, commit `2c1fa8d`), 최종 기능 head CI run 44674357550 success (389 tests, 0 failures, 0 skipped, 동결 테스트 6개 포함)
+- #119 Definition of Done 충족 근거
+  - 동결·FREEZE-RECORD: Issue #119 코멘트 7003517818
+  - Valid RED(AC-S1-1·AC-S1-4), GREEN(동결 6개), 최종 전체 테스트: §6 실행 증거 표
+  - ADR-007·`docs/api/payment.md` 갱신, README 영향 없음: PR #120 (README는 변경 없음, 실행 방법·환경·외부 사용 방식 변경 없음)
+  - Claude 1차 검토(WORK-13), GPT 독립 검토(WORK-15): §8
+  - merge 전 설명 중심 학습 gate: 위 §15.1 표
+- 조건부 회고·장애 기록 (`DEVELOPMENT-WORKFLOW.md` §12): 실제 incident·regression·data-loss·환경 장애가 없어 장애 기록은 작성하지 않는다. 기술 판단(201 유지, 500 유지·503 미매핑)은 [ADR-007](../../architecture/adr/ADR-007-payment-redis-db-failure.md), 실패 상황·검증 한계는 이 문서 §5·§7에 있다. devlog는 사용자 승인이 없어 작성하지 않는다
+- 리뷰 처분: WORK-15 Low 5건 중 F-1~F-4는 후속 이관, F-5는 PR #120 본문의 FREEZE-RECORD·ADR-007 링크로 보완 (§9)
+- 설명 중심 학습: §15.1 네 요건 충족으로 merge 전 gate 충족 (변경 없음)
+- 독립 이해도 검증: 미실시 (면접 모드 미요청). Level: 미평가. 학습 PASS·Level 달성이 아니다
+- 사용자 최종 완료 결정: 2026-11-20(KST), TASK-028 MASTER 방 WORK-25 지시 원문 "TASK-028의 최종 완료를 승인한다." 기능 병합일(2026-11-20, PR #120)과 구분해 기록한다
+- 남은 한계: §7의 미검증 구간(실제 Redis 단절, 락 자연 TTL 만료, 실제 JWT 경로, SET 성공 후 DELETE만 실패 등)과 §10·§11의 후속 항목을 그대로 보존한다
+- 다음 단계: TASK-043은 다음 후보일 뿐이며 착수 승인은 기록되지 않았다
 
 ## 표기
 

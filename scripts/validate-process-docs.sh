@@ -3355,6 +3355,7 @@ if [ -f "$ROADMAP" ] && [ ! -L "$ROADMAP" ]; then
   ROADMAP_HISTORY_ID_SHA256='f982dce4be4080d8120a49f527c85d8a8af8a411597307fa003794be69644f32'
 
   ROADMAP_CURRENT_EXPECTED_IDS="$(cat <<'EOF_ROADMAP_CURRENT_EXPECTED_IDS'
+TASK-028
 TASK-031
 TASK-032
 TASK-033
@@ -3374,7 +3375,7 @@ EOF_ROADMAP_CURRENT_EXPECTED_IDS
 
   ROADMAP_PREREQUISITE_EXPECTED_ROWS="$(cat <<'EOF_ROADMAP_PREREQUISITE_EXPECTED_ROWS'
 | TASK-033-1 | Outbox 재처리 실패 시나리오 | 완료 | TASK-033 최종 완료(필요한 학습 의무 해소 포함) + 사용자 승인 |
-| TASK-028 | Redis/DB 장애 시나리오 구현 및 문서화 | 계획 | TASK-033-1 완료 + 사용자 승인 |
+| TASK-028 | Redis/DB 장애 시나리오 구현 및 문서화 | 완료 | TASK-033-1 완료 + 사용자 승인 |
 | TASK-043 | 장애 복구 전략 설계 + 코드 구현 | 계획 | TASK-028 완료 + 사용자 승인 |
 EOF_ROADMAP_PREREQUISITE_EXPECTED_ROWS
 )"
@@ -3514,14 +3515,14 @@ EOF_ROADMAP_PREREQUISITE_EXPECTED_ROWS
       "Roadmap history contains unapproved status enum"
   fi
 
-  [ "$(roadmap_status_count 완료)" -eq 7 ] ||
-    add_failure "Roadmap 완료 count is not 7"
+  [ "$(roadmap_status_count 완료)" -eq 8 ] ||
+    add_failure "Roadmap 완료 count is not 8"
 
   [ "$(roadmap_status_count '진행중')" -eq 0 ] ||
     add_failure "Roadmap 진행중 count is not 0"
 
-  [ "$(roadmap_status_count 계획)" -eq 2 ] ||
-    add_failure "Roadmap 계획 count is not 2"
+  [ "$(roadmap_status_count 계획)" -eq 1 ] ||
+    add_failure "Roadmap 계획 count is not 1"
 
   [ "$(roadmap_status_count '재확인필요')" -eq 70 ] ||
     add_failure "Roadmap 재확인필요 count is not 70"
@@ -3753,7 +3754,7 @@ EOF_ROADMAP_PREREQUISITE_EXPECTED_ROWS
       LC_ALL=C sort
   )"
 
-  if [ "$roadmap_current_row_count" -ne 9 ] ||
+  if [ "$roadmap_current_row_count" -ne 10 ] ||
      [ "$roadmap_current_actual_ids" != "$ROADMAP_CURRENT_EXPECTED_IDS" ]; then
     add_failure       "Roadmap current-status TASK ID membership mismatch"
   fi
