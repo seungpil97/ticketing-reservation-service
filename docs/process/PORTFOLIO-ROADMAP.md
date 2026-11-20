@@ -38,6 +38,7 @@
 | TASK-033 | Outbox Pattern 구현 | 완료 | Issue #108, PR #109, merge SHA `372982abdabfee02c4ae30deae5cbb77eff1fb4b`; 최종 완료: 사용자 최종 완료 승인(TASK-033-1 MASTER 방 WORK-2 이후 사용자 “그렇게하자”, MASTER 전달), TASK 한정 결정; 설명 완료, 독립 이해도 검증 미확인, Level 4 최종 PASS 미부여 |
 | TASK-033-1 | Outbox 재처리 실패 시나리오 | 완료 | Issue #115, PR #116, merge SHA `abe4cc9c0d3be0ce153de19e5af6cc061207cc1c`; 최종 완료: 사용자 최종 완료 승인(2026-11-19 KST TASK-033-1 MASTER-3 방 사용자 최종 완료 승인, MASTER 전달), DoD 3·4 동결·RED 원본 소실과 재생본 검증 한계 수용; 설명 완료, 독립 이해도 검증 미실시, Level 미평가 |
 | TASK-063 | 설명 중심 학습 정책 및 로드맵 근거 정비 | 완료 | Issue #110, PR #111, merge SHA `00560cee0c30a4cae85deef50be1ad28c7793820`; 최종 완료: 사용자 최종 완료 승인(WORK-18, MASTER 전달); 독립 이해도 검증 미실시, Level 미평가 |
+| TASK-028 | Redis/DB 장애 시나리오 구현 및 문서화 | 완료 | Issue #119, PR #120, merge SHA `c795d250a12ebfc52b5022a5fffe8d61c3b2d02e` (기능 병합 2026-11-20 KST); 최종 완료: 사용자 최종 완료 승인(2026-11-20 KST TASK-028 MASTER 방 WORK-25 사용자 지시 “TASK-028의 최종 완료를 승인한다.”, MASTER 전달); 설명 완료, 독립 이해도 검증 미실시, Level 미평가 |
 
 ## 다음 직접 진행 순서
 
@@ -52,15 +53,15 @@ TASK-033-1
 | TASK | 내용 | 상태 | 선행 조건 |
 | --- | --- | --- | --- |
 | TASK-033-1 | Outbox 재처리 실패 시나리오 | 완료 | TASK-033 최종 완료(필요한 학습 의무 해소 포함) + 사용자 승인 |
-| TASK-028 | Redis/DB 장애 시나리오 구현 및 문서화 | 계획 | TASK-033-1 완료 + 사용자 승인 |
+| TASK-028 | Redis/DB 장애 시나리오 구현 및 문서화 | 완료 | TASK-033-1 완료 + 사용자 승인 |
 | TASK-043 | 장애 복구 전략 설계 + 코드 구현 | 계획 | TASK-028 완료 + 사용자 승인 |
 
 ## 전체 TASK 이력
 
 A old roadmap의 고유 TASK 74개를 모두 보존한다.
 A에서 과거에 `완료` 또는 `남은 로드맵`으로 분류됐더라도 현재 근거가 확인되지 않으면 이 문서에서는 `재확인필요`로 기록한다.
-현재 근거가 확인된 TASK-031, MASTER에서 완료가 확정된 TASK-059·TASK-060, 기존 MASTER FINAL COMPLETE 보고가 있는 TASK-061, 사용자 최종 완료 승인이 기록된 TASK-063·TASK-033·TASK-033-1은 `완료`로 기록한다.
-merge는 확인됐지만 학습·최종 완료 근거가 확인되지 않은 TASK-062·TASK-032는 `재확인필요`로 기록한다. 승인된 직접 후속 중 TASK-028·TASK-043은 `계획`으로 기록한다. 현재 `진행중` TASK는 없다.
+현재 근거가 확인된 TASK-031, MASTER에서 완료가 확정된 TASK-059·TASK-060, 기존 MASTER FINAL COMPLETE 보고가 있는 TASK-061, 사용자 최종 완료 승인이 기록된 TASK-063·TASK-033·TASK-033-1·TASK-028은 `완료`로 기록한다.
+merge는 확인됐지만 학습·최종 완료 근거가 확인되지 않은 TASK-062·TASK-032는 `재확인필요`로 기록한다. 승인된 직접 후속 중 TASK-043은 `계획`으로 기록한다. 현재 `진행중` TASK는 없다.
 TASK별 학습·최종 완료 근거는 `## TASK 학습·완료 추적`에서 구분한다.
 
 ### Phase 1. 기반 구축
@@ -153,7 +154,7 @@ TASK별 학습·최종 완료 근거는 `## TASK 학습·완료 추적`에서 �
 | TASK-032 | 이벤트 기반 예약 처리 (Spring Events) | 재확인필요 | Issue #106, PR #107, merge SHA `8593d642105a2396c3db30fd8b331889b47fd428`; 학습·최종 완료 미확인 | 이벤트 기반 설계/Kafka 비교 (Week 15) |
 | TASK-033 | Outbox Pattern 구현 | 완료 | Issue #108, PR #109, merge SHA `372982abdabfee02c4ae30deae5cbb77eff1fb4b`; 최종 완료: 사용자 최종 완료 승인(TASK-033-1 MASTER 방 WORK-2 이후 사용자 “그렇게하자”, MASTER 전달), TASK 한정 결정; 설명 완료, 독립 이해도 검증 미확인, Level 4 최종 PASS 미부여 | Kafka/트랜잭션 (Week 15, 5) |
 | TASK-033-1 | Outbox 재처리 실패 시나리오 | 완료 | Issue #115, PR #116, merge SHA `abe4cc9c0d3be0ce153de19e5af6cc061207cc1c`; 최종 완료: 사용자 최종 완료 승인(2026-11-19 KST TASK-033-1 MASTER-3 방 사용자 최종 완료 승인, MASTER 전달), DoD 3·4 동결·RED 원본 소실과 재생본 검증 한계 수용; 설명 완료, 독립 이해도 검증 미실시, Level 미평가 | 트랜잭션/재시도 (Week 5) |
-| TASK-028 | Redis/DB 장애 시나리오 구현 및 문서화 | 계획 | MASTER 승인 직접 순서; TASK-033-1 완료 + 사용자 승인 | 커넥션 풀/Redis (Week 5, 8) |
+| TASK-028 | Redis/DB 장애 시나리오 구현 및 문서화 | 완료 | Issue #119, PR #120, merge SHA `c795d250a12ebfc52b5022a5fffe8d61c3b2d02e` (기능 병합 2026-11-20 KST); 최종 완료: 사용자 최종 완료 승인(2026-11-20 KST TASK-028 MASTER 방 WORK-25 사용자 지시 “TASK-028의 최종 완료를 승인한다.”, MASTER 전달); 설명 완료, 독립 이해도 검증 미실시, Level 미평가 | 커넥션 풀/Redis (Week 5, 8) |
 | TASK-043 | 장애 복구 전략 설계 + 코드 구현 | 계획 | MASTER 승인 직접 순서; TASK-028 완료 + 사용자 승인 | 장애 흐름 전반 |
 | TASK-034 | Circuit Breaker 적용 (Resilience4j) | 재확인필요 | A old roadmap 기록만 확인됨; 현재 완료/진행 근거 재검증 필요; A old roadmap에서 선택 TASK로 기록 | 장애 격리 (Week 15) |
 
@@ -246,6 +247,7 @@ TASK별 학습·최종 완료 근거는 `## TASK 학습·완료 추적`에서 �
 | TASK-032 | 머지됨 (PR #107, `8593d64`) | 해당없음 (시행 이전 계약) | 미확인 | 시행 이전 계약 | 미확인 | 머지: GitHub; 학습·최종 완료: 근거 미확보 |
 | TASK-033 | 머지됨 (PR #109, `372982a`) | 완료 (시행 이전 설명 중심 학습 기록) | 미확인 (부분 답변 확인, 30초·90초 미실시, Level 4 최종 PASS 미부여) | 시행 이전 계약, 고위험 Level 4 merge 전 gate (Issue #108); 예외: TASK-033 한정으로 사용자 요청에 따라 merge 전 조건만 설명 중심 학습 완료와 기록으로 대체, 당시 예외는 merge 전 조건에 한정; 최종 완료 결정: 별도 TASK 한정 결정으로 남은 최종 완료 전 학습 의무를 설명 중심 학습 완료와 결과·한계 기록으로 대체, TASK-063 개정 계약 소급 적용 아님 | 완료 (MASTER 보고 기준 사용자 “그렇게하자” 승인 시점 판정, 과거 소급 없음, Valid RED·동결 계약 원문 근거 미확보와 남은 증거 공백·기술 한계 미해결 보존) | 머지: GitHub; 학습: 저장소 `docs/learning/TASK-033/INTERVIEW-NOTES.md`, GitHub PR #109; 최종 완료: MASTER 보고 (TASK-033-1 MASTER 방 WORK-2 이후 사용자 “그렇게하자” 승인, 원문 대조 미완료) |
 | TASK-033-1 | 머지됨 (PR #116, `abe4cc9`) | 완료 (MASTER-3 설명 후 사용자 “설명 받았어” 수령 확인, MASTER 정확성 검토 완료, merge 전 설명 중심 gate 충족) | 미실시 (면접 모드 미요청, Level 미평가) | 개정 계약 (TASK-063 이후 계획 승인; 고위험, merge 전 설명 중심 gate: 설명·기록·사용자 설명 수령 확인·MASTER 정확성 검토) | 완료 (2026-11-19 사용자 최종 완료 승인, DoD 3·4 동결·RED 원본 소실과 재생본 검증 한계 수용, REVIEW-2 종료 범위는 G-1~G-4 한정, Netty 종료 ERROR 원인·영향 미확정과 남은 검증 한계 보존) | 착수: GitHub Issue #115; 머지: GitHub PR #116; 학습: 저장소 `docs/learning/TASK-033-1/INTERVIEW-NOTES.md`, MASTER 보고 (MASTER-3 설명과 사용자 수령 확인); 최종 완료: MASTER 보고 (2026-11-19 KST MASTER-3 방 사용자 최종 완료 승인, 원문 대조 미완료) |
+| TASK-028 | 머지됨 (PR #120, `c795d25`) | 완료 (WORK-20 설명 후 사용자 “TASK-028 설명 받았어.” 수령 확인, MASTER 정확성 검토 완료(WORK-21 반영본, 보정 4건 확인), merge 전 설명 중심 gate 충족) | 미실시 (면접 모드 미요청, Level 미평가) | 개정 계약 (TASK-063 이후 계획 승인; 고위험, merge 전 설명 중심 gate: 설명·기록·사용자 설명 수령 확인·MASTER 정확성 검토) | 완료 (2026-11-20 WORK-25 사용자 최종 완료 승인; 기능 병합 2026-11-20 PR #120; 승인 리뷰 5987530827, 최종 기능 head `2c1fa8d` CI run 44674357550 success 389 tests·0 failures·0 skipped; WORK-15 Low 5건 중 F-1~F-4 후속 이관, F-5 PR #120 본문 근거 링크로 보완; 실제 Redis 단절·락 자연 TTL 만료·실제 JWT 경로 미검증 등 검증 한계 보존) | 착수: GitHub Issue #119; 머지: GitHub PR #120; 학습: 저장소 `docs/learning/TASK-028/INTERVIEW-NOTES.md`; 최종 완료: MASTER 보고 (2026-11-20 KST TASK-028 MASTER 방 WORK-25 사용자 최종 완료 승인 지시) |
 | TASK-063 | 머지됨 (PR #111, `00560ce`) | 완료 (MASTER 설명 후 사용자 “진행하자” 수령 확인) | 미실시 (면접 모드 미요청, Level 미평가) | TASK 한정 결정 (Issue #110): 설명 중심, merge 전 설명·기록·사용자 설명 수령 확인·MASTER 정확성 검토 gate | 완료 (WORK-18 사용자 최종 완료 승인, 남은 Low·검증 한계 미해결 보존) | 머지: GitHub PR #111; 학습: 저장소 `docs/learning/TASK-063/INTERVIEW-NOTES.md`, MASTER 보고 (MASTER 설명과 사용자 수령 확인); 최종 완료: MASTER 보고 (WORK-18 사용자 최종 완료 승인) |
 
 ## Learning 연결
