@@ -111,6 +111,25 @@ public class PaymentService {
   }
 
   /**
+   * 예약 소유자의 결제 상태 조회 (TASK-043)
+   * - 예약 소유권을 결제 조회보다 먼저 확인한다
+   *   (예약이 없거나 소유자가 아니면 같은 404 RESERVATION-001 - 타 회원 예약의 존재 여부를 드러내지 않음)
+   * - 소유자 본인 예약에 결제가 없으면 404 PAYMENT-001
+   * - DB에 저장된 현재 결제 상태를 반환한다 (SUCCESS·FAIL·REFUNDED)
+   * - 읽기 전용: Redis 멱등성 결과·락 키를 조회하거나 변경하지 않는다
+   */
+  public PaymentResponse getPaymentOfReservation(Long reservationId, Member loginMember) {
+    Reservation reservation = reservationRepository.findById(reservationId)
+      .filter(found -> found.getMember().getId().equals(loginMember.getId()))
+      .orElseThrow(() -> new BusinessException(ReservationErrorCode.NOT_FOUND));
+
+    Payment payment = paymentRepository.findByReservationId(reservation.getId())
+      .orElseThrow(() -> new BusinessException(PaymentErrorCode.PAYMENT_NOT_FOUND));
+
+    return PaymentResponse.of(payment);
+  }
+
+  /**
    * 결제 소유권 검증
    * - Payment -> Reservation -> Member 체인으로 예약 소유자 ID 확인
    * - 로그인 사용자와 예약 소유자가 다르면 403 예외 발생

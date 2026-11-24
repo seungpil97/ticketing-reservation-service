@@ -67,4 +67,21 @@ public class PaymentController {
     PaymentResponse response = paymentService.refund(paymentId, loginMember);
     return ResponseEntity.ok(ApiResponse.success(response));
   }
+
+  /**
+   * GET /reservations/{reservationId}/payment
+   *
+   * <p>예약 소유자가 해당 예약의 현재 결제 상태를 조회한다 (TASK-043).
+   * 결제 응답을 받지 못한 경우 예약 ID로 결제 결과를 확인하는 경로이며, 멱등 응답을 재현하지는 않는다.
+   * 예약이 없거나 본인 예약이 아니면 404 반환 (RESERVATION-001).
+   * 본인 예약에 결제가 없으면 404 반환 (PAYMENT-001).
+   */
+  @GetMapping("/reservations/{reservationId}/payment")
+  public ResponseEntity<ApiResponse<PaymentResponse>> getPaymentOfReservation(
+    @PathVariable Long reservationId,
+    @AuthenticationPrincipal Member loginMember) {
+
+    PaymentResponse response = paymentService.getPaymentOfReservation(reservationId, loginMember);
+    return ResponseEntity.ok(ApiResponse.success(response));
+  }
 }

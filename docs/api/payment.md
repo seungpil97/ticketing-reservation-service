@@ -46,6 +46,15 @@
 * 결과 저장(SET)은 성공하고 처리 중 락 삭제만 실패한 경우에는 결과 키가 남아 있으므로, Redis 복구 후 같은 키 재요청이 replay(`200`)될 수 있습니다. 코드상 예상이며 별도로 검증하지 않았습니다.
 * 이 동작은 위 경우에 한정됩니다. 다른 Redis·DB 장애에서의 응답을 보장하지 않습니다.
 
+#### 결제 응답을 받지 못했다면: 예약 ID로 현재 상태 조회
+
+결제를 요청한 뒤 응답을 받지 못했다면 예약 ID로 현재 결제 상태를 조회합니다 → [3) Get Payment of Reservation](#3-get-payment-of-reservation) (TASK-043, [ADR-008](../architecture/adr/ADR-008-payment-status-recovery-query.md)).
+
+* 결제 요청 본문에 넣었던 `reservationId`를 그대로 사용합니다. `Idempotency-Key`는 필요 없습니다.
+* 예약 소유자는 첫 결제 응답을 받지 못했을 때 같은 예약 ID로 조회를 요청할 수 있습니다. 먼저 `POST /payments`를 재시도하거나 `409`를 받을 필요는 없습니다.
+* 조회 결과는 첫 결제 응답을 다시 보내 주는 것(replay)이 아니라, 조회 시점에 DB에 기록된 결제 상태입니다.
+* 결제 행이 없을 때의 `404` `PAYMENT-001`은 "조회 시점에 이 예약의 결제가 기록돼 있지 않다"는 뜻입니다. 결제 실패가 확정됐다거나 즉시 다시 결제해도 된다는 보장이 아닙니다 (처리 중인 결제가 아직 커밋되지 않았을 수 있습니다).
+
 ---
 
 ## Error Codes
@@ -58,6 +67,9 @@
 | `PAYMENT-004` | 400 | Idempotency-Key header is required |
 | `PAYMENT-005` | 409 | Refund is only allowed for successful payments |
 | `PAYMENT-006` | 403 | You are not allowed to refund this payment |
+| `IDEMPOTENCY-001` | 409 | The same request is already being processed (같은 `Idempotency-Key`의 처리 중 락이 남아 있음) |
+| `RESERVATION-001` | 404 | Reservation not found (결제 상태 조회: 예약이 없거나 본인 예약이 아님) |
+| `AUTH-003` | 401 | Unauthorized (인증 정보 없음) |
 | `COMMON-001` | 400 | Validation failed |
 | `COMMON-007` | 500 | Internal server error |
 
@@ -289,6 +301,175 @@ Response (409)
 
 ---
 
+### 3) Get Payment of Reservation
+
+* **GET** `/reservations/{reservationId}/payment`
+* **200 OK**
+
+설명
+
+* 예약 소유자가 그 예약의 현재 결제 상태를 조회한다 (TASK-043, [ADR-008](../architecture/adr/ADR-008-payment-status-recovery-query.md)).
+* 사용 예: 결제를 요청(`POST /payments`)한 뒤 응답을 받지 못했을 때, 결제 요청에 넣었던 `reservationId`로 결제 결과를 확인한다.
+* 인증: `Authorization: Bearer {accessToken}` (결제·환불과 같은 JWT 인증). `Idempotency-Key`는 필요 없다.
+* 조회 가능한 회원: 예약 소유자(예약의 회원)만 조회할 수 있다. 결제를 요청한 회원이 아니라 예약 소유자를 기준으로 판단한다.
+* 조회 값은 요청 시점에 DB에 기록된 결제 상태다. 첫 결제 응답을 재현하지 않으며, 결제 성공 뒤 환불했다면 `REFUNDED`가 조회된다.
+* 읽기 전용이다. 결제·예약 상태와 Redis 멱등성 결과 키·처리 중 락 키를 변경하지 않으며, 결과 키가 없거나 락이 남아 있어도 조회된다.
+* 결제 행이 있으면 실패 결제(`FAIL`)도 `200`으로 조회된다. 결제 행 자체가 없을 때만 `404` `PAYMENT-001`이다.
+
+Request Header
+
+```
+Authorization: Bearer {accessToken}
+```
+
+Response Fields (`data`)
+
+| 필드 | 타입 | 설명 |
+|---|---|---|
+| `paymentId` | number | 결제 ID |
+| `status` | string | 현재 결제 상태: `SUCCESS` · `FAIL` · `REFUNDED` |
+| `paidAt` | string \| null | 결제 완료 시각 (DB `payment.paid_at`, 초 단위). `SUCCESS`·`REFUNDED`는 값 있음, `FAIL`은 `null` |
+| `refundedAt` | string \| null | 환불 완료 시각 (DB `payment.refunded_at`). `REFUNDED`만 값 있음, 그 외 `null` |
+
+Response (200) — 결제 성공 (`SUCCESS`)
+
+```json
+{
+  "data": {
+    "paymentId": 1,
+    "status": "SUCCESS",
+    "paidAt": "2026-04-07T10:00:00",
+    "refundedAt": null
+  },
+  "error": null,
+  "success": true,
+  "timestamp": "..."
+}
+```
+
+Response (200) — 결제 실패 (`FAIL`, 결제 행 있음)
+
+```json
+{
+  "data": {
+    "paymentId": 2,
+    "status": "FAIL",
+    "paidAt": null,
+    "refundedAt": null
+  },
+  "error": null,
+  "success": true,
+  "timestamp": "..."
+}
+```
+
+Response (200) — 환불 완료 (`REFUNDED`, `paidAt`은 환불 전 값 유지)
+
+```json
+{
+  "data": {
+    "paymentId": 1,
+    "status": "REFUNDED",
+    "paidAt": "2026-04-07T10:00:00",
+    "refundedAt": "2026-04-07T10:20:00"
+  },
+  "error": null,
+  "success": true,
+  "timestamp": "..."
+}
+```
+
+curl
+
+```bash
+curl http://localhost:8080/reservations/1/payment \
+  -H "Authorization: Bearer eyJhbG..."
+```
+
+Errors
+
+| HTTP | 코드 | 상황 |
+|---|---|---|
+| `401` | `AUTH-003` | 인증 정보 없음 |
+| `404` | `RESERVATION-001` | 예약이 없거나 본인 예약이 아님 (두 경우 응답이 같아 다른 회원 예약의 존재 여부를 알 수 없다) |
+| `404` | `PAYMENT-001` | 본인 예약이지만 결제 행이 없음 (결제 실패 확정이나 재결제 허용을 뜻하지 않는다) |
+
+오류 응답에서 `data`와 `error.details`는 `null`이다.
+
+---
+
+### 3-1) Get Payment of Reservation - Not Found (Reservation)
+
+* **GET** `/reservations/{reservationId}/payment`
+* **404 Not Found**
+
+Response (404)
+
+```json
+{
+  "data": null,
+  "error": {
+    "code": "RESERVATION-001",
+    "details": null,
+    "message": "Reservation not found",
+    "path": "/reservations/999/payment",
+    "timestamp": "..."
+  },
+  "success": false,
+  "timestamp": "..."
+}
+```
+
+---
+
+### 3-2) Get Payment of Reservation - Not Found (Payment)
+
+* **GET** `/reservations/{reservationId}/payment`
+* **404 Not Found**
+
+Response (404)
+
+```json
+{
+  "data": null,
+  "error": {
+    "code": "PAYMENT-001",
+    "details": null,
+    "message": "Payment not found",
+    "path": "/reservations/1/payment",
+    "timestamp": "..."
+  },
+  "success": false,
+  "timestamp": "..."
+}
+```
+
+---
+
+### 3-3) Get Payment of Reservation - Unauthorized
+
+* **GET** `/reservations/{reservationId}/payment`
+* **401 Unauthorized**
+
+Response (401)
+
+```json
+{
+  "data": null,
+  "error": {
+    "code": "AUTH-003",
+    "details": null,
+    "message": "Unauthorized",
+    "path": "/reservations/1/payment",
+    "timestamp": "..."
+  },
+  "success": false,
+  "timestamp": "..."
+}
+```
+
+---
+
 ## curl Test Set
 
 ```bash
@@ -344,4 +525,19 @@ curl -X POST http://localhost:8080/payments/1/refund \
 # refund - not refundable
 curl -X POST http://localhost:8080/payments/2/refund \
   -H "Authorization: Bearer eyJhbG..."
+
+# -------------------------
+# Get Payment of Reservation
+# -------------------------
+
+# payment status of own reservation
+curl http://localhost:8080/reservations/1/payment \
+  -H "Authorization: Bearer eyJhbG..."
+
+# other member's reservation (404 RESERVATION-001)
+curl http://localhost:8080/reservations/1/payment \
+  -H "Authorization: Bearer eyJhbG_other..."
+
+# no token (401 AUTH-003)
+curl http://localhost:8080/reservations/1/payment
 ```
