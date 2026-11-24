@@ -4953,8 +4953,8 @@ fi
 # N132. TASK-043 prerequisite mutation.
 fixture="$(make_fixture N132)"
 N132_FILE="$fixture/docs/process/PORTFOLIO-ROADMAP.md"
-N132_OLD='| TASK-043 | 장애 복구 전략 설계 + 코드 구현 | 계획 | TASK-028 완료 + 사용자 승인 |'
-N132_NEW='| TASK-043 | 장애 복구 전략 설계 + 코드 구현 | 계획 | TASK-028 완료 + fixture 승인 |'
+N132_OLD='| TASK-043 | 장애 복구 전략 설계 + 코드 구현 | 진행중 | TASK-028 완료 + 사용자 승인 |'
+N132_NEW='| TASK-043 | 장애 복구 전략 설계 + 코드 구현 | 진행중 | TASK-028 완료 + fixture 승인 |'
 
 if [ "$(
   x2a_exact_line_count \
@@ -4990,6 +4990,90 @@ else
     "$fixture" \
     0 \
     "Roadmap next-task prerequisite contract mismatch"
+fi
+
+# N216. TASK-043 prerequisite-table status reverted to the pre-start value.
+fixture="$(make_fixture N216)"
+N216_FILE="$fixture/docs/process/PORTFOLIO-ROADMAP.md"
+N216_OLD='| TASK-043 | 장애 복구 전략 설계 + 코드 구현 | 진행중 | TASK-028 완료 + 사용자 승인 |'
+N216_NEW='| TASK-043 | 장애 복구 전략 설계 + 코드 구현 | 계획 | TASK-028 완료 + 사용자 승인 |'
+
+if [ "$(
+  x2a_exact_line_count \
+    "$N216_FILE" \
+    "$N216_OLD"
+)" -ne 1 ]; then
+  record_fail \
+    "N216 Roadmap prerequisite fixture setup failed"
+elif ! x2a_replace_exact_line \
+  "$N216_FILE" \
+  "$N216_OLD" \
+  "$N216_NEW"
+then
+  record_fail \
+    "N216 Roadmap prerequisite fixture rewrite failed"
+elif [ "$(
+  x2a_exact_line_count \
+    "$N216_FILE" \
+    "$N216_OLD"
+)" -ne 0 ] ||
+     [ "$(
+  x2a_exact_line_count \
+    "$N216_FILE" \
+    "$N216_NEW"
+)" -ne 1 ]
+then
+  record_fail \
+    "N216 Roadmap prerequisite fixture postcondition failed"
+else
+  expect_fail \
+    "N216" \
+    "Roadmap TASK-043 prerequisite-table status reversion rejected" \
+    "$fixture" \
+    0 \
+    "Roadmap next-task prerequisite contract mismatch"
+fi
+
+# N217. TASK-043 full-history status reverted to the pre-start value.
+fixture="$(make_fixture N217)"
+N217_FILE="$fixture/docs/process/PORTFOLIO-ROADMAP.md"
+N217_OLD='| TASK-043 | 장애 복구 전략 설계 + 코드 구현 | 진행중 | MASTER 승인 직접 순서; TASK-028 완료 + 사용자 승인 | 장애 흐름 전반 |'
+N217_NEW='| TASK-043 | 장애 복구 전략 설계 + 코드 구현 | 계획 | MASTER 승인 직접 순서; TASK-028 완료 + 사용자 승인 | 장애 흐름 전반 |'
+
+if [ "$(
+  x2a_exact_line_count \
+    "$N217_FILE" \
+    "$N217_OLD"
+)" -ne 1 ]; then
+  record_fail \
+    "N217 Roadmap history fixture setup failed"
+elif ! x2a_replace_exact_line \
+  "$N217_FILE" \
+  "$N217_OLD" \
+  "$N217_NEW"
+then
+  record_fail \
+    "N217 Roadmap history fixture rewrite failed"
+elif [ "$(
+  x2a_exact_line_count \
+    "$N217_FILE" \
+    "$N217_OLD"
+)" -ne 0 ] ||
+     [ "$(
+  x2a_exact_line_count \
+    "$N217_FILE" \
+    "$N217_NEW"
+)" -ne 1 ]
+then
+  record_fail \
+    "N217 Roadmap history fixture postcondition failed"
+else
+  expect_fail \
+    "N217" \
+    "Roadmap TASK-043 full-history status reversion rejected" \
+    "$fixture" \
+    0 \
+    "Roadmap 진행중 count is not 1"
 fi
 
 
@@ -8183,6 +8267,7 @@ if s2_begin_case S4N3; then
     "Roadmap learning tracker TASK row outside approved table: TASK-033" \
     "Roadmap learning tracker TASK row outside approved table: TASK-033-1" \
     "Roadmap learning tracker TASK row outside approved table: TASK-028" \
+    "Roadmap learning tracker TASK row outside approved table: TASK-043" \
     "Roadmap learning tracker TASK row outside approved table: TASK-063"
 fi
 
