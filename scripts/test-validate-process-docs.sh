@@ -4953,8 +4953,8 @@ fi
 # N132. TASK-043 prerequisite mutation.
 fixture="$(make_fixture N132)"
 N132_FILE="$fixture/docs/process/PORTFOLIO-ROADMAP.md"
-N132_OLD='| TASK-043 | 장애 복구 전략 설계 + 코드 구현 | 진행중 | TASK-028 완료 + 사용자 승인 |'
-N132_NEW='| TASK-043 | 장애 복구 전략 설계 + 코드 구현 | 진행중 | TASK-028 완료 + fixture 승인 |'
+N132_OLD='| TASK-043 | 장애 복구 전략 설계 + 코드 구현 | 완료 | TASK-028 완료 + 사용자 승인 |'
+N132_NEW='| TASK-043 | 장애 복구 전략 설계 + 코드 구현 | 완료 | TASK-028 완료 + fixture 승인 |'
 
 if [ "$(
   x2a_exact_line_count \
@@ -4992,11 +4992,11 @@ else
     "Roadmap next-task prerequisite contract mismatch"
 fi
 
-# N216. TASK-043 prerequisite-table status reverted to the pre-start value.
+# N216. TASK-043 prerequisite-table status reverted to the pre-completion value.
 fixture="$(make_fixture N216)"
 N216_FILE="$fixture/docs/process/PORTFOLIO-ROADMAP.md"
-N216_OLD='| TASK-043 | 장애 복구 전략 설계 + 코드 구현 | 진행중 | TASK-028 완료 + 사용자 승인 |'
-N216_NEW='| TASK-043 | 장애 복구 전략 설계 + 코드 구현 | 계획 | TASK-028 완료 + 사용자 승인 |'
+N216_OLD='| TASK-043 | 장애 복구 전략 설계 + 코드 구현 | 완료 | TASK-028 완료 + 사용자 승인 |'
+N216_NEW='| TASK-043 | 장애 복구 전략 설계 + 코드 구현 | 진행중 | TASK-028 완료 + 사용자 승인 |'
 
 if [ "$(
   x2a_exact_line_count \
@@ -5034,11 +5034,11 @@ else
     "Roadmap next-task prerequisite contract mismatch"
 fi
 
-# N217. TASK-043 full-history status reverted to the pre-start value.
+# N217. TASK-043 full-history status reverted to the pre-completion value.
 fixture="$(make_fixture N217)"
 N217_FILE="$fixture/docs/process/PORTFOLIO-ROADMAP.md"
-N217_OLD='| TASK-043 | 장애 복구 전략 설계 + 코드 구현 | 진행중 | MASTER 승인 직접 순서; TASK-028 완료 + 사용자 승인 | 장애 흐름 전반 |'
-N217_NEW='| TASK-043 | 장애 복구 전략 설계 + 코드 구현 | 계획 | MASTER 승인 직접 순서; TASK-028 완료 + 사용자 승인 | 장애 흐름 전반 |'
+N217_OLD='| TASK-043 | 장애 복구 전략 설계 + 코드 구현 | 완료 | Issue #123, PR #124, merge SHA `f79fb5f349f3692720bf8b902fc765f68988d429` (기능 병합 2026-11-24 KST); 착수 승인: TASK-043 MASTER 방 WORK-2 사용자 착수 승인; 계획 승인: MASTER 보고(WORK-5 복구 방식·등록본 결정, WORK-6 Issue 등록 승인, 원문 대조 미완료); 최종 완료: 사용자 최종 완료 승인(2026-11-24 KST TASK-043 MASTER 방 WORK-33 중단 보고 검토 후 MASTER 최종 완료 권고에 대한 사용자 답변 “TASK-043의 최종 완료를 승인합니다”, MASTER 전달); 설명 완료, 독립 이해도 검증 미실시, Level 미평가 | 장애 흐름 전반 |'
+N217_NEW='| TASK-043 | 장애 복구 전략 설계 + 코드 구현 | 진행중 | Issue #123, PR #124, merge SHA `f79fb5f349f3692720bf8b902fc765f68988d429` (기능 병합 2026-11-24 KST); 착수 승인: TASK-043 MASTER 방 WORK-2 사용자 착수 승인; 계획 승인: MASTER 보고(WORK-5 복구 방식·등록본 결정, WORK-6 Issue 등록 승인, 원문 대조 미완료); 최종 완료: 사용자 최종 완료 승인(2026-11-24 KST TASK-043 MASTER 방 WORK-33 중단 보고 검토 후 MASTER 최종 완료 권고에 대한 사용자 답변 “TASK-043의 최종 완료를 승인합니다”, MASTER 전달); 설명 완료, 독립 이해도 검증 미실시, Level 미평가 | 장애 흐름 전반 |'
 
 if [ "$(
   x2a_exact_line_count \
@@ -5073,7 +5073,7 @@ else
     "Roadmap TASK-043 full-history status reversion rejected" \
     "$fixture" \
     0 \
-    "Roadmap 진행중 count is not 1"
+    "Roadmap 진행중 count is not 0"
 fi
 
 
