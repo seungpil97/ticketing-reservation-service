@@ -33,7 +33,7 @@
 | TASK-059 | Claude Code 최소 구성 적용 및 위험 리뷰 Agent 검증 | 완료 | merge SHA `122816d91533befcc7a63c06cf83a7150e1fd05d` |
 | TASK-060 | 프로젝트 프로세스 문서 정합성 복구 및 학습 계약 추가 | 완료 | Issue #100, PR #101, merge SHA `607474972a9d853567ac818f68b7a3e16cf7a03e` |
 | TASK-061 | Test-First AI 개발 Workflow 도입 및 RED/Test Contract Gate 공식화 | 완료 | Issue #102, PR #103, merge SHA `8c9f097855ddf7250d4dacfb778e19362b6c1b4a`; 최종 완료: 기존 MASTER FINAL COMPLETE 보고(원문 대조 미완료) |
-| TASK-062 | 예약 취소·만료·재선점·결제 좌석 정합성 보장 | 재확인필요 | Issue #104, PR #105, merge SHA `37d907f1d2ed4c79e51855d24d789ca46b97ef8b`; 학습·최종 완료 미확인 |
+| TASK-062 | 예약 취소·만료·재선점·결제 좌석 정합성 보장 | 완료 | Issue #104, PR #105, merge SHA `37d907f1d2ed4c79e51855d24d789ca46b97ef8b` (기능 병합 2026-11-04 KST); 최종 완료: 사용자 최종 완료 승인(2026-11-25 KST TASK-062 MASTER 방 MASTER 권고에 대한 사용자 답변 “너말대로 진행하자”, MASTER 전달), TASK 한정 결정; DoD 14 ticketing-risk-reviewer 실행 여부·DoD 15 F-1 종료 리뷰 기록 미확인 수용, F-1 코드·테스트상 해결 확인; DoD 17 merge 전 PASS 미충족 보존, 병합 후 보완 학습 PASS(2026-11-04 KST GPT 판정) |
 | TASK-032 | 이벤트 기반 예약 처리 (Spring Events) | 재확인필요 | Issue #106, PR #107, merge SHA `8593d642105a2396c3db30fd8b331889b47fd428`; 학습·최종 완료 미확인 |
 | TASK-033 | Outbox Pattern 구현 | 완료 | Issue #108, PR #109, merge SHA `372982abdabfee02c4ae30deae5cbb77eff1fb4b`; 최종 완료: 사용자 최종 완료 승인(TASK-033-1 MASTER 방 WORK-2 이후 사용자 “그렇게하자”, MASTER 전달), TASK 한정 결정; 설명 완료, 독립 이해도 검증 미확인, Level 4 최종 PASS 미부여 |
 | TASK-033-1 | Outbox 재처리 실패 시나리오 | 완료 | Issue #115, PR #116, merge SHA `abe4cc9c0d3be0ce153de19e5af6cc061207cc1c`; 최종 완료: 사용자 최종 완료 승인(2026-11-19 KST TASK-033-1 MASTER-3 방 사용자 최종 완료 승인, MASTER 전달), DoD 3·4 동결·RED 원본 소실과 재생본 검증 한계 수용; 설명 완료, 독립 이해도 검증 미실시, Level 미평가 |
@@ -61,8 +61,8 @@ TASK-033-1
 
 A old roadmap의 고유 TASK 74개를 모두 보존한다.
 A에서 과거에 `완료` 또는 `남은 로드맵`으로 분류됐더라도 현재 근거가 확인되지 않으면 이 문서에서는 `재확인필요`로 기록한다.
-현재 근거가 확인된 TASK-031, MASTER에서 완료가 확정된 TASK-059·TASK-060, 기존 MASTER FINAL COMPLETE 보고가 있는 TASK-061, 사용자 최종 완료 승인이 기록된 TASK-063·TASK-033·TASK-033-1·TASK-028·TASK-043은 `완료`로 기록한다.
-merge는 확인됐지만 학습·최종 완료 근거가 확인되지 않은 TASK-062·TASK-032는 `재확인필요`로 기록한다. 현재 `진행중` TASK는 없다.
+현재 근거가 확인된 TASK-031, MASTER에서 완료가 확정된 TASK-059·TASK-060, 기존 MASTER FINAL COMPLETE 보고가 있는 TASK-061, 사용자 최종 완료 승인이 기록된 TASK-063·TASK-033·TASK-033-1·TASK-028·TASK-043·TASK-062는 `완료`로 기록한다.
+merge는 확인됐지만 학습·최종 완료 근거가 확인되지 않은 TASK-032는 `재확인필요`로 기록한다. 현재 `진행중` TASK는 없다.
 TASK별 학습·최종 완료 근거는 `## TASK 학습·완료 추적`에서 구분한다.
 
 ### Phase 1. 기반 구축
@@ -146,7 +146,7 @@ TASK별 학습·최종 완료 근거는 `## TASK 학습·완료 추적`에서 �
 | TASK-046 | 예약/결제/HOLD/좌석 상태 전이 및 동시 결제 정합성 보강 | 재확인필요 | A old roadmap 기록만 확인됨; 현재 완료/진행 근거 재검증 필요 | Lock/MVCC, 트랜잭션 (Week 4~5) |
 | TASK-052 | Idempotency Key 기반 예약 생성 API 중복 요청 방지 확장 | 재확인필요 | A old roadmap 기록만 확인됨; 현재 완료/진행 근거 재검증 필요 | 트랜잭션/Redis (Week 5, 8) |
 | TASK-031 | Redis Sliding Window 기반 Rate Limiting 구현 | 완료 | B current: Issue #96, PR #97, commit `f0aabf8` | Redis/동시성 (Week 8, 10) |
-| TASK-062 | 예약 취소·만료·재선점·결제 좌석 정합성 보장 | 재확인필요 | Issue #104, PR #105, merge SHA `37d907f1d2ed4c79e51855d24d789ca46b97ef8b`; 학습·최종 완료 미확인 | Lock/MVCC, 트랜잭션 (Week 4~5) |
+| TASK-062 | 예약 취소·만료·재선점·결제 좌석 정합성 보장 | 완료 | Issue #104, PR #105, merge SHA `37d907f1d2ed4c79e51855d24d789ca46b97ef8b` (기능 병합 2026-11-04 KST); 최종 완료: 사용자 최종 완료 승인(2026-11-25 KST TASK-062 MASTER 방 MASTER 권고에 대한 사용자 답변 “너말대로 진행하자”, MASTER 전달), TASK 한정 결정; DoD 14 ticketing-risk-reviewer 실행 여부·DoD 15 F-1 종료 리뷰 기록 미확인 수용, F-1 코드·테스트상 해결 확인; DoD 17 merge 전 PASS 미충족 보존, 병합 후 보완 학습 PASS(2026-11-04 KST GPT 판정) | Lock/MVCC, 트랜잭션 (Week 4~5) |
 
 ### Phase 4-2. 이벤트 처리 & 장애 신뢰성
 
@@ -244,7 +244,7 @@ TASK별 학습·최종 완료 근거는 `## TASK 학습·완료 추적`에서 �
 | TASK | 구현·머지 | 설명 제공 | 독립 이해도 검증 | 적용 계약·예외 | 최종 완료 판정 | 근거 출처 |
 | --- | --- | --- | --- | --- | --- | --- |
 | TASK-061 | 머지됨 (PR #103, `8c9f097`) | 해당없음 (시행 이전 계약) | 미확인 (기존 MASTER의 WORK-9 PASS 보고 있음, 원문 대조 미완료) | 시행 이전 계약 | 완료 (기존 MASTER FINAL COMPLETE 보고 보존) | 머지: GitHub; 학습·최종 완료: MASTER 보고 |
-| TASK-062 | 머지됨 (PR #105, `37d907f`) | 해당없음 (시행 이전 계약) | 미확인 | 시행 이전 계약; Issue #104 DoD에 고위험 학습·면접 merge 전 PASS 조건 | 미확인 | 머지: GitHub; 학습·최종 완료: 근거 미확보 |
+| TASK-062 | 머지됨 (PR #105, `37d907f`) | 해당없음 (시행 이전 계약) | PASS (병합 후 보완: 2026-11-04 KST 13:14:25 병합 → 13:15:49 첫 문항 부분 통과 → 16:10:55 전체 PASS, GPT 판정; DoD 17 merge 전 PASS는 미충족) | 시행 이전 계약; Issue #104 DoD에 고위험 학습·면접 merge 전 PASS 조건; 예외: TASK-062 한정으로 DoD 14(ticketing-risk-reviewer 실행 여부)·DoD 15(F-1 종료 리뷰 기록) 미확인 수용, DoD 17 merge 전 PASS 미충족 보존과 병합 후 보완 학습 PASS 인정, TASK-063 개정 계약 소급 적용 아님 | 완료 (2026-11-25 사용자 최종 완료 승인, 기능 병합 2026-11-04 PR #105와 별개 사건; F-1 코드·테스트상 해결 확인, 과거 소급 없음) | 머지: GitHub; 학습: MASTER 보고 (2026-11-04 KST TASK-032 MASTER-2 방 당시 GPT 판정 발췌, MASTER 전달); 최종 완료: MASTER 보고 (2026-11-25 KST TASK-062 MASTER 방 MASTER 권고와 사용자 답변 “너말대로 진행하자” 직접 확인, MASTER 전달) |
 | TASK-032 | 머지됨 (PR #107, `8593d64`) | 해당없음 (시행 이전 계약) | 미확인 | 시행 이전 계약 | 미확인 | 머지: GitHub; 학습·최종 완료: 근거 미확보 |
 | TASK-033 | 머지됨 (PR #109, `372982a`) | 완료 (시행 이전 설명 중심 학습 기록) | 미확인 (부분 답변 확인, 30초·90초 미실시, Level 4 최종 PASS 미부여) | 시행 이전 계약, 고위험 Level 4 merge 전 gate (Issue #108); 예외: TASK-033 한정으로 사용자 요청에 따라 merge 전 조건만 설명 중심 학습 완료와 기록으로 대체, 당시 예외는 merge 전 조건에 한정; 최종 완료 결정: 별도 TASK 한정 결정으로 남은 최종 완료 전 학습 의무를 설명 중심 학습 완료와 결과·한계 기록으로 대체, TASK-063 개정 계약 소급 적용 아님 | 완료 (MASTER 보고 기준 사용자 “그렇게하자” 승인 시점 판정, 과거 소급 없음, Valid RED·동결 계약 원문 근거 미확보와 남은 증거 공백·기술 한계 미해결 보존) | 머지: GitHub; 학습: 저장소 `docs/learning/TASK-033/INTERVIEW-NOTES.md`, GitHub PR #109; 최종 완료: MASTER 보고 (TASK-033-1 MASTER 방 WORK-2 이후 사용자 “그렇게하자” 승인, 원문 대조 미완료) |
 | TASK-033-1 | 머지됨 (PR #116, `abe4cc9`) | 완료 (MASTER-3 설명 후 사용자 “설명 받았어” 수령 확인, MASTER 정확성 검토 완료, merge 전 설명 중심 gate 충족) | 미실시 (면접 모드 미요청, Level 미평가) | 개정 계약 (TASK-063 이후 계획 승인; 고위험, merge 전 설명 중심 gate: 설명·기록·사용자 설명 수령 확인·MASTER 정확성 검토) | 완료 (2026-11-19 사용자 최종 완료 승인, DoD 3·4 동결·RED 원본 소실과 재생본 검증 한계 수용, REVIEW-2 종료 범위는 G-1~G-4 한정, Netty 종료 ERROR 원인·영향 미확정과 남은 검증 한계 보존) | 착수: GitHub Issue #115; 머지: GitHub PR #116; 학습: 저장소 `docs/learning/TASK-033-1/INTERVIEW-NOTES.md`, MASTER 보고 (MASTER-3 설명과 사용자 수령 확인); 최종 완료: MASTER 보고 (2026-11-19 KST MASTER-3 방 사용자 최종 완료 승인, 원문 대조 미완료) |
