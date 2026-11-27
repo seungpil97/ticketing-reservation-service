@@ -7738,7 +7738,7 @@ s2h_expect S2H12 "strict positive rejects validator exit 1" NOT_ACCEPTED_EXIT_1 
 S2_TRACKER_HEADER='| TASK | 구현·머지 | 설명 제공 | 독립 이해도 검증 | 적용 계약·예외 | 최종 완료 판정 | 근거 출처 |'
 S2_R61='| TASK-061 | 머지됨 (PR #103, `8c9f097`) | 해당없음 (시행 이전 계약) | 미확인 (기존 MASTER의 WORK-9 PASS 보고 있음, 원문 대조 미완료) | 시행 이전 계약 | 완료 (기존 MASTER FINAL COMPLETE 보고 보존) | 머지: GitHub; 학습·최종 완료: MASTER 보고 |'
 S2_R62='| TASK-062 | 머지됨 (PR #105, `37d907f`) | 해당없음 (시행 이전 계약) | PASS (병합 후 보완: 2026-11-04 KST 13:14:25 병합 → 13:15:49 첫 문항 부분 통과 → 16:10:55 전체 PASS, GPT 판정; DoD 17 merge 전 PASS는 미충족) | 시행 이전 계약; Issue #104 DoD에 고위험 학습·면접 merge 전 PASS 조건; 예외: TASK-062 한정으로 DoD 14(ticketing-risk-reviewer 실행 여부)·DoD 15(F-1 종료 리뷰 기록) 미확인 수용, DoD 17 merge 전 PASS 미충족 보존과 병합 후 보완 학습 PASS 인정, TASK-063 개정 계약 소급 적용 아님 | 완료 (2026-11-25 사용자 최종 완료 승인, 기능 병합 2026-11-04 PR #105와 별개 사건; F-1 코드·테스트상 해결 확인, 과거 소급 없음) | 머지: GitHub; 학습: MASTER 보고 (2026-11-04 KST TASK-032 MASTER-2 방 당시 GPT 판정 발췌, MASTER 전달); 최종 완료: MASTER 보고 (2026-11-25 KST TASK-062 MASTER 방 MASTER 권고와 사용자 답변 “너말대로 진행하자” 직접 확인, MASTER 전달) |'
-S2_R32='| TASK-032 | 머지됨 (PR #107, `8593d64`) | 해당없음 (시행 이전 계약) | 미확인 | 시행 이전 계약 | 미확인 | 머지: GitHub; 학습·최종 완료: 근거 미확보 |'
+S2_R32='| TASK-032 | 머지됨 (PR #107, `8593d64`) | 완료 (2026-11-27 KST 병합 후 설명 중심 보완 학습: 업무상 결제 실패의 커밋, 리스너 예외 시 DB 롤백, Redis 응답의 커밋 후 저장; 사용자 승인으로 인정; 2026-11-04 KST 병합 후 질문·모범답안 제공 확인) | 미확인 (당시 사용자 독립 답변·GPT 판정·학습 전체 PASS 기록 미확보) | 시행 이전 계약; 고위험 지정·별도 merge 전 학습 의무 승인 미확인; 결정: TASK-032 한정으로 당시 학습 전체 PASS 미확인 기록과 2026-11-27 설명 중심 보완 학습 인정, TASK-062 예외·TASK-063 개정 계약 소급 적용 아님 | 완료 (2026-11-27 사용자 최종 완료 승인, 기능 병합 2026-11-04 PR #107과 별개 사건; Issue #106 DoD 5/5 확인은 2026-11-27 재점검 결과이며 병합 당시 확인으로 소급하지 않음, 과거 소급 없음) | 머지: GitHub; 학습: MASTER 보고 (2026-11-04 KST TASK-032 MASTER-2 방 질문·모범답안 제공 발췌와 2026-11-27 KST 현재 TASK-032 MASTER 방 설명 중심 보완 학습, MASTER 전달); 최종 완료: MASTER 보고 (2026-11-27 KST 현재 TASK-032 MASTER 방 사용자 승인 원문 “TASK-032의 당시 학습 전체 PASS는 미확인으로 기록하고, 오늘 설명 중심 보완 학습을 인정해 2026-11-27 TASK-032 최종 완료를 승인합니다.”, MASTER 전달) |'
 S2_R33='| TASK-033 | 머지됨 (PR #109, `372982a`) | 완료 (시행 이전 설명 중심 학습 기록) | 미확인 (부분 답변 확인, 30초·90초 미실시, Level 4 최종 PASS 미부여) | 시행 이전 계약, 고위험 Level 4 merge 전 gate (Issue #108); 예외: TASK-033 한정으로 사용자 요청에 따라 merge 전 조건만 설명 중심 학습 완료와 기록으로 대체, 당시 예외는 merge 전 조건에 한정; 최종 완료 결정: 별도 TASK 한정 결정으로 남은 최종 완료 전 학습 의무를 설명 중심 학습 완료와 결과·한계 기록으로 대체, TASK-063 개정 계약 소급 적용 아님 | 완료 (MASTER 보고 기준 사용자 “그렇게하자” 승인 시점 판정, 과거 소급 없음, Valid RED·동결 계약 원문 근거 미확보와 남은 증거 공백·기술 한계 미해결 보존) | 머지: GitHub; 학습: 저장소 `docs/learning/TASK-033/INTERVIEW-NOTES.md`, GitHub PR #109; 최종 완료: MASTER 보고 (TASK-033-1 MASTER 방 WORK-2 이후 사용자 “그렇게하자” 승인, 원문 대조 미완료) |'
 S2_R63='| TASK-063 | 머지됨 (PR #111, `00560ce`) | 완료 (MASTER 설명 후 사용자 “진행하자” 수령 확인) | 미실시 (면접 모드 미요청, Level 미평가) | TASK 한정 결정 (Issue #110): 설명 중심, merge 전 설명·기록·사용자 설명 수령 확인·MASTER 정확성 검토 gate | 완료 (WORK-18 사용자 최종 완료 승인, 남은 Low·검증 한계 미해결 보존) | 머지: GitHub PR #111; 학습: 저장소 `docs/learning/TASK-063/INTERVIEW-NOTES.md`, MASTER 보고 (MASTER 설명과 사용자 수령 확인); 최종 완료: MASTER 보고 (WORK-18 사용자 최종 완료 승인) |'
 
@@ -8081,14 +8081,37 @@ if [ "$s2_delete_index" -ne 36 ]; then
   record_fail "S2N-D case table row count is not 36"
 fi
 
-# S2M1. Final completion against non-completed status and without final evidence.
-if s2_begin_case S2M1; then
+# S2M1a. Completed TASK-032 whose tracker final judgement alone is not completed.
+if s2_begin_case S2M1a; then
   s2_replace_line "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_R32" \
-    '| TASK-032 | 머지됨 (PR #107, `8593d64`) | 해당없음 (시행 이전 계약) | 미확인 | 시행 이전 계약 | 완료 (fixture) | 머지: GitHub; 학습·최종 완료: 근거 미확보 |' ||
+    '| TASK-032 | 머지됨 (PR #107, `8593d64`) | 완료 (2026-11-27 KST 병합 후 설명 중심 보완 학습: 업무상 결제 실패의 커밋, 리스너 예외 시 DB 롤백, Redis 응답의 커밋 후 저장; 사용자 승인으로 인정; 2026-11-04 KST 병합 후 질문·모범답안 제공 확인) | 미확인 (당시 사용자 독립 답변·GPT 판정·학습 전체 PASS 기록 미확보) | 시행 이전 계약; 고위험 지정·별도 merge 전 학습 의무 승인 미확인; 결정: TASK-032 한정으로 당시 학습 전체 PASS 미확인 기록과 2026-11-27 설명 중심 보완 학습 인정, TASK-062 예외·TASK-063 개정 계약 소급 적용 아님 | 미확인 (fixture) | 머지: GitHub; 학습: MASTER 보고 (2026-11-04 KST TASK-032 MASTER-2 방 질문·모범답안 제공 발췌와 2026-11-27 KST 현재 TASK-032 MASTER 방 설명 중심 보완 학습, MASTER 전달); 최종 완료: MASTER 보고 (2026-11-27 KST 현재 TASK-032 MASTER 방 사용자 승인 원문 “TASK-032의 당시 학습 전체 PASS는 미확인으로 기록하고, 오늘 설명 중심 보완 학습을 인정해 2026-11-27 TASK-032 최종 완료를 승인합니다.”, MASTER 전달) |' ||
     S2_MUT_OK=0
-  s2_negative "final completion inconsistent and without final evidence rejected" "$S2_ROADMAP_REL" \
-    "Roadmap learning tracker final-completion/status inconsistency: TASK-032" \
+  s2_negative "TASK-032 final judgement inconsistent with completed status rejected" "$S2_ROADMAP_REL" \
+    "Roadmap learning tracker final-completion/status inconsistency: TASK-032"
+fi
+
+# S2M1b. Completed TASK-032 whose final-completion evidence alone is unsecured.
+if s2_begin_case S2M1b; then
+  s2_replace_line "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_R32" \
+    '| TASK-032 | 머지됨 (PR #107, `8593d64`) | 완료 (2026-11-27 KST 병합 후 설명 중심 보완 학습: 업무상 결제 실패의 커밋, 리스너 예외 시 DB 롤백, Redis 응답의 커밋 후 저장; 사용자 승인으로 인정; 2026-11-04 KST 병합 후 질문·모범답안 제공 확인) | 미확인 (당시 사용자 독립 답변·GPT 판정·학습 전체 PASS 기록 미확보) | 시행 이전 계약; 고위험 지정·별도 merge 전 학습 의무 승인 미확인; 결정: TASK-032 한정으로 당시 학습 전체 PASS 미확인 기록과 2026-11-27 설명 중심 보완 학습 인정, TASK-062 예외·TASK-063 개정 계약 소급 적용 아님 | 완료 (2026-11-27 사용자 최종 완료 승인, 기능 병합 2026-11-04 PR #107과 별개 사건; Issue #106 DoD 5/5 확인은 2026-11-27 재점검 결과이며 병합 당시 확인으로 소급하지 않음, 과거 소급 없음) | 머지: GitHub; 학습: MASTER 보고 (2026-11-04 KST TASK-032 MASTER-2 방 질문·모범답안 제공 발췌와 2026-11-27 KST 현재 TASK-032 MASTER 방 설명 중심 보완 학습, MASTER 전달); 최종 완료: 근거 미확보 |' ||
+    S2_MUT_OK=0
+  s2_negative "TASK-032 final completion with unsecured final evidence rejected" "$S2_ROADMAP_REL" \
     "Roadmap learning tracker final-completion evidence missing: TASK-032"
+fi
+
+# S2M1c. Final completion against non-completed status and without final evidence.
+if s2_begin_case S2M1c; then
+  S2M1C_ROW='| TASK-001 | 머지됨 (PR #1, `0000000`) | 해당없음 (시행 이전 계약) | 미확인 | 시행 이전 계약 | 완료 (fixture) | 머지: GitHub; 학습·최종 완료: 근거 미확보 |'
+  if s2_ins="$(s2_ins_file "$S2M1C_ROW")"; then
+    s2_insert_after "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2_R32" "$s2_ins" || S2_MUT_OK=0
+  else
+    S2_MUT_OK=0
+  fi
+  [ "$(s2_count "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2M1C_ROW")" -eq 1 ] || S2_MUT_OK=0
+  s2_log "postcondition S2M1C_row_count=$(s2_count "$S2_FIXTURE/$S2_ROADMAP_REL" "$S2M1C_ROW")"
+  s2_negative "final completion inconsistent and without final evidence rejected" "$S2_ROADMAP_REL" \
+    "Roadmap learning tracker final-completion/status inconsistency: TASK-001" \
+    "Roadmap learning tracker final-completion evidence missing: TASK-001"
 fi
 
 # S2M2. Canonical line replaced by a forbidden explanation-as-PASS phrase.
